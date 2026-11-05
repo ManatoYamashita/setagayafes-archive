@@ -1,0 +1,112 @@
+---
+// Sites that are not Setagaya Festival rounds but live on the same host.
+// A site with `blockedBy` is listed without a link until that Issue is closed
+// (the Todoroki Festival sites still run on WordPress: Issue #2).
+import { RELATED_SITES } from "../data/related-sites.ts";
+import { formatDateRange } from "../lib/format.ts";
+
+function whenOf(site: (typeof RELATED_SITES)[number]): { label: string; datetime: string } {
+  if ("dates" in site) {
+    return { label: formatDateRange(site.dates.start, site.dates.end), datetime: site.dates.start };
+  }
+  return { label: String(site.year), datetime: String(site.year) };
+}
+---
+
+<section class="page" aria-labelledby="related-title">
+  <div class="related">
+    <h2 id="related-title" class="heading">
+      <span class="dot" aria-hidden="true"></span>
+      関連サイト
+    </h2>
+    <ul class="list" role="list">
+      {RELATED_SITES.map((site) => {
+        const when = whenOf(site);
+        const linked = !("blockedBy" in site);
+        return (
+          <li class="item">
+            <time class="when" datetime={when.datetime}>
+              {when.label}
+            </time>
+            {linked ? (
+              <a class="site" href={site.path}>
+                {site.name.ja}
+              </a>
+            ) : (
+              <span class="site">
+                {site.name.ja}
+                <span class="tag">公開準備中</span>
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .related {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 1.25rem;
+    border-block-start: 1px solid var(--color-line);
+    padding-block: 2.5rem 3.5rem;
+
+    @media (width >= 48rem) {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    }
+  }
+
+  .heading {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+
+  .item {
+    display: grid;
+    gap: 0.25rem 1.5rem;
+    border-block-end: 1px solid var(--color-wash);
+    padding-block: 1rem;
+
+    &:first-child {
+      padding-block-start: 0;
+    }
+
+    @media (width >= 40rem) {
+      grid-template-columns: 9rem minmax(0, 1fr);
+      align-items: baseline;
+    }
+  }
+
+  .when {
+    font-size: 0.75rem;
+    color: var(--color-muted);
+  }
+
+  .site {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    font-size: 1.0625rem;
+  }
+
+  a.site {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+
+    &:hover {
+      text-decoration-thickness: 2px;
+    }
+  }
+
+  span.site {
+    color: var(--color-muted);
+  }
+</style>

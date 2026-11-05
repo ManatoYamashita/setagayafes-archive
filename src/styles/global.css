@@ -9,6 +9,7 @@
   --color-ink: #000;
   --color-paper: #fff;
   --color-muted: #595959;
+  --color-wash: #f2f2f2;
   --color-line: #000;
   --color-transparent: transparent;
   --color-current: currentColor;
@@ -27,5 +28,61 @@
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-text-size-adjust: 100%;
+    /* Lining, equal-width digits keep dates and round numbers aligned. */
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * Headings are short: balance their lines, and break Japanese at phrase
+   * boundaries instead of in the middle of a word (visible at 320px).
+   */
+  :where(h1, h2, h3) {
+    text-wrap: balance;
+    word-break: auto-phrase;
+  }
+
+  :where(p) {
+    text-wrap: pretty;
+  }
+
+  :where(a, button, input, summary):focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  /* The rounded outline label used for eras and statuses. */
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    padding: 0.0625rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+
+  /* The solid dot used as a section marker and in the MENU button. */
+  .dot {
+    display: inline-block;
+    flex: none;
+    inline-size: 0.625rem;
+    block-size: 0.625rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    background-color: currentColor;
+  }
+
+  /* Page width and the 16px side gutter on phones. */
+  .page {
+    margin-inline: auto;
+    max-inline-size: 76rem;
+    padding-inline: 1rem;
+
+    @media (width >= 40rem) {
+      padding-inline: 1.5rem;
+    }
   }
 }

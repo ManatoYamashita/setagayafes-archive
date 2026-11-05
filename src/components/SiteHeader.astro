@@ -1,0 +1,134 @@
+---
+// Site name on the left, MENU on the right, a rule below.
+// The menu is a native popover opened by `popovertarget`: no JavaScript, and
+// the browser handles Escape, outside clicks and focus return. The same links
+// are in the footer, so they stay reachable where popover is unsupported.
+import { SITE_LINKS } from "../data/site-links.ts";
+
+const MENU_ID = "site-menu";
+---
+
+<header class="page">
+  <div class="bar">
+    <h1 class="name">
+      <a href="/">
+        <span class="mark" aria-hidden="true"></span>
+        世田谷祭アーカイブ
+      </a>
+    </h1>
+    <button type="button" class="menu-button" popovertarget={MENU_ID}>
+      MENU
+      <span class="dot" aria-hidden="true"></span>
+    </button>
+  </div>
+
+  <nav id={MENU_ID} class="menu" popover aria-label="世田谷祭の公式サイトとSNS">
+    <ul>
+      {SITE_LINKS.map((link) => (
+        <li>
+          <a href={link.url}>{link.label.ja}</a>
+        </li>
+      ))}
+    </ul>
+    <button type="button" class="close" popovertarget={MENU_ID} popovertargetaction="hide">
+      閉じる
+    </button>
+  </nav>
+</header>
+
+<style>
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-block-size: 3.5rem;
+    border-block-end: 1px solid var(--color-line);
+  }
+
+  .name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+
+    & a {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding-block: 0.75rem;
+      text-decoration: none;
+    }
+  }
+
+  /* A filled square: the site's mark, echoing the plates in the grid. */
+  .mark {
+    inline-size: 0.875rem;
+    block-size: 0.875rem;
+    background-color: var(--color-ink);
+  }
+
+  .menu-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-block-size: 2.75rem;
+    padding-inline: 0.25rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+  }
+
+  /* The dot turns hollow while the menu is open. */
+  header:has(.menu:popover-open) .menu-button .dot {
+    background-color: transparent;
+  }
+
+  .menu {
+    /* Reset the centered UA popover and pin it under the MENU button. */
+    position: fixed;
+    /* Line up with the page's right edge, also on screens wider than the page. */
+    inset: 3.5rem max(1rem, calc((100vw - 76rem) / 2 + 1.5rem)) auto auto;
+    margin: 0;
+    inline-size: min(18rem, calc(100vw - 2rem));
+    border: 1px solid var(--color-line);
+    padding: 0.5rem 1.25rem 1.25rem;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+
+    & ul {
+      display: grid;
+    }
+
+    & li + li {
+      border-block-start: 1px solid var(--color-wash);
+    }
+
+    & a {
+      display: block;
+      padding-block: 0.875rem;
+      font-size: 1.125rem;
+      text-decoration: none;
+    }
+
+    & a:hover {
+      text-decoration: underline;
+      text-underline-offset: 0.2em;
+    }
+  }
+
+  .close {
+    margin-block-start: 0.75rem;
+    min-block-size: 2.75rem;
+    border: 1px solid var(--color-ink);
+    border-radius: 999px;
+    padding-inline: 1rem;
+    font-size: 0.8125rem;
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--color-ink);
+      color: var(--color-paper);
+    }
+  }
+</style>
