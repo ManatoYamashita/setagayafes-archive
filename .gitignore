@@ -1,0 +1,28 @@
+# Dependencies and build output
+node_modules/
+dist/
+.astro/
+
+# Local environment
+.env
+.env.*
+.DS_Store
+
+# Reference material that must never be committed.
+# The reference design is a third-party template; keep it here locally only.
+/reference/
+
+# Files that must never be published (see docs/rules/conventions.md).
+# The guard scripts check public/ and dist/ as well.
+*.sql
+*.sql.*
+*.dump
+*.bak
+*.backup
+*.log
+*.xls
+*.xlsx
+
+# Logs from package managers
+npm-debug.log*
+pnpm-debug.log*
