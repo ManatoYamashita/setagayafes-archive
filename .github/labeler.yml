@@ -1,0 +1,26 @@
+# Labels that actions/labeler adds from the changed paths (see .github/workflows/label.yml).
+# Only path-based labels live here. feature / fix / server / security depend on
+# the intent of the change, so the author adds them by hand.
+
+# Documentation only: every changed file is Markdown.
+docs:
+  - changed-files:
+      - all-globs-to-all-files: "**/*.md"
+
+# Lint, CI, guard scripts and dependency management.
+tooling:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**"
+          - ".editorconfig"
+          - ".nvmrc"
+          - ".prettierignore"
+          - ".prettierrc.json"
+          - "eslint.config.mjs"
+          - "tsconfig.json"
+          - "package.json"
+          - "pnpm-lock.yaml"
+          - "scripts/guard-*.mjs"
+          - "scripts/guards.test.mjs"
+          - "scripts/lib/html.mjs"
+          - "scripts/lib/rules.mjs"
