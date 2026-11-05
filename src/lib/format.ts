@@ -18,8 +18,3 @@ export function formatDateRange(start: IsoDate, end: IsoDate): string {
   if (startMonth !== endMonth) return `${first}–${endMonth}.${endDay}`;
   return `${first}–${endDay}`;
 }
-
-/** "第97回" — the festival's round as written in Japanese. */
-export function roundLabel(round: number): string {
-  return `第${round}回`;
-}

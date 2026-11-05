@@ -7,12 +7,23 @@
 // grid pattern counts only the cards that match the current filter, with
 // :nth-child(An+B of S). The era names are fixed ("musashi", "tcu"), so the
 // selectors below spell them out.
-import { ERA_NAMES, FESTIVALS, eraOf, latestFestival, type Era } from "../data/festivals.ts";
+import {
+  ERA_NAMES,
+  FESTIVALS,
+  eraOf,
+  latestFestival,
+  type Era,
+  type Lang,
+} from "../data/festivals.ts";
+import { UI } from "../i18n/ui.ts";
 import FestivalCard from "./FestivalCard.astro";
 
-// Kept on one line: a line break in Japanese markup renders as a stray space.
-const INTRO =
-  "東京都市大学（旧 武蔵工業大学）の学園祭、世田谷祭の公式サイトを、各回の公開当時のまま残しています。";
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const ui = UI[lang];
 
 const hero = latestFestival();
 const festivals = FESTIVALS.filter((festival) => festival.round !== hero.round).toSorted(
@@ -21,10 +32,10 @@ const festivals = FESTIVALS.filter((festival) => festival.round !== hero.round).
 
 const ERAS: readonly Era[] = ["musashi", "tcu"];
 const filters = [
-  { id: "all", label: "すべて", count: festivals.length },
+  { id: "all", label: ui.filterAll, count: festivals.length },
   ...ERAS.map((era) => ({
     id: era,
-    label: ERA_NAMES[era].ja,
+    label: ERA_NAMES[era][lang],
     count: festivals.filter((festival) => eraOf(festival.round) === era).length,
   })),
 ];
@@ -47,14 +58,14 @@ function sizesOf(index: number): string {
   <div class="head">
     <h2 id="archive-title" class="heading">
       <span class="dot" aria-hidden="true"></span>
-      アーカイブ
+      {ui.archive}
     </h2>
-    <p class="intro">{INTRO}</p>
+    <p class="intro">{ui.archiveIntro}</p>
   </div>
 
   <div class="tools">
     <fieldset class="filter">
-      <legend>時代で絞り込む</legend>
+      <legend>{ui.filterLegend}</legend>
       <div class="options">
         {filters.map((filter) => (
           <label class="option">
@@ -75,7 +86,7 @@ function sizesOf(index: number): string {
     <p class="result">
       {filters.map((filter) => (
         <span class="result-text" data-filter={filter.id}>
-          {filter.count}件を表示中
+          {ui.showing(filter.count)}
         </span>
       ))}
     </p>
@@ -83,7 +94,7 @@ function sizesOf(index: number): string {
 
   <ul class="grid" role="list">
     {festivals.map((festival, index) => (
-      <FestivalCard festival={festival} sizes={sizesOf(index)} />
+      <FestivalCard festival={festival} lang={lang} sizes={sizesOf(index)} />
     ))}
   </ul>
 </section>
