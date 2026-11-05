@@ -32,6 +32,13 @@ describe("forbiddenFileReason", () => {
     ".env.production",
     "img/.DS_Store",
     "index.html~",
+    // Review on PR #4: Apache-style logs have no extension.
+    "access_log",
+    "access_log_20261105",
+    "logs/error_log",
+    "ssl_request_log",
+    "include.shtml",
+    "logo.svgz",
   ]) {
     test(`rejects ${path}`, () => assert.notEqual(forbiddenFileReason(path), null));
   }
@@ -45,6 +52,8 @@ describe("forbiddenFileReason", () => {
     "en/index.html",
     "sitemap-index.xml",
     "styles.css",
+    "blog/index.html",
+    "img/catalog.avif",
   ]) {
     test(`allows ${path}`, () => assert.equal(forbiddenFileReason(path), null));
   }
@@ -82,6 +91,55 @@ describe("findClientCodeInHtml", () => {
   });
   test("accepts plain HTML", () => {
     assert.deepEqual(findClientCodeInHtml('<a href="/96th/" class="online">第96回</a>'), []);
+  });
+
+  // Review on PR #4: only the real `type` attribute may make a script JSON-LD.
+  describe("JSON-LD exception", () => {
+    for (const html of [
+      '<script data-type="application/ld+json">alert(1)</script>',
+      '<script type="text/javascript" data-type="application/ld+json">alert(1)</script>',
+      '<script type="module" type="application/ld+json">alert(1)</script>',
+      '<script data-x="type=application/ld+json>">alert(1)</script>',
+      '<script type="application/ld+json ">alert(1)</script>',
+      "<script>alert(1)</script>",
+    ]) {
+      test(`rejects ${html}`, () => assert.equal(findClientCodeInHtml(html).length, 1));
+    }
+    for (const html of [
+      '<script type="application/ld+json">{}</script>',
+      "<script type=APPLICATION/LD+JSON>{}</script>",
+      '<script data-x=">" type="application/ld+json">{}</script>',
+      '<script type="application/ld+json" type="module">{}</script>',
+    ]) {
+      test(`allows ${html}`, () => assert.deepEqual(findClientCodeInHtml(html), []));
+    }
+  });
+
+  describe("attributes are read the way a browser reads them", () => {
+    for (const html of [
+      "<img/onerror=alert(1) src=x>",
+      '<img alt=">" onerror="alert(1)">',
+      "<IMG SRC=x ONERROR=alert(1)>",
+      '<svg><script href="a.js"></script></svg>',
+      '<a href="jav&#x61;script:alert(1)">x</a>',
+      '<a href="javascript&colon;alert(1)">x</a>',
+      '<a href=" javascript:alert(1)">x</a>',
+      '<a href="java\tscript:alert(1)">x</a>',
+      '<iframe src="data:text/html,x"></iframe>',
+      '<iframe srcdoc="&lt;script&gt;alert(1)&lt;/script&gt;"></iframe>',
+    ]) {
+      test(`rejects ${html}`, () => assert.notDeepEqual(findClientCodeInHtml(html), []));
+    }
+    for (const html of [
+      "<!-- <script>alert(1)</script> -->",
+      '<style>a[title="<script>"]::after{content:"onclick="}</style>',
+      "<title><script></title>",
+      "<p>log on=now &lt;script&gt;</p>",
+      '<a href="/javascript-guide/">x</a>',
+      '<img alt="onerror=x" src="a.avif">',
+    ]) {
+      test(`allows ${html}`, () => assert.deepEqual(findClientCodeInHtml(html), []));
+    }
   });
 });
 
@@ -170,6 +228,32 @@ describe("guard scripts", () => {
     assert.match(result.stderr, /_astro\/a\.js/);
     assert.match(result.stderr, /script tag/);
     assert.match(result.stderr, /access\.log/);
+  });
+
+  // Review on PR #4: .htm and other markup must be checked too.
+  test("guard-dist checks .htm, .xhtml and .svg as well as .html", async () => {
+    const dist = await fixture({
+      "index.html": "<!doctype html><h1>ok</h1>",
+      "old.htm": "<script>alert(1)</script>",
+      "page.xhtml": '<html><body onload="alert(1)"></body></html>',
+      "img/logo.svg": "<svg><script>alert(1)</script></svg>",
+    });
+    const result = run("guard-dist.mjs", dist);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /dist\/old\.htm/);
+    assert.match(result.stderr, /dist\/page\.xhtml/);
+    assert.match(result.stderr, /dist\/img\/logo\.svg/);
+  });
+
+  test("guard-source rejects an extensionless access_log in public/", async () => {
+    const root = await fixture({
+      "package.json": JSON.stringify({ dependencies: { astro: "1" } }),
+      "src/pages/index.astro": "<h1>ok</h1>",
+      "public/access_log": "",
+    });
+    const result = run("guard-source.mjs", root);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /public\/access_log/);
   });
 
   test("guard-dist fails when dist is missing", async () => {

@@ -8,7 +8,10 @@
 - `client:*` ディレクティブ（`client:load`・`client:visible` など）を使わない
 - `<script>` を書かない（`is:inline` も含む）
   - 例外は JSON-LD（`<script type="application/ld+json">`）だけ。データであって、実行されるコードではないため
-- インラインのイベントハンドラ（`onclick=` など）と `javascript:` URL を使わない
+  - 例外になるのは、`type` 属性の値が `application/ld+json` と完全に一致するときだけ（大文字と小文字は区別しない。前後の空白も許さない）。
+    `data-type` などの別の属性は数えない。`type` が2つあれば、ブラウザと同じく先の1つだけを見る
+- インラインのイベントハンドラ（`onclick=` など）と、スクリプトを実行する URL（`javascript:`・`vbscript:`・`data:text/html`）を使わない
+- `srcdoc` の中身も同じ規則で検査する
 - UI ランタイム（React・Preact・Vue・Svelte・Solid・Alpine・Lit）とその Astro 統合を入れない
 - 動きのある UI は HTML と CSS の標準機能で作る
   - MENU: `popover` または `<details>`
@@ -20,13 +23,21 @@
 Astro は小さなスクリプトを `.js` ファイルにせず、HTML へインラインで埋め込む。
 そのため「`.js` ファイルが無いこと」だけでは検査にならない。ビルド後の HTML の中まで見る。
 
+HTML は文字列の一致ではなく、`scripts/lib/html.mjs` の tokenizer で、ブラウザと同じようにタグと属性に分けてから判定する。
+文字列の一致では、`data-type` の中の `type`、引用符の中の `>`、`/` で区切った属性（`<img/onerror=…>`）、
+文字参照で隠した URL（`jav&#x61;script:`）を取り違える（PR #4 のレビューで指摘された）。
+
+ブラウザが markup として解釈するファイルは、拡張子が `.html` でなくても検査する。
+対象は `.html`・`.htm`・`.xhtml`・`.xht`・`.shtml`・`.svg`・`.xml`・`.xsl`・`.xslt`。
+中身を読めない `.svgz` は公開禁止にしている。
+
 **検査:**
 
-| 検査                                            | 見るもの                                 |
-| ----------------------------------------------- | ---------------------------------------- |
-| ESLint（`no-restricted-syntax`）                | エディタ上の `.astro`                    |
-| `pnpm guard`                                    | `src/` の生のソースと `package.json`     |
-| `pnpm build` の後段（`scripts/guard-dist.mjs`） | `dist/` の HTML と、`.js` ファイルの有無 |
+| 検査                                            | 見るもの                                                    |
+| ----------------------------------------------- | ----------------------------------------------------------- |
+| ESLint（`no-restricted-syntax`）                | エディタ上の `.astro`                                       |
+| `pnpm guard`                                    | `src/` の生のソースと `package.json`                        |
+| `pnpm build` の後段（`scripts/guard-dist.mjs`） | `dist/` の markup（HTML・SVG・XML）と、`.js` ファイルの有無 |
 
 ## 2. 公開フォルダに置いてはいけないファイル
 
@@ -35,9 +46,10 @@ Astro は小さなスクリプトを `.js` ファイルにせず、HTML へイ�
 - DB のダンプ（`*.sql`・`*.sql.gz`・`*.dump` など）
 - バックアップ・一時ファイル（`*.bak`・`*.old`・`*.orig`・`*~`・`*.swp` など）
 - アーカイブ（`*.zip`・`*.tar.gz` など。中身がバックアップであることが多い）
-- ログ（`*.log`・`access_log*` など）
+- ログ（`*.log`、拡張子の無い `access_log`・`access_log_20261105`・`error_log`・`ssl_request_log` など）
 - 表計算のファイル（`*.xls`・`*.xlsx`・`*.csv`）。個人情報を含むことがあるため
-- サーバー側のコード（`*.php`・`*.cgi` など）と `.env`
+- サーバー側のコード（`*.php`・`*.cgi`・SSI の `*.shtml` など）と `.env`
+- 圧縮した SVG（`*.svgz`）。中身のスクリプトを検査できないため
 - `.DS_Store`・`.git/`
 
 **理由:** このホストの公開フォルダでは、過去に上記のようなファイルが公開状態で見つかっている

@@ -4,6 +4,7 @@
 
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
+import { attribute, decodeCharacterReferences, startTags } from "./html.mjs";
 
 /**
  * File names that must never be published (copied to public/ or dist/).
@@ -16,9 +17,12 @@ const FORBIDDEN_FILE_PATTERNS = [
   { pattern: /\.(bak|backup|old|orig|save|swp|tmp)$/i, reason: "backup or temporary file" },
   { pattern: /~$/, reason: "editor backup file" },
   { pattern: /\.log(\.[a-z0-9]+)?$/i, reason: "log file" },
+  // Apache-style logs have no extension: access_log, access_log_20261105, error_log.
+  { pattern: /(^|\/)(ssl_)?(access|error|request)[._-]?log/i, reason: "log file" },
   { pattern: /\.(zip|tar|gz|tgz|bz2|xz|7z|rar)$/i, reason: "archive (possible backup)" },
+  { pattern: /\.svgz$/i, reason: "compressed SVG (its markup cannot be checked)" },
   { pattern: /\.(xls|xlsx|csv|tsv)$/i, reason: "spreadsheet (possible personal data)" },
-  { pattern: /\.(php|phtml|cgi|pl|py|sh)$/i, reason: "server-side code" },
+  { pattern: /\.(php|phtml|cgi|pl|py|sh|shtml?|stm|asp|aspx|jsp)$/i, reason: "server-side code" },
   { pattern: /(^|\/)\.env(\..*)?$/i, reason: "environment file" },
   { pattern: /(^|\/)\.DS_Store$/, reason: "macOS metadata" },
   { pattern: /(^|\/)\.git(\/|$)/, reason: "git metadata" },
@@ -61,9 +65,29 @@ export function findClientCodeInSource(source) {
   return findings;
 }
 
+/** Attributes whose value the browser may navigate to or load as a URL. */
+const URL_ATTRIBUTES = new Set([
+  "href",
+  "src",
+  "action",
+  "formaction",
+  "xlink:href",
+  "data",
+  "poster",
+  "background",
+]);
+
 /**
  * Finds anything in built HTML that would run JavaScript in the browser.
- * JSON-LD blocks are data, not code, so they are allowed.
+ *
+ * Tags and attributes are read with a tokenizer (scripts/lib/html.mjs), not
+ * matched as text, so that `data-type="..."`, a ">" inside a quoted value or
+ * attributes separated by "/" are read the way a browser reads them.
+ *
+ * JSON-LD is data, not code, so `<script type="application/ld+json">` is
+ * allowed. Only an exact `type` value is accepted (ASCII case-insensitive, no
+ * surrounding whitespace), and only the first `type` attribute counts, as in
+ * the browser.
  *
  * @param {string} html
  * @returns {string[]}
@@ -71,19 +95,43 @@ export function findClientCodeInSource(source) {
 export function findClientCodeInHtml(html) {
   /** @type {string[]} */
   const findings = [];
-  for (const match of html.matchAll(/<script\b[^>]*>/gi)) {
-    if (/\btype\s*=\s*["']?application\/ld\+json["']?/i.test(match[0])) continue;
-    findings.push(`script tag "${match[0]}"`);
-  }
-  for (const match of html.matchAll(/<[a-z][^>]*?\s(on[a-z]+)\s*=/gi)) {
-    findings.push(`inline event handler "${match[1]}"`);
-  }
-  for (const match of html.matchAll(
-    /\b(?:href|src|action|formaction)\s*=\s*["']?\s*javascript:/gi,
-  )) {
-    findings.push(`javascript: URL "${match[0]}"`);
+  for (const tag of startTags(html)) {
+    if (tag.name === "script") {
+      const type = attribute(tag, "type");
+      if (type === undefined || type.toLowerCase() !== "application/ld+json") {
+        findings.push(`script tag "${tag.source}"`);
+      }
+    }
+    for (const { name, value } of tag.attributes) {
+      if (name.startsWith("on")) {
+        findings.push(`inline event handler "${name}" in "${tag.source}"`);
+      } else if (URL_ATTRIBUTES.has(name) && isScriptUrl(value)) {
+        findings.push(`script URL in "${name}" of "${tag.source}"`);
+      } else if (name === "srcdoc") {
+        for (const finding of findClientCodeInHtml(decodeCharacterReferences(value))) {
+          findings.push(`srcdoc of "<${tag.name}>": ${finding}`);
+        }
+      }
+    }
   }
   return findings;
+}
+
+/**
+ * True when a URL attribute value runs script on navigation. The browser
+ * decodes character references, strips leading and trailing control
+ * characters and spaces, and removes tabs and newlines anywhere in the URL
+ * before reading the scheme, so this does the same.
+ *
+ * @param {string} rawValue
+ * @returns {boolean}
+ */
+function isScriptUrl(rawValue) {
+  const url = decodeCharacterReferences(rawValue)
+    // eslint-disable-next-line no-control-regex
+    .replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/g, "")
+    .replace(/[\t\n\r]/g, "");
+  return /^(javascript|vbscript):/i.test(url) || /^data:\s*text\/html/i.test(url);
 }
 
 /**
