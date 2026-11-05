@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. The palette is strictly monochrome and the type uses system
+ * fonts only (no web fonts are downloaded). See docs/rules/conventions.md.
+ */
+@theme {
+  --color-*: initial;
+  --color-ink: #000;
+  --color-paper: #fff;
+  --color-muted: #595959;
+  --color-line: #000;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --font-*: initial;
+  --font-sans:
+    system-ui, -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI",
+    "Meiryo", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-text-size-adjust: 100%;
+  }
+}
