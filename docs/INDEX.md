@@ -28,6 +28,12 @@
 - **[screen.md](./design/screen.md)**: トップの部品、JS を使わない MENU・絞り込み・グリッドの作り方、写真の扱い、実測
   - 絞り込みは radio＋`:has()`、グリッドの型は `:nth-child(An+B of S)` で絞り込みごとに数え直す
 
+### 運用（ops/）
+
+- **[capture.md](./ops/capture.md)**: サムネイルの撮影（`pnpm capture`）と、AVIF・OGP 画像の生成
+  - 原画像だけをコミットし、AVIF と OGP の JPEG はビルド時に作る
+  - 撮影の条件、回ごとの例外、写真のメタデータの除去、撮影時点のサイト側の壊れ
+
 ### 予定（まだ無い文書。作ったらリンクにする）
 
 - `ops/deploy.md`: さくらへの配置手順（手元の httpd での検証を含む）
