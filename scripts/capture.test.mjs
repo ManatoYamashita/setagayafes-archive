@@ -1,0 +1,194 @@
+// Tests for the capture targets and the JPEG metadata removal. Run with `pnpm test`.
+
+import assert from "node:assert/strict";
+import { Buffer } from "node:buffer";
+import { readFile, readdir } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { describe, test } from "node:test";
+import { fileURLToPath } from "node:url";
+import {
+  ARCHIVE_ORIGIN,
+  CAPTURE_DIR,
+  allFestivalNumbers,
+  captureTarget,
+  festivalSlug,
+  parseFestivalArgs,
+} from "./lib/capture-targets.mjs";
+import { exifOrientation, metadataSegments, stripJpegMetadata } from "./lib/jpeg.mjs";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+describe("festivalSlug", () => {
+  for (const [number, slug] of [
+    [75, "75th"],
+    [81, "81st"],
+    [82, "82nd"],
+    [83, "83rd"],
+    [91, "91st"],
+    [97, "97th"],
+    [101, "101st"],
+    [111, "111th"],
+    [112, "112th"],
+    [113, "113th"],
+  ]) {
+    test(`${number} -> ${slug}`, () => assert.equal(festivalSlug(number), slug));
+  }
+
+  test("rejects anything but a positive integer", () => {
+    for (const value of [0, -1, 1.5, Number.NaN]) {
+      assert.throws(() => festivalSlug(value));
+    }
+  });
+});
+
+describe("parseFestivalArgs", () => {
+  test("selects every festival when no argument is given", () => {
+    const all = parseFestivalArgs([]);
+    assert.equal(all[0], 75);
+    assert.equal(all.at(-1), 97);
+    assert.equal(all.length, 23);
+  });
+
+  test("accepts numbers and slugs", () => {
+    assert.deepEqual(parseFestivalArgs(["94", "97th", "81ST"]), [94, 97, 81]);
+  });
+
+  test("rejects a wrong suffix and other text", () => {
+    assert.throws(() => parseFestivalArgs(["81th"]), /expected "81st"/);
+    assert.throws(() => parseFestivalArgs(["../etc"]), /not a festival number/);
+    assert.throws(() => parseFestivalArgs(["97th/"]), /not a festival number/);
+  });
+});
+
+describe("captureTarget", () => {
+  test("a site is captured from its folder on the archive host", () => {
+    assert.deepEqual(captureTarget(81), {
+      kind: "site",
+      number: 81,
+      slug: "81st",
+      url: `${ARCHIVE_ORIGIN}/81st/`,
+      file: "81st.png",
+      settleMs: 3000,
+    });
+  });
+
+  test("the 94th waits for its opening loader", () => {
+    const target = captureTarget(94);
+    assert.equal(target.kind, "site");
+    assert.ok(target.kind === "site" && target.settleMs > 10_000);
+  });
+
+  test("the 87th, which has no site, uses the photo", () => {
+    const target = captureTarget(87);
+    assert.equal(target.kind, "photo");
+    assert.equal(target.file, "87th.jpg");
+  });
+});
+
+// A minimal JPEG made of the segments that matter here. The decoder never
+// sees it, so the tables and the scan data are placeholders.
+/** @param {number} marker @param {number[] | string} payload */
+function segment(marker, payload) {
+  const bytes = typeof payload === "string" ? [...payload].map((c) => c.charCodeAt(0)) : payload;
+  const length = bytes.length + 2;
+  return [0xff, marker, length >> 8, length & 0xff, ...bytes];
+}
+
+/** EXIF payload ("MM" byte order) with only the orientation tag in IFD0. */
+function exif(/** @type {number} */ orientation) {
+  return [
+    ...[..."Exif\0\0"].map((c) => c.charCodeAt(0)),
+    ...[0x4d, 0x4d, 0x00, 0x2a, 0x00, 0x00, 0x00, 0x08],
+    ...[0x00, 0x01],
+    ...[0x01, 0x12, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, orientation, 0x00, 0x00],
+    ...[0x00, 0x00, 0x00, 0x00],
+  ];
+}
+
+const APP0 = segment(0xe0, "JFIF\0\x01\x01\0\0\x01\0\x01\0\0");
+const ICC = segment(0xe2, "ICC_PROFILE\0\x01\x01profile");
+const ADOBE = segment(0xee, "Adobe\0\x64\0\0\0\0\x01");
+const DQT = segment(0xdb, [0x00, ...Array(64).fill(1)]);
+const SOS = segment(0xda, [0x01, 0x01, 0x00, 0x00, 0x3f, 0x00]);
+// Scan data with a stuffed 0xFF00 and a restart marker, which are not segments.
+const SCAN = [0x12, 0xff, 0x00, 0x34, 0xff, 0xd0, 0x56];
+const SOI = [0xff, 0xd8];
+const EOI = [0xff, 0xd9];
+
+/** @param {number[][]} parts */
+const jpeg = (...parts) => new Uint8Array(parts.flat());
+
+describe("stripJpegMetadata", () => {
+  const clean = jpeg(SOI, APP0, ICC, ADOBE, DQT, SOS, SCAN, EOI);
+
+  test("removes EXIF, XMP, IPTC, comments, MPF and trailing data", () => {
+    const input = jpeg(
+      SOI,
+      APP0,
+      segment(0xe1, exif(1)),
+      segment(0xe1, "http://ns.adobe.com/xap/1.0/\0<x:xmpmeta/>"),
+      ICC,
+      segment(0xe2, "MPF\0preview"),
+      segment(0xed, "Photoshop 3.0\0iptc"),
+      segment(0xfe, "camera owner"),
+      ADOBE,
+      DQT,
+      SOS,
+      SCAN,
+      EOI,
+      [0xff, 0xd8, 0x99, 0x99], // a second picture appended after EOI
+    );
+    assert.deepEqual(stripJpegMetadata(input), clean);
+  });
+
+  test("keeps a clean JPEG byte for byte", () => {
+    assert.deepEqual(stripJpegMetadata(clean), clean);
+  });
+
+  test("handles metadata between the scans of a progressive JPEG", () => {
+    const input = jpeg(SOI, APP0, DQT, SOS, SCAN, segment(0xfe, "note"), SOS, SCAN, EOI);
+    assert.deepEqual(stripJpegMetadata(input), jpeg(SOI, APP0, DQT, SOS, SCAN, SOS, SCAN, EOI));
+  });
+
+  test("refuses a photo that relies on its EXIF orientation", () => {
+    const input = jpeg(SOI, segment(0xe1, exif(6)), DQT, SOS, SCAN, EOI);
+    assert.throws(() => stripJpegMetadata(input), /orientation is 6/);
+  });
+
+  test("refuses broken input", () => {
+    assert.throws(() => stripJpegMetadata(new Uint8Array([0x89, 0x50])), /not a JPEG/);
+    assert.throws(() => stripJpegMetadata(jpeg(SOI, APP0)), /truncated/);
+    assert.throws(() => stripJpegMetadata(jpeg(SOI, DQT, SOS, SCAN)), /truncated/);
+    assert.throws(() => stripJpegMetadata(jpeg(SOI, [0xff, 0xdb, 0x7f, 0xff])), /bad segment/);
+  });
+
+  test("reads the EXIF orientation", () => {
+    assert.equal(exifOrientation(new Uint8Array(exif(1))), 1);
+    assert.equal(exifOrientation(new Uint8Array(exif(8))), 8);
+    assert.equal(exifOrientation(new Uint8Array(Buffer.from("http://ns.adobe.com/"))), null);
+  });
+});
+
+describe(`${CAPTURE_DIR}/`, async () => {
+  const dir = join(root, CAPTURE_DIR);
+  const files = await readdir(dir);
+
+  test("has one original for every festival, and nothing else", () => {
+    const expected = allFestivalNumbers()
+      .map((number) => captureTarget(number).file)
+      .sort();
+    assert.deepEqual([...files].sort(), expected);
+  });
+
+  for (const file of files.filter((name) => name.endsWith(".jpg"))) {
+    test(`${file} carries no metadata`, async () => {
+      const bytes = new Uint8Array(await readFile(join(dir, file)));
+      const ids = metadataSegments(bytes).map(({ marker, id }) => `${marker.toString(16)} ${id}`);
+      assert.ok(
+        ids.every((id) => /^e0 JFIF|^e2 ICC_PROFILE|^ee Adobe/.test(id)),
+        `metadata left in ${file}: ${ids.join(", ")}`,
+      );
+      assert.deepEqual(stripJpegMetadata(bytes), bytes);
+    });
+  }
+});

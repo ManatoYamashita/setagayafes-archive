@@ -113,6 +113,9 @@ HTML は文字列の一致ではなく、`scripts/lib/html.mjs` の tokenizer �
 
 - 外部ライブラリを足すときは、目的・代替案・影響（サイズ）を示して、オーナーの承認を取る
 - 版は完全に固定する（`pnpm add -E`）
+- Playwright（devDependencies）は、サムネイルの撮影（`pnpm capture`）にだけ使う。Issue #1 の決定による
+  - ブラウザは `pnpm exec playwright install chromium-headless-shell` で別に入れる。CI では入れない
+- 画像の変換は Astro が同梱する sharp で、`astro:assets` を通して行う。sharp を直接 import しない
 - TypeScript は 6 系に固定している。`@astrojs/check` と `typescript-eslint` が 7 に未対応のため
 - `@emnapi/runtime` は `pnpm.overrides` で 1.11.3 に固定している
   - 自動で入る peer に 2.0 の beta が選ばれると、`@emnapi/core` 1.x と混在する

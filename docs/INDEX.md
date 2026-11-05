@@ -23,6 +23,12 @@
 - **[festivals.md](./data/festivals.md)**: 各回と関連サイトのデータの、項目・出典・導出の規則・英語の表記
   - 年・時代・祭の名称・パスはデータに持たず、関数で導く。1件足すときは、テストの `SERVER_FOLDERS` と `LATEST_ROUND` も直す
 
+### 運用（ops/）
+
+- **[capture.md](./ops/capture.md)**: サムネイルの撮影（`pnpm capture`）と、AVIF・OGP 画像の生成
+  - 原画像だけをコミットし、AVIF と OGP の JPEG はビルド時に作る
+  - 撮影の条件、回ごとの例外、写真のメタデータの除去、撮影時点のサイト側の壊れ
+
 ### 予定（まだ無い文書。作ったらリンクにする）
 
 - `ops/deploy.md`: さくらへの配置手順（手元の httpd での検証を含む）
