@@ -40,9 +40,10 @@
 
 - サムネイルは 2560x1600（16:10）の画面写真。枠もすべて 16:10 にして、写真を切らずに見せる
   - 縦長（4:5）に切ると、横長の画面写真の中央の帯しか残らない（ロゴもナビも消える）
-- 生成は `astro:assets` の `<Image format="avif">`。`widths` と `sizes` はグリッドでの実際の幅から決める（`Archive.astro` の `sizesOf()`）
+- 原画像は `src/lib/captures.ts` の `captureOf()` で引き、`CAPTURE_IMAGE_PROPS`（AVIF・上端基準で切り出し）で `<Image>` に渡す。撮影の手順は [capture.md](../ops/capture.md)
+- `widths` と `sizes` はグリッドでの実際の幅から決める（`Archive.astro` の `sizesOf()`）
+- 撮影前の回（`hasCapture()` が false）は、回の数字を大きく組んだ代替表示にする。年次の追加でデータだけ先に入れても、ビルドは落ちない
 - ヒーローの写真だけ `loading="eager"`・`fetchpriority="high"`。カードはすべて `loading="lazy"`
-- サムネイルのヘルパー（`src/lib/captures.ts`）が入ったら、`Capture.astro` の `import.meta.glob` を `captureOf()` に差し替える
 
 ## 実測（2026-11-06。サムネイル23件を置いた状態）
 

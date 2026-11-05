@@ -6,6 +6,7 @@
 // festival does not require editing these tests.
 
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { after, before, describe, test } from "node:test";
 import { chromium } from "playwright";
 import {
@@ -13,6 +14,7 @@ import {
   FESTIVALS,
   eraOf,
   latestFestival,
+  ordinalOf,
   linkOf,
   titleOf,
 } from "../src/data/festivals.ts";
@@ -25,6 +27,10 @@ const listed = FESTIVALS.filter((festival) => festival.round !== latest.round).t
 );
 const countOf = (/** @type {string} */ era) =>
   listed.filter((festival) => eraOf(festival.round) === era).length;
+
+/** Whether `pnpm capture` has produced a screenshot for the festival. */
+const captured = (/** @type {number} */ round) =>
+  ["png", "jpg"].some((ext) => existsSync(`src/assets/captures/${ordinalOf(round)}.${ext}`));
 
 /** @type {Awaited<ReturnType<typeof serve>>} */
 let server;
@@ -190,6 +196,24 @@ describe("archive grid", () => {
         assert.match(text, new RegExp(escape(festival.externalLink.label.ja)));
       if ("estimated" in festival.dates) assert.match(text, /（推定）/);
       if (festival.status === "cancelled") assert.match(text, /中止/);
+    }
+    await close();
+  });
+
+  test("shows the screenshot as AVIF, or the round number before capturing", async () => {
+    const { page, close } = await open();
+    const cards = page.locator(".grid > li");
+    for (const [index, festival] of listed.entries()) {
+      const card = cards.nth(index);
+      const image = card.locator("img");
+      if (captured(festival.round)) {
+        assert.equal(await image.count(), 1, `round ${festival.round} has its screenshot`);
+        assert.match((await image.getAttribute("src")) ?? "", /\.avif$/);
+        assert.equal(await image.getAttribute("alt"), "", "decorative: the heading names the card");
+      } else {
+        assert.equal(await image.count(), 0);
+        assert.equal(await card.locator(".plate").innerText(), String(festival.round));
+      }
     }
     await close();
   });

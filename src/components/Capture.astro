@@ -2,16 +2,12 @@
 // The picture of a festival's site: its screenshot when one has been captured,
 // otherwise a plate with the round number in large type.
 //
-// Screenshots are added by the capture script (Issue #1, ToDo "サムネイル") as
-// src/assets/captures/{ordinal}.png, 2560x1600 (87th is a 4:3 .jpg photo).
-// Every box is 16:10 so a screenshot is shown whole; only the 87th photo is
-// cropped. Files are looked up by name so this component works before and
-// after the screenshots exist.
-// TODO: switch to captureOf() / CAPTURE_IMAGE_PROPS from src/lib/captures.ts
-// once the capture pull request is merged.
-import type { ImageMetadata } from "astro";
+// The screenshots come from `pnpm capture` (src/lib/captures.ts): 2560x1600,
+// except the 87th, a 4:3 photo. Every box is 16:10 so a screenshot is shown
+// whole; only the 87th photo is cropped. The plate covers a festival that has
+// not been captured yet, e.g. a new one added before `pnpm capture` is run.
 import { Image } from "astro:assets";
-import { ordinalOf } from "../data/festivals.ts";
+import { CAPTURE_IMAGE_PROPS, captureOf, hasCapture } from "../lib/captures.ts";
 
 interface Props {
   round: number;
@@ -28,28 +24,18 @@ interface Props {
 
 const { round, widths, sizes, priority = false, tone = "light", class: className } = Astro.props;
 
-const captures = import.meta.glob<{ default: ImageMetadata }>("../assets/captures/*.{png,jpg}", {
-  eager: true,
-});
-const slug = ordinalOf(round);
-const capture = Object.entries(captures).find(
-  ([path]) => /\/([^/]+)\.(?:png|jpg)$/.exec(path)?.[1] === slug,
-)?.[1].default;
-
 const width = Math.max(...widths);
 const height = Math.round((width * 10) / 16);
 ---
 
 <div class:list={["capture", tone, className]}>
-  {capture ? (
+  {hasCapture(round) ? (
     <Image
-      src={capture}
+      src={captureOf(round)}
       alt=""
-      format="avif"
+      {...CAPTURE_IMAGE_PROPS}
       width={width}
       height={height}
-      fit="cover"
-      position="top"
       widths={widths}
       sizes={sizes}
       loading={priority ? "eager" : "lazy"}
