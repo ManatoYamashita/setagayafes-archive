@@ -55,7 +55,7 @@
 | 東京都市大学 | Tokyo City University           |
 | 武蔵工業大学 | Musashi Institute of Technology |
 
-- 日本語のテーマは、`/en/` では原文と英訳を併記する（原文は題名として残す）
+- 日本語のテーマは、`/en/` では原文と英訳を併記する（原文は題名として残す）。組み方は [screen.md](../design/screen.md) の「英語版」
 - 英訳は Claude が作り、オーナーが確認する
 
 ## 状態のタグ

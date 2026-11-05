@@ -1,18 +1,19 @@
 # 画面の構成
 
-トップ（`/`）の部品と、JS を使わずに動きを作る方法をまとめる。決定の経緯は Issue #1。
+トップ（日本語は `/`、英語は `/en/`）の部品と、JS を使わずに動きを作る方法をまとめる。決定の経緯は Issue #1。
 
 ## 部品
 
-| 部品           | ファイル                            | 中身                                                            |
-| -------------- | ----------------------------------- | --------------------------------------------------------------- |
-| ヘッダー       | `src/components/SiteHeader.astro`   | サイト名（`h1`）と MENU。MENU の中身は `src/data/site-links.ts` |
-| ヒーロー       | `src/components/Hero.astro`         | 最新の回（`latestFestival()`）。テーマを大きく組む              |
-| 絞り込み・一覧 | `src/components/Archive.astro`      | 時代の絞り込みと、ヒーロー以外の回のグリッド（新しい順）        |
-| カード         | `src/components/FestivalCard.astro` | 写真 → 日付・回・タグ → テーマ → 祭の名称                       |
-| 写真           | `src/components/Capture.astro`      | サムネイル。無い回は回の数字を大きく組んだ代替表示              |
-| 関連サイト     | `src/components/RelatedSites.astro` | `blockedBy` のある項目は、リンクを張らずに「公開準備中」        |
-| フッター       | `src/components/SiteFooter.astro`   | MENU と同じリンク。popover が動かないブラウザでも辿れる         |
+| 部品           | ファイル                            | 中身                                                                       |
+| -------------- | ----------------------------------- | -------------------------------------------------------------------------- |
+| ページ         | `src/components/Home.astro`         | 部品を並べる。`src/pages/index.astro`・`en/index.astro` から `lang` を渡す |
+| ヘッダー       | `src/components/SiteHeader.astro`   | サイト名（`h1`）と MENU。MENU の中身は `src/data/site-links.ts` と言語切替 |
+| ヒーロー       | `src/components/Hero.astro`         | 最新の回（`latestFestival()`）。テーマを大きく組む                         |
+| 絞り込み・一覧 | `src/components/Archive.astro`      | 時代の絞り込みと、ヒーロー以外の回のグリッド（新しい順）                   |
+| カード         | `src/components/FestivalCard.astro` | 写真 → 日付・回・タグ → テーマ → 祭の名称                                  |
+| 写真           | `src/components/Capture.astro`      | サムネイル。無い回は回の数字を大きく組んだ代替表示                         |
+| 関連サイト     | `src/components/RelatedSites.astro` | `blockedBy` のある項目は、リンクを張らずに「公開準備中」                   |
+| フッター       | `src/components/SiteFooter.astro`   | MENU と同じリンク。popover が動かないブラウザでも辿れる                    |
 
 ## JS を使わない動き
 
@@ -35,6 +36,23 @@
 - 2列（40rem 以上）は、5件ごとに1件を全幅にする
 - 絞り込みで隠したカードも `:nth-child()` の数に入る。そのため、絞り込みごとに `:nth-child(… of [data-era="musashi"])` で数え直す
   - 時代の値（`musashi`・`tcu`）は CSS に直接書いている。時代を増やすときは `Archive.astro` の CSS も直す
+
+## 英語版（`/en/`）
+
+- 日英は同じ部品で組み、`lang` を渡して文言だけを替える
+  - ページの文言は `src/i18n/ui.ts` の `UI` に置く。各回の事実（テーマ・祭の名称・時代・状態）は `src/data/` の日英を使う
+  - 両言語のキーが揃っていることは `scripts/i18n.test.mjs` で確かめる
+- **テーマは原文を題名に残し、英訳を下に添える**（Issue #1 の決定）。`headingOf()` が決める
+  - 原文には `lang="ja"` を付ける。読み上げと、日本語の字形の選択のため
+  - 元から英字のテーマ（`COSMOS` など）は1回だけ出す。テーマが不明な回は英語の祭の名称
+- 回は日本語で「第97回」、英語で序数「97th」（`roundLabel()`）
+- 英語版から各回のサイト・関連サイトへのリンクには `hreflang="ja"` を付ける。リンク先は日本語のため
+- 言語切替は MENU とフッターの最後の項目。リンクの文字は切り替え先の言語で書き（「English」「日本語」）、`lang`・`hreflang` を付ける
+- `<head>` に `rel="alternate"` の `hreflang`（`ja`・`en`・`x-default`）を出す。`x-default` は `/`
+- 日付の書式（`2026.10.31–11.01`）は両言語で同じ
+
+**検査:** e2e は同じテストを `/` と `/en/` の両方で流す。加えて、`/en/` で `lang="ja"` の外に日本語の文字（ひらがな・カタカナ・漢字）が無いこと、
+`aria-label`・`alt`・`meta` の値にも無いことを確かめる。訳し忘れと `lang` の付け忘れを、どちらも落とす。
 
 ## 写真
 
@@ -62,4 +80,5 @@
 - **大きな見出しには `overflow-wrap: anywhere` を付ける。** `word-break: auto-phrase` は「カラクリ」のような1語を分けないため
 - **日本語の文章をソース上で改行しない。** 改行は空白として描かれる（「残しています、 各回」のようになる）
 - **12px 未満の文字を使わない。** Lighthouse の「読みやすい文字サイズ」で減点される
+- **日英で文の区切りが違う。** 2つの文を続けるとき、日本語は間を空けず、英語は空白を入れる（`UI` の `sentenceGap`）
 - **favicon を置く。** 無いと `/favicon.ico` が 404 になり、Lighthouse の Best Practices がコンソールのエラーで減点される

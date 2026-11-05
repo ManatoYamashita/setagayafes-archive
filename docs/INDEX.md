@@ -25,8 +25,9 @@
 
 ### 画面（design/）
 
-- **[screen.md](./design/screen.md)**: トップの部品、JS を使わない MENU・絞り込み・グリッドの作り方、写真の扱い、実測
+- **[screen.md](./design/screen.md)**: トップの部品、JS を使わない MENU・絞り込み・グリッドの作り方、英語版、写真の扱い、実測
   - 絞り込みは radio＋`:has()`、グリッドの型は `:nth-child(An+B of S)` で絞り込みごとに数え直す
+  - `/en/` は同じ部品に `lang` を渡す。文言は `src/i18n/ui.ts`。テーマは原文を題名に残し、英訳を添える
 
 ### 運用（ops/）
 
