@@ -23,6 +23,11 @@
 - **[festivals.md](./data/festivals.md)**: 各回と関連サイトのデータの、項目・出典・導出の規則・英語の表記
   - 年・時代・祭の名称・パスはデータに持たず、関数で導く。1件足すときは、テストの `SERVER_FOLDERS` と `LATEST_ROUND` も直す
 
+### 画面（design/）
+
+- **[screen.md](./design/screen.md)**: トップの部品、JS を使わない MENU・絞り込み・グリッドの作り方、写真の扱い、実測
+  - 絞り込みは radio＋`:has()`、グリッドの型は `:nth-child(An+B of S)` で絞り込みごとに数え直す
+
 ### 予定（まだ無い文書。作ったらリンクにする）
 
 - `ops/deploy.md`: さくらへの配置手順（手元の httpd での検証を含む）
