@@ -17,7 +17,8 @@
     "format:check": "prettier --check .",
     "guard": "node scripts/guard-source.mjs",
     "test": "node --test \"scripts/**/*.test.mjs\"",
-    "verify": "pnpm format:check && pnpm lint && pnpm check && pnpm test && pnpm guard && pnpm build"
+    "test:e2e": "node --test \"e2e/**/*.e2e.mjs\"",
+    "verify": "pnpm format:check && pnpm lint && pnpm check && pnpm test && pnpm guard && pnpm build && pnpm test:e2e"
   },
   "dependencies": {
     "@tailwindcss/vite": "4.3.4",
@@ -30,6 +31,7 @@
     "@typescript-eslint/parser": "8.72.1",
     "eslint": "10.14.0",
     "eslint-plugin-astro": "3.2.1",
+    "playwright": "1.64.1",
     "prettier": "3.9.10",
     "prettier-plugin-astro": "1.1.2",
     "typescript": "6.0.3",
