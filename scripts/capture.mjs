@@ -1,8 +1,8 @@
-// Captures the top page of every festival site on the archive host, as the
+// Captures the top page of every festival in src/data/festivals.ts, as the
 // original images for the thumbnails. Run by hand once a year (not in CI):
 //
 //   pnpm capture            # every festival
-//   pnpm capture 98         # only the 98th
+//   pnpm capture 98         # only the 98th (add it to src/data/festivals.ts first)
 //   pnpm capture 94 97th    # several
 //
 // The first run needs the browser: `pnpm exec playwright install chromium-headless-shell`.
@@ -33,7 +33,14 @@ const root = process.cwd();
 const outDir = join(root, CAPTURE_DIR);
 const args = process.argv.slice(2);
 const explicit = args.length > 0;
-const targets = parseFestivalArgs(args).map(captureTarget);
+/** @type {import("./lib/capture-targets.mjs").CaptureTarget[]} */
+let targets;
+try {
+  targets = parseFestivalArgs(args).map(captureTarget);
+} catch (error) {
+  console.error(/** @type {Error} */ (error).message);
+  process.exit(1);
+}
 
 await mkdir(outDir, { recursive: true });
 

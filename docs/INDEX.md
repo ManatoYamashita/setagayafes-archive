@@ -17,6 +17,8 @@
 - **[conventions.md](./rules/conventions.md)**: このリポジトリで守る決まりと、その理由
   - JS は0（`client:*`・`<script>` は禁止）。HTTP ヘッダは新トップの範囲にだけ付ける
   - 公開フォルダに、ダンプ・バックアップ・ログ・表計算のファイルを置かない
+- **[labels.md](./rules/labels.md)**: PR のラベルと、パスから自動で付ける仕組み
+  - `docs`・`tooling` は自動。`feature`・`fix`・`server`・`security` は手で付ける
 
 ### データ（data/）
 
@@ -26,6 +28,7 @@
 ### 画面（design/）
 
 - **[screen.md](./design/screen.md)**: トップの部品、JS を使わない MENU・絞り込み・グリッドの作り方、英語版、写真の扱い、実測
+  - 画面の高さが足りないときは MENU の内側をスクロールし、「閉じる」まで操作できるようにする
   - 絞り込みは radio＋`:has()`、グリッドの型は `:nth-child(An+B of S)` で絞り込みごとに数え直す
   - `/en/` は同じ部品に `lang` を渡す。文言は `src/i18n/ui.ts`。テーマは原文を題名に残し、英訳を添える
 
@@ -34,6 +37,12 @@
 - **[capture.md](./ops/capture.md)**: サムネイルの撮影（`pnpm capture`）と、AVIF・OGP 画像の生成
   - 原画像だけをコミットし、AVIF と OGP の JPEG はビルド時に作る
   - 撮影の条件、回ごとの例外、写真のメタデータの除去、撮影時点のサイト側の壊れ
+
+- **[static-archive-checks.md](./ops/static-archive-checks.md)**: 静的化後に、終了した操作と旧ドメインの画像参照を点検する
+
+- **[wp-to-static.md](./ops/wp-to-static.md)**: 動き続けている旧 WordPress・自作 PHP のサイトを静的 HTML に置き換え、PHP と DB を撤去する手順
+  - 道具は `scripts/ops/wp2static/`（サーバーで動かす）と `scripts/ops/compare-pages.mjs`（置き換えの前後の撮影と比較）
+  - `.php` の URL を保つ書き方と、`FilesMatch`・多重拡張子・撮影の待ちなどのつまずいた点
 
 ### 予定（まだ無い文書。作ったらリンクにする）
 

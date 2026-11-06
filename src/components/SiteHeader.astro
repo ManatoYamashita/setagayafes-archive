@@ -101,11 +101,15 @@ const MENU_ID = "site-menu";
 
   .menu {
     /* Reset the centered UA popover and pin it under the MENU button. */
+    --menu-top: 3.5rem;
     position: fixed;
     /* Line up with the page's right edge, also on screens wider than the page. */
-    inset: 3.5rem max(1rem, calc((100vw - 76rem) / 2 + 1.5rem)) auto auto;
+    inset: var(--menu-top) max(1rem, calc((100vw - 76rem) / 2 + 1.5rem)) auto auto;
     margin: 0;
     inline-size: min(18rem, calc(100vw - 2rem));
+    max-block-size: calc(100dvh - var(--menu-top) - 0.5rem);
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
     border: 1px solid var(--color-line);
     padding: 0.5rem 1.25rem 1.25rem;
     background-color: var(--color-paper);

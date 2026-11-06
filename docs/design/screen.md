@@ -21,6 +21,7 @@
 
 - `<button popovertarget="site-menu">` と `<nav id="site-menu" popover>` だけで開閉する
 - Escape・外側のクリックで閉じ、閉じるとフォーカスはボタンへ戻る（ブラウザが行う）
+- パネルは画面内に収まる高さに制限し、内容が長いときはパネル内を縦にスクロールする。E2E では幅320px・高さ256pxで、Tab で「閉じる」まで移動して操作できることを確かめる
 - `command` / `commandfor`（Invoker Commands）は使わない。古いブラウザ向けの polyfill が JS になるため
 
 ### 絞り込み: radio と `:has()`

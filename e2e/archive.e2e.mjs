@@ -168,6 +168,35 @@ for (const lang of LANGS) {
       await close();
     });
 
+    test("keeps the close button reachable in a short viewport", async (context) => {
+      const height = 256;
+      const { page, close } = await open(t.path, { width: 320, height });
+      context.after(close);
+
+      await page.getByRole("button", { name: "MENU" }).click();
+      const menu = page.locator("#site-menu");
+      const panel = await menu.boundingBox();
+      assert.ok(panel);
+      assert.ok(panel.y + panel.height <= height, "the menu fits within the viewport");
+
+      const linkCount = await menu.getByRole("link").count();
+      for (let i = 0; i <= linkCount; i++) await page.keyboard.press("Tab");
+
+      const closeButton = menu.getByRole("button", { name: t.close });
+      assert.equal(
+        await closeButton.evaluate((element) => element === document.activeElement),
+        true,
+      );
+      const button = await closeButton.boundingBox();
+      assert.ok(button);
+      assert.ok(
+        button.y + button.height <= panel.y + panel.height,
+        "Tab scrolls the button into view",
+      );
+      await page.keyboard.press("Enter");
+      await menu.waitFor({ state: "hidden" });
+    });
+
     test("can be operated from the keyboard", async () => {
       const { page, close } = await open(t.path);
       // Tab: site name link, then MENU.

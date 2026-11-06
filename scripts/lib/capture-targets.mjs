@@ -1,8 +1,14 @@
 // What the capture script (scripts/capture.mjs) photographs, and how.
 // Every festival site is captured under the same conditions so that the
 // thumbnails line up in the grid. Only the waiting time may differ.
+//
+// Which festivals exist, and where their sites are, comes from the festivals
+// data (src/data/festivals.ts), so adding a festival there is all it takes to
+// capture it. Node reads the TypeScript file directly (type stripping).
 
-/** Base URL of the archive host. Each festival lives in /{slug}/. */
+import { FESTIVALS, ordinalOf, pathOf } from "../../src/data/festivals.ts";
+
+/** Base URL of the archive host. Each festival lives in pathOf(round), e.g. /81st/. */
 export const ARCHIVE_ORIGIN = "https://archive.setagayafes.org";
 
 /** Output folder for the original images, relative to the project root. */
@@ -25,16 +31,13 @@ export const CAPTURE_CONDITIONS = Object.freeze({
 /** Time to wait after the page has loaded, for fades and late images. */
 const DEFAULT_SETTLE_MS = 3000;
 
-/** The festivals on the archive. Replaced by the festivals data (Issue #1, ToDo 2). */
-export const FIRST_FESTIVAL = 75;
-export const LATEST_FESTIVAL = 97;
-
 /**
- * Festivals that need something other than the defaults.
+ * Festivals that need something other than the defaults. Every key must be a
+ * round in the festivals data (checked by scripts/capture.test.mjs).
  *
- * @type {Record<number, { settleMs?: number, photo?: string }>}
+ * @type {Readonly<Record<number, { settleMs?: number, photo?: string }>>}
  */
-const OVERRIDES = {
+export const OVERRIDES = {
   // No site survives; the archive top has always shown this photo instead.
   87: { photo: `${ARCHIVE_ORIGIN}/img/87th.JPG` },
   // An opening loader covers the page for about 10 seconds.
@@ -42,67 +45,59 @@ const OVERRIDES = {
 };
 
 /**
- * The folder name of a festival on the archive host: 81 -> "81st".
- *
- * @param {number} number
- * @returns {string}
- */
-export function festivalSlug(number) {
-  if (!Number.isInteger(number) || number < 1) {
-    throw new Error(`festival number must be a positive integer: ${number}`);
-  }
-  const lastTwo = number % 100;
-  const last = number % 10;
-  const suffix =
-    lastTwo >= 11 && lastTwo <= 13
-      ? "th"
-      : last === 1
-        ? "st"
-        : last === 2
-          ? "nd"
-          : last === 3
-            ? "rd"
-            : "th";
-  return `${number}${suffix}`;
-}
-
-/**
  * @typedef {{ kind: "site", number: number, slug: string, url: string, file: string, settleMs: number }} SiteTarget
  * @typedef {{ kind: "photo", number: number, slug: string, url: string, file: string }} PhotoTarget
  * @typedef {SiteTarget | PhotoTarget} CaptureTarget
  */
 
+/** @param {number} round */
+function festivalOf(round) {
+  return FESTIVALS.find((festival) => festival.round === round);
+}
+
 /**
- * @param {number} number
+ * @param {number} number A round in the festivals data.
  * @returns {CaptureTarget}
+ * @throws When the round is not in the data, or when its site is not on this
+ *   host and no photo stands in for it.
  */
 export function captureTarget(number) {
-  const slug = festivalSlug(number);
+  const festival = festivalOf(number);
+  if (!festival) {
+    throw new Error(
+      `festival ${number} is not in src/data/festivals.ts; add it there before capturing`,
+    );
+  }
+  const slug = ordinalOf(number);
   const override = OVERRIDES[number] ?? {};
   if (override.photo) {
     return { kind: "photo", number, slug, url: override.photo, file: `${slug}.jpg` };
+  }
+  if ("externalLink" in festival) {
+    throw new Error(
+      `festival ${number} has no site on this host (it links to ${festival.externalLink.url}); ` +
+        "give it a photo in OVERRIDES",
+    );
   }
   return {
     kind: "site",
     number,
     slug,
-    url: `${ARCHIVE_ORIGIN}/${slug}/`,
+    url: `${ARCHIVE_ORIGIN}${pathOf(number)}`,
     file: `${slug}.png`,
     settleMs: override.settleMs ?? DEFAULT_SETTLE_MS,
   };
 }
 
-/** @returns {number[]} */
+/** @returns {number[]} Every round in the festivals data, oldest first. */
 export function allFestivalNumbers() {
-  return Array.from(
-    { length: LATEST_FESTIVAL - FIRST_FESTIVAL + 1 },
-    (_, index) => FIRST_FESTIVAL + index,
-  );
+  return FESTIVALS.map((festival) => festival.round).sort((a, b) => a - b);
 }
 
 /**
  * Reads the festival numbers given on the command line. Accepts "94" and
- * "94th". With no arguments, every festival is selected.
+ * "94th". With no arguments, every festival in the data is selected.
+ * Whether a number is in the data is checked by captureTarget.
  *
  * @param {string[]} args
  * @returns {number[]}
@@ -113,8 +108,8 @@ export function parseFestivalArgs(args) {
     const match = /^(\d+)(st|nd|rd|th)?$/i.exec(arg.trim());
     if (!match) throw new Error(`not a festival number: "${arg}"`);
     const number = Number(match[1]);
-    if (match[2] && festivalSlug(number) !== arg.trim().toLowerCase()) {
-      throw new Error(`wrong ordinal suffix: "${arg}" (expected "${festivalSlug(number)}")`);
+    if (match[2] && ordinalOf(number) !== arg.trim().toLowerCase()) {
+      throw new Error(`wrong ordinal suffix: "${arg}" (expected "${ordinalOf(number)}")`);
     }
     return number;
   });
