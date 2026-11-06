@@ -84,6 +84,7 @@
 
 1. `FESTIVALS` の末尾に1件足す（`round`・`dates`・`theme`・`commonTheme`・`status`）
 2. `scripts/festivals.test.mjs` の `SERVER_FOLDERS` にフォルダを足し、`LATEST_ROUND` を上げる
-3. `pnpm test` を通す
+3. `pnpm capture <回>` で撮影し、原画像を同じ PR に入れる（[撮影の手順](../ops/capture.md)）。撮る回はこのデータから読まれる
+4. `pnpm test` を通す
 
 撮影と配置を含む手順の全体は、年次の追加手順書（Issue #1 の ToDo）にまとめる。

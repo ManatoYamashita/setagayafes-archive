@@ -6,47 +6,23 @@ import { readFile, readdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { FESTIVALS, pathOf } from "../src/data/festivals.ts";
 import {
   ARCHIVE_ORIGIN,
   CAPTURE_DIR,
+  OVERRIDES,
   allFestivalNumbers,
   captureTarget,
-  festivalSlug,
   parseFestivalArgs,
 } from "./lib/capture-targets.mjs";
 import { exifOrientation, metadataSegments, stripJpegMetadata } from "./lib/jpeg.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-describe("festivalSlug", () => {
-  for (const [number, slug] of [
-    [75, "75th"],
-    [81, "81st"],
-    [82, "82nd"],
-    [83, "83rd"],
-    [91, "91st"],
-    [97, "97th"],
-    [101, "101st"],
-    [111, "111th"],
-    [112, "112th"],
-    [113, "113th"],
-  ]) {
-    test(`${number} -> ${slug}`, () => assert.equal(festivalSlug(number), slug));
-  }
-
-  test("rejects anything but a positive integer", () => {
-    for (const value of [0, -1, 1.5, Number.NaN]) {
-      assert.throws(() => festivalSlug(value));
-    }
-  });
-});
-
 describe("parseFestivalArgs", () => {
-  test("selects every festival when no argument is given", () => {
-    const all = parseFestivalArgs([]);
-    assert.equal(all[0], 75);
-    assert.equal(all.at(-1), 97);
-    assert.equal(all.length, 23);
+  test("selects every festival in the data when no argument is given", () => {
+    const rounds = FESTIVALS.map((festival) => festival.round).sort((a, b) => a - b);
+    assert.deepEqual(parseFestivalArgs([]), rounds);
   });
 
   test("accepts numbers and slugs", () => {
@@ -61,6 +37,31 @@ describe("parseFestivalArgs", () => {
 });
 
 describe("captureTarget", () => {
+  test("every festival in the data can be captured", () => {
+    for (const number of allFestivalNumbers()) {
+      assert.doesNotThrow(() => captureTarget(number), `festival ${number}`);
+    }
+  });
+
+  test("every site URL is the festival's folder in the data", () => {
+    for (const number of allFestivalNumbers()) {
+      const target = captureTarget(number);
+      if (target.kind === "site") assert.equal(target.url, `${ARCHIVE_ORIGIN}${pathOf(number)}`);
+    }
+  });
+
+  test("refuses a festival that is not in the data yet", () => {
+    const next = Math.max(...allFestivalNumbers()) + 1;
+    assert.throws(() => captureTarget(next), /not in src\/data\/festivals\.ts/);
+  });
+
+  test("every override is for a festival in the data", () => {
+    const rounds = new Set(allFestivalNumbers());
+    for (const key of Object.keys(OVERRIDES)) {
+      assert.ok(rounds.has(Number(key)), `OVERRIDES has ${key}, which is not in the data`);
+    }
+  });
+
   test("a site is captured from its folder on the archive host", () => {
     assert.deepEqual(captureTarget(81), {
       kind: "site",

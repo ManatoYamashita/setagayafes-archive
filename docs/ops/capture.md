@@ -27,6 +27,10 @@ pnpm capture 98       # 第98回だけ（年次の追加）
 pnpm capture 90 96th  # 複数
 ```
 
+- 撮る回は festivals データ（`src/data/festivals.ts` の `FESTIVALS`）から読む。データに無い回は撮れない
+  - 新しい回は、先にデータへ1件足してから `pnpm capture <回>` を流す
+  - `pnpm test` は、データの全回に原画像があることを検査する。データと原画像は同じ PR に入れる
+- URL はデータの `pathOf`（`/81st/` など）から作る。`externalLink` を持つ回（このホストにサイトが無い回）は、`OVERRIDES` に写真を指定しないとエラーになる
 - 撮影は手元で行う。CI では行わない
 - 1回ずつ順に撮る（共用サーバーへの負荷を抑えるため）。全回で約3分
 - 撮影に失敗した回は、原画像を書き換えない（一時ファイルへ書いてから置き換える）
@@ -55,7 +59,7 @@ pnpm capture 90 96th  # 複数
 
 - 1280px にしたのは、現在のサイトのデスクトップ表示が収まり、2004〜2011年の幅 800px のサイトも中央に収まるため
 - フォントは撮影した機械のものになる。macOS で撮る
-- 回ごとの設定は `scripts/lib/capture-targets.mjs` の `OVERRIDES` に置く
+- 回ごとの設定（待ち時間・写真）は `scripts/lib/capture-targets.mjs` の `OVERRIDES` に置く。キーはデータにある回でなければならない（`pnpm test` で検査する）
 
 ## 回ごとの例外
 
