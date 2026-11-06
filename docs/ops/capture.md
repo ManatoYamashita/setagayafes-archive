@@ -20,7 +20,7 @@ AVIF と JPEG をビルド時に作るのは、次の理由による。
 
 ```sh
 # 初回だけ。撮影に使うブラウザを入れる
-pnpm exec playwright install chromium-headless-shell
+pnpm exec playwright install --only-shell chromium
 
 pnpm capture          # 全回
 pnpm capture 98       # 第98回だけ（年次の追加）

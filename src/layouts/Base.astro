@@ -8,6 +8,9 @@ interface Props {
 }
 
 const { title, description, lang = "ja" } = Astro.props;
+
+// <meta name="text-scale"> lets the page follow the OS text size setting.
+// It is safe because every size is in rem and the root font size is not set.
 ---
 
 <!doctype html>
@@ -15,8 +18,10 @@ const { title, description, lang = "ja" } = Astro.props;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="text-scale" content="scale" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
   <body class="min-h-dvh bg-paper text-ink antialiased">
     <slot />

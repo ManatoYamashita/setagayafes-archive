@@ -10,6 +10,7 @@
 
 - Node.js 24（`.nvmrc`）
 - pnpm 10（`package.json` の `packageManager`。`corepack enable` で入る）
+- e2e 用のブラウザ: `pnpm exec playwright install --only-shell chromium`
 
 ## コマンド
 
@@ -24,5 +25,6 @@
 | `pnpm format` / `pnpm format:check` | Prettier                                                                                 |
 | `pnpm guard`                        | ソースの検査（`client:*`・`<script>`・`public/` の禁止ファイル・UI ランタイム）          |
 | `pnpm test`                         | 検査スクリプト自体のテスト                                                               |
+| `pnpm test:e2e`                     | `dist/` をブラウザ（Playwright の Chromium）で開く e2e テスト。先に `pnpm build`         |
 | `pnpm capture [回数…]`              | 各回のトップを撮影し、`src/assets/captures/` を更新する（[手順](./docs/ops/capture.md)） |
 | `pnpm verify`                       | 上記をまとめて流す（CI と同じ）                                                          |

@@ -47,3 +47,10 @@ jobs:
 
       - name: Build and output guard
         run: pnpm build
+
+      # Only the headless shell is needed; it is smaller than full Chromium.
+      - name: Install browser for end-to-end tests
+        run: pnpm exec playwright install --with-deps --only-shell chromium
+
+      - name: End-to-end tests
+        run: pnpm test:e2e

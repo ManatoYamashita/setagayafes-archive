@@ -1,0 +1,67 @@
+---
+// The footer repeats the MENU links, so they stay reachable in browsers
+// without the Popover API.
+import { ORGANIZER, SITE_LINKS } from "../data/site-links.ts";
+---
+
+<footer class="footer">
+  <div class="page inner">
+    <nav aria-label="世田谷祭の公式サイトとSNS（フッター）">
+      <ul class="links" role="list">
+        {SITE_LINKS.map((link) => (
+          <li>
+            <a href={link.url}>{link.label.ja}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+    <p class="note">
+      各回のサイトは公開当時のまま保存しています。掲載している日程・連絡先・リンク先は、当時のものです。
+    </p>
+    <p class="org">{ORGANIZER.ja}</p>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+  }
+
+  .inner {
+    display: grid;
+    gap: 1.5rem;
+    padding-block: 2.5rem 3rem;
+  }
+
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.5rem;
+
+    & a {
+      display: inline-flex;
+      align-items: center;
+      min-block-size: 2.75rem;
+      font-size: 0.875rem;
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 0.25em;
+    }
+
+    & a:focus-visible {
+      outline-color: var(--color-paper);
+    }
+  }
+
+  .note {
+    max-inline-size: 40rem;
+    font-size: 0.75rem;
+    line-height: 1.8;
+    opacity: 0.8;
+  }
+
+  .org {
+    font-size: 0.75rem;
+  }
+</style>

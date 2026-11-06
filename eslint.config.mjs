@@ -12,12 +12,23 @@ export default defineConfig(
   tseslint.configs.strict,
   astro.configs.recommended,
   {
-    files: ["scripts/**/*.mjs", "*.config.mjs"],
+    files: ["scripts/**/*.mjs", "e2e/**/*.mjs", "*.config.mjs"],
     languageOptions: {
       globals: {
         console: "readonly",
         fetch: "readonly",
         process: "readonly",
+      },
+    },
+  },
+  {
+    // End-to-end tests run in Node, but the callbacks passed to
+    // page.evaluate() run in the browser.
+    files: ["e2e/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        document: "readonly",
+        window: "readonly",
       },
     },
   },

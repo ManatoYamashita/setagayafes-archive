@@ -1,0 +1,130 @@
+---
+// The most recent festival, chosen from the data (latestFestival), so adding
+// next year's entry moves it here without touching this file.
+import {
+  ERA_NAMES,
+  STATUS_LABELS,
+  eraOf,
+  festivalNameOf,
+  latestFestival,
+  linkOf,
+  titleOf,
+} from "../data/festivals.ts";
+import { formatDateRange, roundLabel } from "../lib/format.ts";
+import Capture from "./Capture.astro";
+
+const festival = latestFestival();
+const { round, dates } = festival;
+const title = titleOf(festival, "ja");
+const name = festivalNameOf(round).ja;
+const status = STATUS_LABELS[festival.status];
+const href = linkOf(festival);
+---
+
+<section class="page" aria-labelledby="hero-title">
+  <div class="hero">
+    <div class="text">
+      <p class="meta">
+        <time datetime={dates.start}>{formatDateRange(dates.start, dates.end)}</time>
+        <span aria-hidden="true">/</span>
+        <span>{roundLabel(round)}</span>
+        <span aria-hidden="true">/</span>
+        <span class="tag">最新の回</span>
+        <span class="tag">{ERA_NAMES[eraOf(round)].ja}</span>
+        {status && <span class="tag">{status.ja}</span>}
+      </p>
+      <h2 id="hero-title" class="title">
+        {title}
+      </h2>
+      <p class="lead">
+        {roundLabel(round)}
+        {name}の公式サイトを、公開当時のまま残しています。
+        {festival.statusReason && <>{festival.statusReason.ja}。</>}
+      </p>
+      <a class="cta" href={href}>
+        {roundLabel(round)}のサイトを見る
+      </a>
+    </div>
+
+    <a class="picture" href={href} tabindex="-1" aria-hidden="true">
+      <Capture
+        round={round}
+        tone="dark"
+        priority
+        widths={[640, 960, 1280]}
+        sizes="(width >= 64rem) 42rem, (width >= 48rem) 55vw, calc(100vw - 2rem)"
+      />
+    </a>
+  </div>
+</section>
+
+<style>
+  .hero {
+    display: grid;
+    /* minmax(0, …): never let a long line widen the column past the screen. */
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    padding-block: 2rem 3rem;
+    border-block-end: 1px solid var(--color-line);
+
+    @media (width >= 48rem) {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+      align-items: start;
+      gap: 2.5rem;
+      padding-block: 3rem 3.5rem;
+    }
+  }
+
+  .text {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+    gap: 1.25rem;
+    /* Size the headline to the column, not to the viewport. */
+    container-type: inline-size;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .title {
+    /* The one loud element on the page: the latest theme, set very large. */
+    font-size: clamp(2.5rem, 1rem + 16cqi, 7.5rem);
+    /* A theme is often one phrase; break it rather than overflow. */
+    overflow-wrap: anywhere;
+    font-weight: 500;
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+  }
+
+  .lead {
+    max-inline-size: 28rem;
+    font-size: 0.9375rem;
+    line-height: 1.8;
+  }
+
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 2.75rem;
+    border: 1px solid var(--color-ink);
+    border-radius: 999px;
+    padding-inline: 1.25rem;
+    font-size: 0.875rem;
+    text-decoration: none;
+
+    &:hover {
+      background-color: var(--color-ink);
+      color: var(--color-paper);
+    }
+  }
+
+  .picture {
+    display: block;
+  }
+</style>

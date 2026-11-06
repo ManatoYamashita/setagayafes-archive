@@ -1,0 +1,82 @@
+---
+// The picture of a festival's site: its screenshot when one has been captured,
+// otherwise a plate with the round number in large type.
+//
+// The screenshots come from `pnpm capture` (src/lib/captures.ts): 2560x1600,
+// except the 87th, a 4:3 photo. Every box is 16:10 so a screenshot is shown
+// whole; only the 87th photo is cropped. The plate covers a festival that has
+// not been captured yet, e.g. a new one added before `pnpm capture` is run.
+import { Image } from "astro:assets";
+import { CAPTURE_IMAGE_PROPS, captureOf, hasCapture } from "../lib/captures.ts";
+
+interface Props {
+  round: number;
+  /** Widths of the generated images in pixels (cover 1x and 2x screens). */
+  widths: number[];
+  /** The `sizes` attribute: how wide the box is at each viewport width. */
+  sizes: string;
+  /** The hero image is the LCP element; everything else loads lazily. */
+  priority?: boolean;
+  /** Plate colors: "light" for cards, "dark" for the hero. */
+  tone?: "light" | "dark";
+  class?: string;
+}
+
+const { round, widths, sizes, priority = false, tone = "light", class: className } = Astro.props;
+
+const width = Math.max(...widths);
+const height = Math.round((width * 10) / 16);
+---
+
+<div class:list={["capture", tone, className]}>
+  {hasCapture(round) ? (
+    <Image
+      src={captureOf(round)}
+      alt=""
+      {...CAPTURE_IMAGE_PROPS}
+      width={width}
+      height={height}
+      widths={widths}
+      sizes={sizes}
+      loading={priority ? "eager" : "lazy"}
+      fetchpriority={priority ? "high" : undefined}
+      class="size-full object-cover object-top"
+    />
+  ) : (
+    <span class="plate" aria-hidden="true">
+      {round}
+    </span>
+  )}
+</div>
+
+<style>
+  .capture {
+    position: relative;
+    overflow: hidden;
+    inline-size: 100%;
+    aspect-ratio: 16 / 10;
+    background-color: var(--color-wash);
+    /* Hairline so white screenshots do not melt into the white page. */
+    outline: 1px solid rgb(0 0 0 / 0.08);
+    outline-offset: -1px;
+    /* The plate's numeral is sized to the box, not to the viewport. */
+    container-type: size;
+  }
+
+  .capture.dark {
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+  }
+
+  .plate {
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline-start: 0;
+    /* Sit the numeral on the bottom-left corner, cropped by the box edge. */
+    translate: -0.04em 0.17em;
+    font-size: 72cqh;
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: -0.06em;
+  }
+</style>
