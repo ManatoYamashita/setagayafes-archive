@@ -51,10 +51,10 @@ after(async () => {
  * Opens the top page in a fresh context and collects console errors and
  * failed requests while it loads.
  *
- * @param {{ width?: number, height?: number }} [viewport]
+ * @param {{ width?: number, height?: number, deviceScaleFactor?: number }} [viewport]
  */
-async function open({ width = 1280, height = 900 } = {}) {
-  const context = await browser.newContext({ viewport: { width, height } });
+async function open({ width = 1280, height = 900, deviceScaleFactor = 1 } = {}) {
+  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor });
   const page = await context.newPage();
   /** @type {string[]} */
   const problems = [];
@@ -244,6 +244,49 @@ describe("archive grid", () => {
     await close();
   });
 
+  test("lets lazy pictures pick their size from the laid-out width", async () => {
+    const { page, close } = await open();
+    const cardSizes = await page
+      .locator(".grid img")
+      .evaluateAll((images) => images.map((image) => image.getAttribute("sizes") ?? ""));
+    for (const sizes of cardSizes) assert.match(sizes, /^auto, \(width >= 64rem\)/);
+    const heroSizes = await page.locator("main img").first().getAttribute("sizes");
+    assert.doesNotMatch(heroSizes ?? "", /^auto/, "an eager picture cannot use auto");
+    await close();
+  });
+
+  test("loads a large enough picture for a card the filter makes wide", async (t) => {
+    const first = listed.find((festival) => eraOf(festival.round) === "musashi");
+    if (!first || !captured(first.round)) {
+      t.skip("no captured musashi festival");
+      return;
+    }
+    const { page, close } = await open({ width: 1280, deviceScaleFactor: 2 });
+    t.after(close);
+    await page.locator("label:has(#era-musashi)").click();
+    const card = visibleCards(page).first();
+    const image = card.locator("img");
+    await card.scrollIntoViewIfNeeded();
+    await image.evaluate((element) =>
+      /** @type {HTMLImageElement} */ (element).decode().catch(() => {}),
+    );
+    const box = await card.boundingBox();
+    assert.ok(box);
+    // naturalWidth is corrected by the candidate's density, so read the width
+    // descriptor of the candidate the browser picked (currentSrc) instead.
+    const picked = await image.evaluate((element) => {
+      const img = /** @type {HTMLImageElement} */ (element);
+      const candidate = img.srcset
+        .split(",")
+        .map((entry) => entry.trim().split(/\s+/))
+        .find(([url]) => Boolean(url) && img.currentSrc.endsWith(url ?? ""));
+      return Number.parseInt(candidate?.[1] ?? "0", 10);
+    });
+    // The widest candidate is 1280w. The fallback `sizes` alone would pick 800w.
+    assert.ok(box.width > 700, "the first card of the filtered grid is wide");
+    assert.ok(picked >= 1280, `picked a ${picked}w picture for a ${box.width}px card`);
+  });
+
   test("makes the whole card clickable", async () => {
     const { page, close } = await open();
     const card = page.locator(".grid > li").first();
@@ -319,6 +362,25 @@ describe("layout", () => {
     assert.ok((await widthOf(0)) > (await widthOf(1)) * 1.8, "pattern restarts after filtering");
     await close();
   });
+
+  for (const era of /** @type {const} */ (["all", "musashi", "tcu"])) {
+    test(`keeps the tab order in the reading order with three columns (${era})`, async () => {
+      const { page, close } = await open({ width: 1280 });
+      await page.locator(`label:has(#era-${era})`).click();
+      const boxes = await visibleCards(page).evaluateAll((items) =>
+        items.map((item) => {
+          const { x, y } = item.getBoundingClientRect();
+          return { x: Math.round(x), y: Math.round(y) };
+        }),
+      );
+      const reading = boxes
+        .map((box, index) => ({ ...box, index }))
+        .toSorted((a, b) => a.y - b.y || a.x - b.x)
+        .map((box) => box.index);
+      assert.deepEqual(reading, [...boxes.keys()], "source order is left to right, top to bottom");
+      await close();
+    });
+  }
 
   test("uses one column on phones", async () => {
     const { page, close } = await open({ width: 375, height: 800 });

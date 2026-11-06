@@ -25,6 +25,11 @@ interface Props {
 const { round, widths, sizes, priority = false, tone = "light", class: className } = Astro.props;
 
 const width = Math.max(...widths);
+// Lazy pictures let the browser use the box's laid-out width ("auto"), which
+// stays right when a filter makes a card wide. The given value is the fallback
+// for browsers without "auto". Eager pictures cannot use "auto" (the spec
+// ignores it there), so they keep the given value.
+const sizesAttribute = priority ? sizes : `auto, ${sizes}`;
 const height = Math.round((width * 10) / 16);
 ---
 
@@ -37,7 +42,7 @@ const height = Math.round((width * 10) / 16);
       width={width}
       height={height}
       widths={widths}
-      sizes={sizes}
+      sizes={sizesAttribute}
       loading={priority ? "eager" : "lazy"}
       fetchpriority={priority ? "high" : undefined}
       class="size-full object-cover object-top"

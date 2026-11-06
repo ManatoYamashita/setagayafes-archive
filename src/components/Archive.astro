@@ -32,12 +32,14 @@ const filters = [
 /*
  * How wide each card's picture is, for the `sizes` attribute. It follows the
  * grid pattern when no filter is applied (the state the page loads in):
- * - 3 columns (>= 64rem): the first card of every 6 spans 2 columns
+ * - 3 columns (>= 64rem): cards 12n+1 and 12n+8 span 2 columns
  * - 2 columns (>= 40rem): the first card of every 5 spans 2 columns
  * - 1 column below that
+ * A filter changes which cards are wide, so lazy pictures also put "auto"
+ * first in `sizes` (see Capture.astro) and this is only the fallback.
  */
 function sizesOf(index: number): string {
-  const wide = index % 6 === 0 ? "min(48rem, 64vw)" : "min(23rem, 31vw)";
+  const wide = index % 12 === 0 || index % 12 === 7 ? "min(48rem, 64vw)" : "min(23rem, 31vw)";
   const medium = index % 5 === 0 ? "calc(100vw - 3rem)" : "calc(50vw - 2.25rem)";
   return `(width >= 64rem) ${wide}, (width >= 40rem) ${medium}, calc(100vw - 2rem)`;
 }
@@ -213,7 +215,6 @@ function sizesOf(index: number): string {
 
     @media (width >= 64rem) {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      grid-auto-flow: row dense;
       gap: 3.5rem 2rem;
     }
   }
@@ -234,6 +235,11 @@ function sizesOf(index: number): string {
    * 3 columns, after the reference layout: a large card over two rows with
    * two small cards stacked beside it, then a row of three. The large card
    * alternates sides every six cards.
+   *
+   * The source order must stay the reading order (left to right, top to
+   * bottom) so that Tab follows the picture. So there is no dense packing:
+   * on the right-hand side the large card is the second of its group
+   * (12n+8), after the small card on its left.
    */
   @media (width >= 64rem) {
     .archive:has(#era-all:checked) .grid > :global(:nth-child(12n + 1 of [data-era])),
@@ -244,9 +250,9 @@ function sizesOf(index: number): string {
       --card-title-size: 2.25rem;
     }
 
-    .archive:has(#era-all:checked) .grid > :global(:nth-child(12n + 7 of [data-era])),
-    .archive:has(#era-musashi:checked) .grid > :global(:nth-child(12n + 7 of [data-era="musashi"])),
-    .archive:has(#era-tcu:checked) .grid > :global(:nth-child(12n + 7 of [data-era="tcu"])) {
+    .archive:has(#era-all:checked) .grid > :global(:nth-child(12n + 8 of [data-era])),
+    .archive:has(#era-musashi:checked) .grid > :global(:nth-child(12n + 8 of [data-era="musashi"])),
+    .archive:has(#era-tcu:checked) .grid > :global(:nth-child(12n + 8 of [data-era="tcu"])) {
       grid-column: 2 / span 2;
       grid-row: span 2;
       --card-title-size: 2.25rem;
