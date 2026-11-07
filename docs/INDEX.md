@@ -31,6 +31,8 @@
   - 画面の高さが足りないときは MENU の内側をスクロールし、「閉じる」まで操作できるようにする
   - 絞り込みは radio＋`:has()`、グリッドの型は `:nth-child(An+B of S)` で絞り込みごとに数え直す
   - `/en/` は同じ部品に `lang` を渡す。文言は `src/i18n/ui.ts`。テーマは原文を題名に残し、英訳を添える
+- **[seo.md](./design/seo.md)**: canonical・hreflang・OGP・sitemap・robots.txt。インデックスさせるのは `/` と `/en/` だけ
+  - 各回のフォルダを robots.txt で Disallow しない（noindex のヘッダを読ませるため）。今のホストの `Disallow: /errorpage/` は引き継ぐ
 
 ### 運用（ops/）
 
