@@ -29,4 +29,6 @@
 | `pnpm test:e2e`                     | `dist/` をブラウザ（Playwright の Chromium）で開く e2e テスト（転送量の予算を含む）。先に `pnpm build`                   |
 | `pnpm capture [回数…]`              | 各回のトップを撮影し、`src/assets/captures/` を更新する（[手順](./docs/ops/capture.md)）                                 |
 | `pnpm check:links`                  | 過去回のフォルダと外部リンクが応答するかをネットワークで確かめる。配置の前に、`pnpm build` の後で流す（CI では流さない） |
+| `pnpm package`                      | 配置用の zip（`release/`）を作り、展開した中身を手元の Apache で確かめる（[配置の手順](./docs/ops/deploy.md)）           |
+| `pnpm check:production`             | 配置の後に、本番のヘッダを手元の Apache と同じ項目で確かめる（GET だけ）                                                 |
 | `pnpm verify`                       | 上記をまとめて流す（CI と同じ）                                                                                          |

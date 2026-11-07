@@ -21,7 +21,9 @@
     "verify": "pnpm format:check && pnpm lint && pnpm check && pnpm test && pnpm guard && pnpm build && pnpm check:htaccess && pnpm test:e2e",
     "capture": "node scripts/capture.mjs",
     "check:htaccess": "node scripts/check-htaccess.mjs",
-    "check:links": "node scripts/check-links.mjs"
+    "check:links": "node scripts/check-links.mjs",
+    "check:production": "node scripts/check-production.mjs",
+    "package": "node scripts/package.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "4.3.4",
