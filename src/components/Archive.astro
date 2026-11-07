@@ -18,6 +18,7 @@ const hero = latestFestival();
 const festivals = FESTIVALS.filter((festival) => festival.round !== hero.round).toSorted(
   (a, b) => b.round - a.round,
 );
+const festivalsByEra = Map.groupBy(festivals, (festival) => eraOf(festival.round));
 
 const ERAS: readonly Era[] = ["musashi", "tcu"];
 const filters = [
@@ -25,22 +26,27 @@ const filters = [
   ...ERAS.map((era) => ({
     id: era,
     label: ERA_NAMES[era].ja,
-    count: festivals.filter((festival) => eraOf(festival.round) === era).length,
+    count: festivalsByEra.get(era)?.length ?? 0,
   })),
 ];
 
 /*
- * How wide each card's picture is, for the `sizes` attribute. It follows the
- * grid pattern when no filter is applied (the state the page loads in):
+ * Fallback source sizes allow for the larger width in either the full list
+ * or the filtered list:
  * - 3 columns (>= 64rem): cards 12n+1 and 12n+8 span 2 columns
  * - 2 columns (>= 40rem): the first card of every 5 spans 2 columns
  * - 1 column below that
  * A filter changes which cards are wide, so lazy pictures also put "auto"
  * first in `sizes` (see Capture.astro) and this is only the fallback.
  */
-function sizesOf(index: number): string {
-  const wide = index % 12 === 0 || index % 12 === 7 ? "min(48rem, 64vw)" : "min(23rem, 31vw)";
-  const medium = index % 5 === 0 ? "calc(100vw - 3rem)" : "calc(50vw - 2.25rem)";
+function sizesOf(index: number, indexInEra: number): string {
+  const positions = [index, indexInEra];
+  const wide = positions.some((position) => position % 12 === 0 || position % 12 === 7)
+    ? "min(48rem, 64vw)"
+    : "min(23rem, 31vw)";
+  const medium = positions.some((position) => position % 5 === 0)
+    ? "calc(100vw - 3rem)"
+    : "calc(50vw - 2.25rem)";
   return `(width >= 64rem) ${wide}, (width >= 40rem) ${medium}, calc(100vw - 2rem)`;
 }
 ---
@@ -84,9 +90,10 @@ function sizesOf(index: number): string {
   </div>
 
   <ul class="grid" role="list">
-    {festivals.map((festival, index) => (
-      <FestivalCard festival={festival} sizes={sizesOf(index)} />
-    ))}
+    {festivals.map((festival, index) => {
+      const indexInEra = festivalsByEra.get(eraOf(festival.round))?.indexOf(festival) ?? index;
+      return <FestivalCard festival={festival} sizes={sizesOf(index, indexInEra)} />;
+    })}
   </ul>
 </section>
 
