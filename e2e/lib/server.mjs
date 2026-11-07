@@ -23,9 +23,11 @@ const TYPES = {
  * Starts the server on a free port.
  *
  * @param {string} root Directory to serve (usually dist/).
+ * @param {{ headers?: (pathname: string) => Record<string, string> }} [options]
+ *   Extra response headers for a path, e.g. the CSP that dist/.htaccess sets.
  * @returns {Promise<{ url: string, close: () => Promise<void> }>}
  */
-export async function serve(root) {
+export async function serve(root, { headers = () => ({}) } = {}) {
   const base = resolve(root);
 
   const server = createServer(async (request, response) => {
@@ -36,6 +38,7 @@ export async function serve(root) {
       if ((await stat(file)).isDirectory()) file = join(file, "index.html");
       const body = await readFile(file);
       response.writeHead(200, {
+        ...headers(pathname),
         "content-type":
           TYPES[/** @type {keyof typeof TYPES} */ (extname(file))] ?? "application/octet-stream",
       });

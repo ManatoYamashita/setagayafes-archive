@@ -48,6 +48,14 @@ jobs:
       - name: Build and output guard
         run: pnpm build
 
+      # The runner image ships Apache; install it only if it is missing.
+      - name: Apache headers of dist/.htaccess
+        run: |
+          if [ ! -x /usr/sbin/apache2 ]; then
+            sudo apt-get update && sudo apt-get install -y --no-install-recommends apache2
+          fi
+          pnpm check:htaccess
+
       # Only the headless shell is needed; it is smaller than full Chromium.
       - name: Install browser for end-to-end tests
         run: pnpm exec playwright install --with-deps --only-shell chromium

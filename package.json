@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build && node scripts/guard-dist.mjs",
+    "build": "astro build && node scripts/build-htaccess.mjs && node scripts/guard-dist.mjs",
     "preview": "astro preview",
     "check": "astro check",
     "lint": "eslint .",
@@ -18,8 +18,9 @@
     "guard": "node scripts/guard-source.mjs",
     "test": "node --test \"scripts/**/*.test.mjs\"",
     "test:e2e": "node --test \"e2e/**/*.e2e.mjs\"",
-    "verify": "pnpm format:check && pnpm lint && pnpm check && pnpm test && pnpm guard && pnpm build && pnpm test:e2e",
-    "capture": "node scripts/capture.mjs"
+    "verify": "pnpm format:check && pnpm lint && pnpm check && pnpm test && pnpm guard && pnpm build && pnpm check:htaccess && pnpm test:e2e",
+    "capture": "node scripts/capture.mjs",
+    "check:htaccess": "node scripts/check-htaccess.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "4.3.4",
