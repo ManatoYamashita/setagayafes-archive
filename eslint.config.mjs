@@ -15,6 +15,7 @@ export default defineConfig(
     files: ["scripts/**/*.mjs", "e2e/**/*.mjs", "*.config.mjs"],
     languageOptions: {
       globals: {
+        AbortSignal: "readonly",
         console: "readonly",
         fetch: "readonly",
         process: "readonly",
