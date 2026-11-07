@@ -27,6 +27,7 @@ export default defineConfig(
     files: ["e2e/**/*.mjs"],
     languageOptions: {
       globals: {
+        DOMParser: "readonly",
         document: "readonly",
         window: "readonly",
       },

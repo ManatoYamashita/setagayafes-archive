@@ -12,6 +12,7 @@ const TYPES = {
   ".css": "text/css; charset=utf-8",
   ".avif": "image/avif",
   ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
   ".png": "image/png",
   ".svg": "image/svg+xml",
   ".xml": "application/xml",

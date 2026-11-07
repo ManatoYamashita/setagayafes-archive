@@ -24,6 +24,8 @@ interface Words {
   readonly siteName: string;
   /** Meta description. `first` is the oldest festival in the archive. */
   readonly description: (first: { round: number; year: number }) => string;
+  /** Alt text of the link-preview (Open Graph) image: a festival site's top page. */
+  readonly ogImageAlt: (round: string, festivalName: string) => string;
   readonly menu: string;
   readonly menuLabel: string;
   readonly footerMenuLabel: string;
@@ -55,6 +57,7 @@ export const UI = {
     siteName: "世田谷祭アーカイブ",
     description: ({ round, year }) =>
       `東京都市大学（旧 武蔵工業大学）の学園祭、世田谷祭の過去のWebサイトの一覧です。第${round}回（${year}年）からの各回のサイトを、公開当時のまま残しています。`,
+    ogImageAlt: (round, festivalName) => `${round}${festivalName}の公式サイトのトップページ`,
     menu: "MENU",
     menuLabel: "世田谷祭の公式サイトとSNS",
     footerMenuLabel: "世田谷祭の公式サイトとSNS（フッター）",
@@ -81,6 +84,8 @@ export const UI = {
     siteName: "Setagaya Festival Archive",
     description: ({ round, year }) =>
       `Past websites of the Setagaya Festival, the school festival of Tokyo City University (formerly Musashi Institute of Technology). Every festival's site since the ${ordinalOf(round)} (${year}) is kept as it was published.`,
+    ogImageAlt: (round, festivalName) =>
+      `The top page of the official site of the ${round} ${festivalName}`,
     menu: "MENU",
     menuLabel: "Setagaya Festival official site and social media",
     footerMenuLabel: "Setagaya Festival official site and social media (footer)",
