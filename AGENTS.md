@@ -38,9 +38,11 @@ archive.setagayafes.org のトップ（過去の世田谷祭の一覧）を作�
 Claude Code・Codex など、複数のセッションが同じリポジトリで並行して動くときの決まり。
 
 - 他のセッションが手を付けた PR に入る前に、引き受けることを相手に伝える
-  - 相手は、Claude Code の `ListAgents`、または worktree の一覧（`git worktree list`）と最近のコミットの作者・時刻から探す
+  - 相手は、Claude Code の `ListAgents`、または worktree の一覧（`git worktree list`）のパスと、各ブランチの最近のコミットの時刻から探す
+  - コミットの作者では見分けられない。どのセッションも、オーナーのアカウントでコミットする
   - 相手が見つからないときは、PR のコメントに「引き受ける」と書いてから始める
-- push の直前に、PR がまだ開いていることを確かめる（`gh pr view <番号> --json state`）
+- push の直前と直後に、PR がまだ開いていることを確かめる（`gh pr view <番号> --json state`）
+  - 直前に確かめても、push までの間にマージされることがある。直後の確認で、取り残されたことに気付ける
   - 理由: マージ済みの PR のブランチへ push しても、main には届かない。#7 のレビュー指摘の修正は、#7 がマージされた後に push され、main に入らなかった（#14 で出し直した）
   - 届かなかったときは、main から新しいブランチを切り、同じコミットを cherry-pick して PR を出し直す。元の PR のスレッドには、新しい PR の番号を書いて返信する
 - マージするときは、CI を確かめたコミットを指定する（`gh pr merge <番号> --merge --match-head-commit <sha>`）
