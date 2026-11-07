@@ -39,6 +39,12 @@
 
 ### 運用（ops/）
 
+- **[deploy.md](./ops/deploy.md)**: さくらへの配置。`pnpm package` で zip を作って手元の Apache で確かめ、サーバーのスクリプトで控えを取ってから展開する
+  - 配置の後は `pnpm check:production` で本番のヘッダを確かめる。壊れたら `remote-rollback.sh` で戻す
+  - 初回だけ、エラーページの PHP と旧トップの部品（`css/`・`js/`・`img/`）を公開フォルダの外へ移す
+- **[annual-update.md](./ops/annual-update.md)**: 年次の追加。データに1件足し、`pnpm capture <回>` を1回流し、配置する
+  - 新しい回のフォルダがサーバーに置かれてから始める（先に流すと撮影とリンクの検査が 404 で落ちる）
+
 - **[capture.md](./ops/capture.md)**: サムネイルの撮影（`pnpm capture`）と、AVIF・OGP 画像の生成
   - 原画像だけをコミットし、AVIF と OGP の JPEG はビルド時に作る
   - 撮影の条件、回ごとの例外、写真のメタデータの除去、撮影時点のサイト側の壊れ
@@ -51,11 +57,6 @@
 
 - **[post-build-checks.md](./ops/post-build-checks.md)**: ビルド後の検査（JS 0・公開禁止ファイル・リンク・転送量の予算）と `pnpm check:links`、Lighthouse の手動測定
   - 予算はブラウザで測る。初回は最初の画面に写る分だけ（先読みは除く）、全体は絞り込みに触れずに最後までスクロールした分
-
-### 予定（まだ無い文書。作ったらリンクにする）
-
-- `ops/deploy.md`: さくらへの配置手順（手元の httpd での検証を含む）
-- `ops/annual-update.md`: 年次の追加手順（データに1件追加し、撮影スクリプトを1回流す）
 
 ## 関連
 

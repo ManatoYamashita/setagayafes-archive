@@ -69,6 +69,8 @@ archive ホストの公開フォルダ（さくらの `~/www/archive`）の直�
 
 ## 配置で注意すること
 
+手順の全体は [deploy.md](../ops/deploy.md)。`.htaccess` について特に注意することは次のとおり。
+
 - zip に `.htaccess`（ドットファイル）を含める
 - 置き換える前に、今の `~/www/archive/.htaccess` の控えを `~/archive-docs/`（公開フォルダの外）に取る
 - 置いたらすぐ、`curl -sI` で `/`・`/en/`・`/78th/`・存在しないパスのヘッダを確かめる。崩れていたら控えに戻す

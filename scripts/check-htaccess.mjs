@@ -2,7 +2,7 @@
 // checks the response headers that dist/.htaccess produces:
 //
 //   <tmp>/www/.htaccess          the parent file on the server (noindex by host name)
-//   <tmp>/www/archive/           DocumentRoot: dist/ with its .htaccess
+//   <tmp>/www/archive/           the archive host's DocumentRoot: dist/ with its .htaccess
 //   <tmp>/www/archive/78th/      a stand-in for a past festival site (inline script)
 //   <tmp>/www/archive/errorpage/ a stand-in for the static error pages
 //
@@ -11,7 +11,6 @@
 //
 // Usage: node scripts/check-htaccess.mjs [distDir]
 
-import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -21,7 +20,11 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+import { runHeaderChecks } from "./lib/header-checks.mjs";
 import { ARCHIVE_HOST } from "./lib/htaccess.mjs";
+
+/** The Sakura server's initial domain, which reaches every folder under ~/www. */
+const INITIAL_DOMAIN = "setagayafes.sakura.ne.jp";
 
 const dist = resolve(process.argv[2] ?? "dist");
 if (!existsSync(join(dist, ".htaccess"))) {
@@ -133,7 +136,16 @@ await writeFile(
     `PidFile "${join(root, "httpd.pid")}"`,
     `ErrorLog "${join(root, "error.log")}"`,
     "ServerName localhost",
-    `DocumentRoot "${archive}"`,
+    // Name-based hosts, as on the server: the archive host serves ~/www/archive,
+    // the initial domain serves ~/www (so the archive is at /archive/ there).
+    `<VirtualHost 127.0.0.1:${port}>`,
+    `  ServerName ${ARCHIVE_HOST}`,
+    `  DocumentRoot "${archive}"`,
+    "</VirtualHost>",
+    `<VirtualHost 127.0.0.1:${port}>`,
+    `  ServerName ${INITIAL_DOMAIN}`,
+    `  DocumentRoot "${www}"`,
+    "</VirtualHost>",
     `<Directory "${www}">`,
     "  AllowOverride All",
     "  Require all granted",
@@ -151,20 +163,6 @@ const httpd = spawn(platform.httpd, ["-f", join(root, "httpd.conf"), "-DFOREGROU
 });
 
 let failed = 0;
-/**
- * @param {string} name
- * @param {() => Promise<void>} check
- */
-async function check(name, check) {
-  try {
-    await check();
-    console.log(`ok   ${name}`);
-  } catch (error) {
-    failed++;
-    console.error(`FAIL ${name}\n     ${/** @type {Error} */ (error).message.split("\n")[0]}`);
-  }
-}
-
 try {
   for (let attempt = 0; ; attempt++) {
     try {
@@ -176,98 +174,17 @@ try {
     }
   }
 
-  const avif = (await readdir(join(dist, "_astro"))).find((name) => name.endsWith(".avif"));
-  const jpeg = (await readdir(join(dist, "_astro"))).find((name) => name.endsWith(".jpeg"));
+  const astro = await readdir(join(dist, "_astro"));
+  const avif = astro.find((name) => name.endsWith(".avif"));
+  const jpeg = astro.find((name) => name.endsWith(".jpeg"));
+  if (!avif || !jpeg) throw new Error("dist/_astro/ has no .avif or no .jpeg");
 
-  for (const path of ["/", "/index.html", "/en/", "/en/index.html"]) {
-    await check(`${path}: indexable, with the page's security headers`, async () => {
-      const { status, headers } = await get(port, path);
-      assert.equal(status, 200);
-      assert.equal(headers["x-robots-tag"], undefined, "no noindex");
-      assert.match(String(headers["content-security-policy"]), /script-src 'none'/);
-      assert.match(String(headers["content-security-policy"]), /style-src 'sha256-/);
-      assert.equal(headers["x-content-type-options"], "nosniff");
-      assert.equal(headers["referrer-policy"], "strict-origin-when-cross-origin");
-      assert.match(String(headers["permissions-policy"]), /camera=\(\)/);
-      assert.equal(headers["cross-origin-opener-policy"], "same-origin");
-      assert.equal(headers["strict-transport-security"], "max-age=31536000");
-      assert.equal(headers["cache-control"], "no-cache");
-    });
-  }
-
-  await check("/_astro/*.avif: cached for a year, noindex, no CSP", async () => {
-    const { status, headers } = await get(port, `/_astro/${avif}`);
-    assert.equal(status, 200);
-    assert.equal(headers["content-type"], "image/avif");
-    assert.equal(headers["cache-control"], "public, max-age=31536000, immutable");
-    assert.equal(headers["x-content-type-options"], "nosniff");
-    assert.equal(headers["x-robots-tag"], "noindex, noimageindex");
-    assert.equal(headers["content-security-policy"], undefined);
-  });
-
-  await check("/_astro/*.jpeg (Open Graph image): image/jpeg", async () => {
-    const { status, headers } = await get(port, `/_astro/${jpeg}`);
-    assert.equal(status, 200);
-    assert.equal(headers["content-type"], "image/jpeg");
-  });
-
-  for (const [path, type] of [
-    ["/robots.txt", /^text\/plain/],
-    ["/sitemap.xml", /^(application|text)\/xml/],
-    ["/favicon.svg", /^image\/svg\+xml/],
-  ]) {
-    await check(`${path}: own file, noindex, no CSP`, async () => {
-      const { status, headers } = await get(port, String(path));
-      assert.equal(status, 200);
-      assert.match(String(headers["content-type"]), /** @type {RegExp} */ (type));
-      assert.equal(headers["x-content-type-options"], "nosniff");
-      assert.equal(headers["x-robots-tag"], "noindex, noimageindex");
-      assert.equal(headers["content-security-policy"], undefined);
-    });
-  }
-
-  await check("/78th/ (a past festival site): untouched except noindex and HSTS", async () => {
-    const { status, headers } = await get(port, "/78th/");
-    assert.equal(status, 200);
-    assert.equal(headers["x-robots-tag"], "noindex, noimageindex");
-    assert.equal(headers["strict-transport-security"], "max-age=31536000");
-    for (const name of [
-      "content-security-policy",
-      "x-content-type-options",
-      "referrer-policy",
-      "permissions-policy",
-      "cross-origin-opener-policy",
-      "cache-control",
-    ]) {
-      assert.equal(headers[name], undefined, `no ${name}`);
-    }
-  });
-
-  await check("a missing page: the static 404 page, noindex", async () => {
-    const { status, headers, body } = await get(port, "/no-such-page/");
-    assert.equal(status, 404);
-    assert.match(body, /<title>404<\/title>/);
-    assert.equal(headers["x-robots-tag"], "noindex, noimageindex");
-  });
-
-  await check("/enx/ and /index.html.bak do not count as the top pages", async () => {
-    for (const path of ["/enx/", "/index.html.bak", "/en/../78th/"]) {
-      const { headers } = await get(port, path);
-      assert.equal(headers["content-security-policy"], undefined, path);
-    }
-  });
-
-  await check("another host name (the server's initial domain): no HSTS", async () => {
-    const { headers } = await get(port, "/", "setagayafes.sakura.ne.jp");
-    assert.equal(headers["strict-transport-security"], undefined);
-  });
-
-  await check("the inline style hash matches the page", async () => {
-    const [{ body }, { headers }] = await Promise.all([get(port, "/"), get(port, "/")]);
-    const { styleHashesOf } = await import("./lib/htaccess.mjs");
-    for (const hash of styleHashesOf(body)) {
-      assert.ok(String(headers["content-security-policy"]).includes(hash), hash);
-    }
+  failed = await runHeaderChecks({
+    get: (path, host) => get(port, path, host),
+    assets: { avif: `/_astro/${avif}`, jpeg: `/_astro/${jpeg}` },
+    pastSite: "/78th/",
+    initialDomain: { host: INITIAL_DOMAIN, path: "/archive/" },
+    notFoundBody: /<title>404<\/title>/,
   });
 } finally {
   httpd.kill("SIGTERM");
