@@ -75,9 +75,17 @@ HTML は文字列の一致ではなく、`scripts/lib/html.mjs` の tokenizer �
 - HSTS は archive ホストにだけ付ける。`includeSubDomains` は付けない
 - noindex は上位フォルダと archive 直下の2箇所で付いている。`/` と `/en/` だけを、両方で除外する
 
-範囲の限定の具体的な書き方は、`.htaccess` の ToDo（Issue #1）で決めて、ここへ追記する。
+- 範囲は `<If "%{REQUEST_URI} =~ m#…#">` で限る。対象のパスは `dist/` の中身から作る（`dist/.htaccess` はビルドで生成する）
+  - 詳しい書き方と理由は [htaccess.md](../design/htaccess.md)
+- archive 直下の `.htaccess` は、このリポジトリが正本。サーバーの上で直接書き換えない
 
-**検査:** 手元の httpd で zip を展開して確かめる（配置手順書で定める）。
+**検査:**
+
+| 検査                                       | 見るもの                                                                                       |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `scripts/htaccess.test.mjs`（`pnpm test`） | 生成する `.htaccess` の中身（範囲の正規表現・CSP・HSTS・ヘッダがすべて `<If>` の中にあること） |
+| `pnpm check:htaccess`                      | 手元の Apache で、上位と archive 直下の2段の `.htaccess` を再現し、返るヘッダを確かめる        |
+| `e2e/headers.e2e.mjs`（`pnpm test:e2e`）   | CSP を掛けた状態で、ページが同じに表示され、違反が出ないこと                                   |
 
 ## 4. 出力を過去回のフォルダと衝突させない
 

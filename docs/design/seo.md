@@ -5,7 +5,7 @@
 ## 方針
 
 - インデックスさせるのは、新トップの `/` と `/en/` だけ
-- 各回のサイトは noindex のまま。noindex はサーバーのヘッダで付いている（`.htaccess` の ToDo で `/` と `/en/` だけ外す）
+- 各回のサイトは noindex のまま。noindex はサーバーのヘッダで付いている。`/` と `/en/` だけ、archive 直下の `.htaccess` で外す（[htaccess.md](./htaccess.md)）
 - **robots.txt で各回のフォルダを Disallow しない。** クロールを禁じると、クローラーが noindex のヘッダを読めない。その結果、URL だけが検索結果に残ることがある
 
 ## 出すもの
