@@ -6,13 +6,16 @@
 //    contains <script> (JSON-LD excepted), inline event handlers, script URLs
 //    or an srcdoc that does.
 // 3. dist/ contains no files that must never be published.
-//
-// Size budgets and link checks are added later (Issue #1, "post-build checks").
+// 4. Every link to this site points to a file in dist/ (or to an archived
+//    festival site on the server). Links that need the network are checked by
+//    `pnpm check:links`; the page-weight budgets by the e2e tests, in a browser.
 //
 // Usage: node scripts/guard-dist.mjs [distDir]
 
 import { join } from "node:path";
+import { checkDistLinks } from "./lib/site.mjs";
 import {
+  MARKUP_EXTENSIONS,
   findClientCodeInHtml,
   forbiddenFileReason,
   listFiles,
@@ -33,13 +36,6 @@ report(
   files.filter((file) => /\.(m?js|cjs)$/.test(file)).map((file) => `dist/${file}`),
 );
 
-/**
- * Extensions a browser parses as HTML, XML or SVG, where a script can run.
- * Checked by content rather than rejected, so that any of them can be published
- * once it is script-free.
- */
-const MARKUP_EXTENSIONS = /\.(html?|xht(ml)?|shtml?|svg|xml|xslt?)$/i;
-
 /** @type {string[]} */
 const clientCode = [];
 for (const file of files.filter((name) => MARKUP_EXTENSIONS.test(name))) {
@@ -56,3 +52,9 @@ for (const file of files) {
   if (reason) forbiddenFiles.push(`dist/${file}: ${reason}`);
 }
 report("dist/ contains no dumps, backups, logs or server-side code", forbiddenFiles);
+
+const links = await checkDistLinks(dist, files);
+report("links to this site point to files in dist/ or to archived sites", links.broken);
+console.log(
+  `     ${links.server.length} links to archived sites and ${links.external.length} to other hosts: run \`pnpm check:links\` to check them online`,
+);
