@@ -1,13 +1,22 @@
 ---
 import "../styles/global.css";
+import type { Lang } from "../data/festivals.ts";
+import { HOME_PATHS, LANGS } from "../i18n/ui.ts";
 
 interface Props {
   title: string;
   description: string;
-  lang?: "ja" | "en";
+  lang: Lang;
 }
 
-const { title, description, lang = "ja" } = Astro.props;
+const { title, description, lang } = Astro.props;
+
+// Every page exists in both languages at HOME_PATHS. The alternates tell
+// search engines which URL serves which language; Japanese is the default.
+const alternates = [
+  ...LANGS.map((code) => ({ hreflang: code, href: new URL(HOME_PATHS[code], Astro.site).href })),
+  { hreflang: "x-default", href: new URL(HOME_PATHS.ja, Astro.site).href },
+];
 
 // <meta name="text-scale"> lets the page follow the OS text size setting.
 // It is safe because every size is in rem and the root font size is not set.
@@ -21,6 +30,9 @@ const { title, description, lang = "ja" } = Astro.props;
     <meta name="text-scale" content="scale" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    {alternates.map((alternate) => (
+      <link rel="alternate" hreflang={alternate.hreflang} href={alternate.href} />
+    ))}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
   <body class="min-h-dvh bg-paper text-ink antialiased">

@@ -1,0 +1,33 @@
+---
+// The archive top page. "/" and "/en/" render the same page in each language.
+import { FESTIVALS, yearOf, type Lang } from "../data/festivals.ts";
+import { UI } from "../i18n/ui.ts";
+import Base from "../layouts/Base.astro";
+import Archive from "./Archive.astro";
+import Hero from "./Hero.astro";
+import RelatedSites from "./RelatedSites.astro";
+import SiteFooter from "./SiteFooter.astro";
+import SiteHeader from "./SiteHeader.astro";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const ui = UI[lang];
+const firstRound = Math.min(...FESTIVALS.map((festival) => festival.round));
+---
+
+<Base
+  lang={lang}
+  title={ui.siteName}
+  description={ui.description({ round: firstRound, year: yearOf(firstRound) })}
+>
+  <SiteHeader lang={lang} />
+  <main>
+    <Hero lang={lang} />
+    <Archive lang={lang} />
+    <RelatedSites lang={lang} />
+  </main>
+  <SiteFooter lang={lang} />
+</Base>

@@ -1,24 +1,37 @@
 ---
 // The footer repeats the MENU links, so they stay reachable in browsers
 // without the Popover API.
+import type { Lang } from "../data/festivals.ts";
 import { ORGANIZER, SITE_LINKS } from "../data/site-links.ts";
+import { HOME_PATHS, LANG_NAMES, UI, otherLang } from "../i18n/ui.ts";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const ui = UI[lang];
+const other = otherLang(lang);
 ---
 
 <footer class="footer">
   <div class="page inner">
-    <nav aria-label="世田谷祭の公式サイトとSNS（フッター）">
+    <nav aria-label={ui.footerMenuLabel}>
       <ul class="links" role="list">
         {SITE_LINKS.map((link) => (
           <li>
-            <a href={link.url}>{link.label.ja}</a>
+            <a href={link.url}>{link.label[lang]}</a>
           </li>
         ))}
+        <li>
+          <a href={HOME_PATHS[other]} hreflang={other} lang={other}>
+            {LANG_NAMES[other]}
+          </a>
+        </li>
       </ul>
     </nav>
-    <p class="note">
-      各回のサイトは公開当時のまま保存しています。掲載している日程・連絡先・リンク先は、当時のものです。
-    </p>
-    <p class="org">{ORGANIZER.ja}</p>
+    <p class="note">{ui.footerNote}</p>
+    <p class="org">{ORGANIZER[lang]}</p>
   </div>
 </footer>
 

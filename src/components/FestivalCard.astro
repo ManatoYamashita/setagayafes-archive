@@ -8,23 +8,28 @@ import {
   eraOf,
   festivalNameOf,
   linkOf,
-  titleOf,
   type Festival,
+  type Lang,
 } from "../data/festivals.ts";
-import { formatDateRange, roundLabel } from "../lib/format.ts";
+import { UI, headingOf, roundLabel } from "../i18n/ui.ts";
+import { formatDateRange } from "../lib/format.ts";
 import Capture from "./Capture.astro";
 
 interface Props {
   festival: Festival;
+  lang: Lang;
   /** The `sizes` attribute for the picture; the grid knows how wide the card is. */
   sizes: string;
 }
 
-const { festival, sizes } = Astro.props;
+const { festival, lang, sizes } = Astro.props;
+const ui = UI[lang];
 const { round, dates } = festival;
 const era = eraOf(round);
 const status = STATUS_LABELS[festival.status];
 const external = festival.externalLink;
+const heading = headingOf(festival, lang);
+const label = roundLabel(round, lang);
 ---
 
 <li class="card" data-era={era}>
@@ -33,24 +38,26 @@ const external = festival.externalLink;
     <p class="meta">
       <time datetime={dates.start}>
         {formatDateRange(dates.start, dates.end)}
-        {dates.estimated && <span>（推定）</span>}
+        {dates.estimated && <span>{ui.estimated}</span>}
       </time>
       <span aria-hidden="true">/</span>
-      <span>{roundLabel(round)}</span>
+      <span>{label}</span>
       <span aria-hidden="true">/</span>
-      <span class="tag">{ERA_NAMES[era].ja}</span>
-      {status && <span class="tag">{status.ja}</span>}
+      <span class="tag">{ERA_NAMES[era][lang]}</span>
+      {status && <span class="tag">{status[lang]}</span>}
     </p>
     <h3 class="title">
-      <a href={linkOf(festival)}>
-        <span class="sr-only">{roundLabel(round)} </span>
-        {titleOf(festival, "ja")}
+      {/* The festival sites are in Japanese; say so on links from "/en/". */}
+      <a href={linkOf(festival)} hreflang={lang === "ja" ? undefined : "ja"}>
+        <span class="sr-only">{label} </span>
+        <span lang={heading.lang === lang ? undefined : heading.lang}>{heading.text}</span>
+        {heading.translation && <span class="translation">{heading.translation}</span>}
       </a>
     </h3>
     <p class="name">
-      {festivalNameOf(round).ja}
-      {festival.statusReason && <span>{festival.statusReason.ja}</span>}
-      {external && <span>{external.label.ja}</span>}
+      {festivalNameOf(round)[lang]}
+      {festival.statusReason && <span>{festival.statusReason[lang]}</span>}
+      {external && <span>{external.label[lang]}</span>}
     </p>
   </article>
 </li>
@@ -95,6 +102,15 @@ const external = festival.externalLink;
     & a:focus-visible {
       outline: none;
     }
+  }
+
+  /* The English rendering of a Japanese theme, under the original on "/en/". */
+  .translation {
+    display: block;
+    margin-block-start: 0.25rem;
+    font-size: 0.9375rem;
+    font-weight: 400;
+    color: var(--color-muted);
   }
 
   .card:has(a:focus-visible) {
