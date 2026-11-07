@@ -315,37 +315,58 @@ for (const lang of LANGS) {
       await close();
     });
 
-    test("loads a large enough picture for a card the filter makes wide", async (context) => {
-      const first = listed.find((festival) => eraOf(festival.round) === "musashi");
-      if (!first || !captured(first.round)) {
-        context.skip("no captured musashi festival");
-        return;
-      }
-      const { page, close } = await open(t.path, { width: 1280, deviceScaleFactor: 2 });
-      context.after(close);
-      await page.locator("label:has(#era-musashi)").click();
-      const card = visibleCards(page).first();
-      const image = card.locator("img");
-      await card.scrollIntoViewIfNeeded();
-      await image.evaluate((element) =>
-        /** @type {HTMLImageElement} */ (element).decode().catch(() => {}),
-      );
-      const box = await card.boundingBox();
-      assert.ok(box);
-      // naturalWidth is corrected by the candidate's density, so read the width
-      // descriptor of the candidate the browser picked (currentSrc) instead.
-      const picked = await image.evaluate((element) => {
-        const img = /** @type {HTMLImageElement} */ (element);
-        const candidate = img.srcset
-          .split(",")
-          .map((entry) => entry.trim().split(/\s+/))
-          .find(([url]) => Boolean(url) && img.currentSrc.endsWith(url ?? ""));
-        return Number.parseInt(candidate?.[1] ?? "0", 10);
+    for (const { width, autoSizes } of [
+      { width: 1023, autoSizes: true },
+      { width: 1280, autoSizes: true },
+      { width: 1023, autoSizes: false },
+      { width: 1280, autoSizes: false },
+    ]) {
+      test(`loads enough image resolution at ${width}px and DPR 2 (auto sizes: ${autoSizes})`, async (context) => {
+        const first = listed.find((festival) => eraOf(festival.round) === "musashi");
+        if (!first || !captured(first.round)) {
+          context.skip("no captured musashi festival");
+          return;
+        }
+        const { page, close } = await open(t.path, { width, deviceScaleFactor: 2 });
+        context.after(close);
+
+        const selector = '.grid > li[data-era="musashi"] img';
+        const image = page.locator(selector).first();
+        if (!autoSizes) {
+          await image.evaluate((element) => {
+            const image = /** @type {HTMLImageElement} */ (element);
+            image.sizes = image.sizes.replace(/^auto,\s*/, "");
+          });
+        }
+        await image.scrollIntoViewIfNeeded();
+        const beforeSrc = await image.evaluate(async (element) => {
+          const image = /** @type {HTMLImageElement} */ (element);
+          await image.decode();
+          return image.currentSrc;
+        });
+        const before = await image.boundingBox();
+        assert.ok(before);
+
+        await page.locator("label:has(#era-musashi)").click();
+        const after = await image.boundingBox();
+        assert.ok(after && after.width > before.width);
+
+        await page.waitForFunction(
+          ({ selector, beforeSrc, autoSizes, requiredWidth }) => {
+            const image = /** @type {HTMLImageElement | null} */ (document.querySelector(selector));
+            if (!image?.complete || !image.naturalWidth) return false;
+            if (autoSizes && image.currentSrc === beforeSrc) return false;
+            // naturalWidth accounts for density, so compare the selected width descriptor.
+            return image.srcset.split(",").some((candidate) => {
+              const [url, width] = candidate.trim().split(/\s+/);
+              return image.currentSrc.endsWith(url) && Number.parseInt(width, 10) >= requiredWidth;
+            });
+          },
+          { selector, beforeSrc, autoSizes, requiredWidth: Math.ceil(after.width * 2) },
+          { timeout: 3000 },
+        );
       });
-      // The widest candidate is 1280w. The fallback `sizes` alone would pick 800w.
-      assert.ok(box.width > 700, "the first card of the filtered grid is wide");
-      assert.ok(picked >= 1280, `picked a ${picked}w picture for a ${box.width}px card`);
-    });
+    }
 
     test("makes the whole card clickable", async () => {
       const { page, close } = await open(t.path);
@@ -424,8 +445,9 @@ for (const lang of LANGS) {
     });
 
     for (const era of /** @type {const} */ (["all", "musashi", "tcu"])) {
-      test(`keeps the tab order in the reading order with three columns (${era})`, async () => {
+      test(`keeps the tab order in the reading order with three columns (${era})`, async (context) => {
         const { page, close } = await open(t.path, { width: 1280 });
+        context.after(close);
         await page.locator(`label:has(#era-${era})`).click();
         const boxes = await visibleCards(page).evaluateAll((items) =>
           items.map((item) => {
@@ -442,7 +464,17 @@ for (const lang of LANGS) {
           [...boxes.keys()],
           "source order is left to right, top to bottom",
         );
-        await close();
+        const cards = visibleCards(page);
+        await cards.first().getByRole("link").focus();
+        for (const index of reading) {
+          const link = cards.nth(index).getByRole("link");
+          assert.equal(
+            await link.evaluate((element) => element === document.activeElement),
+            true,
+            `Tab reaches card ${index + 1} in visual reading order`,
+          );
+          await page.keyboard.press("Tab");
+        }
       });
     }
 
