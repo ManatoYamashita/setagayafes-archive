@@ -256,6 +256,16 @@ describe("guard scripts", () => {
     assert.match(result.stderr, /public\/access_log/);
   });
 
+  test("guard-dist fails on a link to a file that is not in dist/", async () => {
+    const dist = await fixture({
+      "index.html": '<!doctype html><a href="/78th/">ok</a><img src="/_astro/gone.avif" alt="">',
+    });
+    const result = run("guard-dist.mjs", dist);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /index\.html: <img src> \/_astro\/gone\.avif/);
+    assert.doesNotMatch(result.stderr, /78th/, "an archived festival site is not a broken link");
+  });
+
   test("guard-dist fails when dist is missing", async () => {
     const root = await fixture({});
     assert.equal(run("guard-dist.mjs", join(root, "dist")).status, 1);

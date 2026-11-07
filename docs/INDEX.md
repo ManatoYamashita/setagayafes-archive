@@ -49,6 +49,9 @@
   - 道具は `scripts/ops/wp2static/`（サーバーで動かす）と `scripts/ops/compare-pages.mjs`（置き換えの前後の撮影と比較）
   - `.php` の URL を保つ書き方と、`FilesMatch`・多重拡張子・撮影の待ちなどのつまずいた点
 
+- **[post-build-checks.md](./ops/post-build-checks.md)**: ビルド後の検査（JS 0・公開禁止ファイル・リンク・転送量の予算）と `pnpm check:links`、Lighthouse の手動測定
+  - 予算はブラウザで測る。初回は最初の画面に写る分だけ（先読みは除く）、全体は絞り込みに触れずに最後までスクロールした分
+
 ### 予定（まだ無い文書。作ったらリンクにする）
 
 - `ops/deploy.md`: さくらへの配置手順（手元の httpd での検証を含む）

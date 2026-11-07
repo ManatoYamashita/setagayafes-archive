@@ -28,6 +28,13 @@ const FORBIDDEN_FILE_PATTERNS = [
   { pattern: /(^|\/)\.git(\/|$)/, reason: "git metadata" },
 ];
 
+/**
+ * Extensions a browser parses as HTML, XML or SVG, where a script can run.
+ * Checked by content rather than rejected, so that any of them can be published
+ * once it is script-free.
+ */
+export const MARKUP_EXTENSIONS = /\.(html?|xht(ml)?|shtml?|svg|xml|xslt?)$/i;
+
 /** Integrations and packages that would put a UI runtime in the browser. */
 const UI_RUNTIME_PACKAGES = [
   /^@astrojs\/(react|preact|vue|svelte|solid-js|alpinejs|lit)$/,
