@@ -33,7 +33,7 @@
   - カードの見た目と Tab の順をそろえ、画像候補は絞り込み後の表示幅から選ぶ
   - `/en/` は同じ部品に `lang` を渡す。文言は `src/i18n/ui.ts`。テーマは原文を題名に残し、英訳を添える
 - **[htaccess.md](./design/htaccess.md)**: archive 直下の `.htaccess`（ビルドで生成）。ヘッダを新トップの範囲にだけ付ける書き方、noindex の除外、CSP、HSTS
-  - 301 は入れていない（前段の nginx が 302 を返している。判定の方法をさくらで試してから決める）
+  - http→https はコントロールパネルの 302 のまま、HSTS で補う（パネルは 302 しか返せない。`.htaccess` の 301 はループの危険があり、見送った）
 - **[seo.md](./design/seo.md)**: canonical・hreflang・OGP・sitemap・robots.txt。インデックスさせるのは `/` と `/en/` だけ
   - 各回のフォルダを robots.txt で Disallow しない（noindex のヘッダを読ませるため）。今のホストの `Disallow: /errorpage/` は引き継ぐ
 
