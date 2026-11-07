@@ -49,6 +49,7 @@ describe("UI", () => {
       ...Object.fromEntries(Object.entries(en).filter(([, value]) => typeof value === "string")),
       description: en.description({ round: 75, year: 2004 }),
       heroLead: en.heroLead("97th", "Setagaya Festival"),
+      ogImageAlt: en.ogImageAlt("97th", "Setagaya Festival"),
       visit: en.visit("97th"),
       showing: en.showing(22),
     };

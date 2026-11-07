@@ -1,22 +1,26 @@
 ---
 import "../styles/global.css";
 import type { Lang } from "../data/festivals.ts";
-import { HOME_PATHS, LANGS } from "../i18n/ui.ts";
+import { LANGS } from "../i18n/ui.ts";
+import { OG_LOCALES, alternatesOf, pageUrl } from "../lib/seo.ts";
 
 interface Props {
   title: string;
   description: string;
   lang: Lang;
+  /** The link-preview image (absolute URL). Omitted when there is none yet. */
+  image?: { url: string; width: number; height: number; alt: string } | undefined;
 }
 
-const { title, description, lang } = Astro.props;
+const { title, description, lang, image } = Astro.props;
+const site = Astro.site;
+if (!site) throw new Error("`site` is not set in astro.config.mjs");
 
-// Every page exists in both languages at HOME_PATHS. The alternates tell
-// search engines which URL serves which language; Japanese is the default.
-const alternates = [
-  ...LANGS.map((code) => ({ hreflang: code, href: new URL(HOME_PATHS[code], Astro.site).href })),
-  { hreflang: "x-default", href: new URL(HOME_PATHS.ja, Astro.site).href },
-];
+// The page is published at its language's top page; the canonical URL and
+// og:url are that URL, and the alternates link both language versions.
+const url = pageUrl(lang, site);
+const alternates = alternatesOf(site);
+const otherLocales = LANGS.filter((code) => code !== lang).map((code) => OG_LOCALES[code]);
 
 // <meta name="text-scale"> lets the page follow the OS text size setting.
 // It is safe because every size is in rem and the root font size is not set.
@@ -30,9 +34,31 @@ const alternates = [
     <meta name="text-scale" content="scale" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="canonical" href={url} />
     {alternates.map((alternate) => (
       <link rel="alternate" hreflang={alternate.hreflang} href={alternate.href} />
     ))}
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={title} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={url} />
+    <meta property="og:locale" content={OG_LOCALES[lang]} />
+    {otherLocales.map((locale) => (
+      <meta property="og:locale:alternate" content={locale} />
+    ))}
+    {image && (
+      <>
+        <meta property="og:image" content={image.url} />
+        <meta property="og:image:type" content="image/jpeg" />
+        <meta property="og:image:width" content={String(image.width)} />
+        <meta property="og:image:height" content={String(image.height)} />
+        <meta property="og:image:alt" content={image.alt} />
+      </>
+    )}
+    <meta name="twitter:card" content={image ? "summary_large_image" : "summary"} />
+
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
   <body class="min-h-dvh bg-paper text-ink antialiased">
