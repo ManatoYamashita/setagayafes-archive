@@ -32,3 +32,16 @@ archive.setagayafes.org のトップ（過去の世田谷祭の一覧）を作�
 - 並行する PR が同じファイルを変えて衝突したら、後からマージする側が直す
   - `package.json`・`README.md` の表・`docs/INDEX.md`: 両方の変更を残して、Prettier を掛け直す
   - `pnpm-lock.yaml`: `pnpm install` で作り直す
+
+## 複数のセッションが同じ PR に触るとき
+
+Claude Code・Codex など、複数のセッションが同じリポジトリで並行して動くときの決まり。
+
+- 他のセッションが手を付けた PR に入る前に、引き受けることを相手に伝える
+  - 相手は、Claude Code の `ListAgents`、または worktree の一覧（`git worktree list`）と最近のコミットの作者・時刻から探す
+  - 相手が見つからないときは、PR のコメントに「引き受ける」と書いてから始める
+- push の直前に、PR がまだ開いていることを確かめる（`gh pr view <番号> --json state`）
+  - 理由: マージ済みの PR のブランチへ push しても、main には届かない。#7 のレビュー指摘の修正は、#7 がマージされた後に push され、main に入らなかった（#14 で出し直した）
+  - 届かなかったときは、main から新しいブランチを切り、同じコミットを cherry-pick して PR を出し直す。元の PR のスレッドには、新しい PR の番号を書いて返信する
+- マージするときは、CI を確かめたコミットを指定する（`gh pr merge <番号> --merge --match-head-commit <sha>`）
+  - 理由: 確かめている間に他のセッションが push すると、確かめていないコミットがマージされる
