@@ -24,7 +24,7 @@
 | `pnpm lint`                         | ESLint                                                                                                                   |
 | `pnpm check`                        | `astro check`（型と Astro の診断）                                                                                       |
 | `pnpm format` / `pnpm format:check` | Prettier                                                                                                                 |
-| `pnpm guard`                        | ソースの検査（`client:*`・`<script>`・`public/` の禁止ファイル・UI ランタイム）                                          |
+| `pnpm guard`                        | ソースの検査（`client:*`・`<script>`・`public/` の禁止ファイル・UI ランタイム・サーバーの接続先）                        |
 | `pnpm test`                         | 検査スクリプト自体のテスト                                                                                               |
 | `pnpm test:e2e`                     | `dist/` をブラウザ（Playwright の Chromium）で開く e2e テスト（転送量の予算を含む）。先に `pnpm build`                   |
 | `pnpm capture [回数…]`              | 各回のトップを撮影し、`src/assets/captures/` を更新する（[手順](./docs/ops/capture.md)）                                 |

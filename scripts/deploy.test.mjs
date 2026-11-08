@@ -146,6 +146,44 @@ describe("remote-deploy.sh and remote-rollback.sh", () => {
     assert.deepEqual(await snapshot(publicDir), before);
   });
 
+  test("refuses to reuse a backup, so the originals' backup is never overwritten", async () => {
+    await inbox("top.zip", NEW_TOP);
+    assert.equal(run(DEPLOY, "top.zip").status, 0);
+    const backup = join(home, "archive-docs", "deploy", "20261107-000000");
+    const kept = await snapshot(backup);
+
+    const again = run(DEPLOY, "top.zip");
+    assert.notEqual(again.status, 0);
+    assert.match(again.stderr, /a backup for 20261107-000000 already exists/);
+    assert.deepEqual(await snapshot(backup), kept);
+
+    // The rollback still brings back the originals.
+    assert.equal(run(ROLLBACK, "20261107-000000").status, 0);
+    assert.equal((await snapshot(publicDir))["index.html"], BEFORE["index.html"]);
+  });
+
+  test("refuses to replace a folder that no deployment of ours created", async () => {
+    await writeTree(publicDir, { ".well-known/acme-challenge/token": "certificate" });
+    const before = await snapshot(publicDir);
+    await inbox("top.zip", { ...NEW_TOP, ".well-known/security.txt": "contact" });
+    const result = run(DEPLOY, "top.zip");
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /did not create: \.well-known/);
+    assert.deepEqual(await snapshot(publicDir), before);
+  });
+
+  test("a refused deployment does not count as having created a folder", async () => {
+    await inbox("bad.zip", { ...NEW_TOP, "shared/a.txt": "a", "78th/index.html": "x" });
+    assert.notEqual(run(DEPLOY, "bad.zip", "20261107-000001").status, 0);
+    // Someone else then makes the same folder on the server.
+    await writeTree(publicDir, { "shared/theirs.txt": "theirs" });
+    await inbox("top.zip", { ...NEW_TOP, "shared/a.txt": "a" });
+    const result = run(DEPLOY, "top.zip", "20261107-000002");
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /did not create: shared/);
+    assert.equal((await snapshot(publicDir))["shared/theirs.txt"], "theirs");
+  });
+
   test("refuses a zip whose checksum does not match", async () => {
     const before = await snapshot(publicDir);
     const zip = await inbox("top.zip", NEW_TOP);

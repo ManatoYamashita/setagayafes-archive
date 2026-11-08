@@ -8,6 +8,7 @@ import { dirname, join } from "node:path";
 import { after, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
+  findServerDestinations,
   findClientCodeInHtml,
   findClientCodeInSource,
   findUiRuntimePackages,
@@ -15,6 +16,18 @@ import {
 } from "./lib/rules.mjs";
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
+
+describe("findServerDestinations", () => {
+  test("finds account@server on the Sakura servers", () => {
+    const text = `ssh ${["me", "www3.sakura.ne.jp"].join("@")} ls; scp a ${["me", "x.sakura.ne.jp"].join("@")}:b`;
+    assert.equal(findServerDestinations(text).length, 2);
+  });
+
+  test("allows the Host alias, the initial domain and mail addresses elsewhere", () => {
+    const text = "ssh setagayafes-archive; https://setagayafes.sakura.ne.jp/; info@example.com";
+    assert.deepEqual(findServerDestinations(text), []);
+  });
+});
 
 describe("forbiddenFileReason", () => {
   for (const path of [
@@ -243,6 +256,21 @@ describe("guard scripts", () => {
     assert.match(result.stderr, /dist\/old\.htm/);
     assert.match(result.stderr, /dist\/page\.xhtml/);
     assert.match(result.stderr, /dist\/img\/logo\.svg/);
+  });
+
+  test("guard-source rejects an SSH destination on the server in any text file", async () => {
+    // Built from parts so that this test file does not hold a destination itself.
+    const destination = ["someone", "www1234.sakura.ne.jp"].join("@");
+    const root = await fixture({
+      "package.json": JSON.stringify({ dependencies: { astro: "1" } }),
+      "src/pages/index.astro": "<h1>ok</h1>",
+      "docs/ops/deploy.md": `ssh ${destination} 'ls'`,
+      "node_modules/pkg/readme.md": `ssh ${destination}`,
+    });
+    const result = run("guard-source.mjs", root);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /docs\/ops\/deploy\.md: someone@www1234/);
+    assert.doesNotMatch(result.stderr, /node_modules/);
   });
 
   test("guard-source rejects an extensionless access_log in public/", async () => {

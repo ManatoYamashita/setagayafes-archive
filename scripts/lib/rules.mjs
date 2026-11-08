@@ -142,6 +142,21 @@ function isScriptUrl(rawValue) {
 }
 
 /**
+ * SSH destinations on the Sakura servers ("<account>@<server>.sakura.ne.jp"). The
+ * repository is public, so connection details stay out of it
+ * (docs/rules/conventions.md, 8); docs use the Host alias "setagayafes-archive".
+ */
+const SAKURA_DESTINATION = /[a-z0-9._-]+@(?:[a-z0-9-]+\.)+sakura\.ne\.jp\b/gi;
+
+/**
+ * @param {string} text
+ * @returns {string[]} The SSH destinations found, as written.
+ */
+export function findServerDestinations(text) {
+  return [...text.matchAll(SAKURA_DESTINATION)].map((match) => match[0]);
+}
+
+/**
  * @param {Record<string, unknown>} packageJson
  * @returns {string[]} Names of UI runtime packages found in any dependency list.
  */

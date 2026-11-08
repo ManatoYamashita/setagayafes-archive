@@ -4,12 +4,15 @@
 // 1. src/ has no Astro hydration directives (client:*) and no <script> tags.
 // 2. public/ has no files that must never be published (dumps, backups, logs, ...).
 // 3. package.json has no UI runtime (React, Vue, Svelte, ...).
+// 4. No text file in the repository names an SSH destination on the server
+//    (the repository is public).
 //
 // Usage: node scripts/guard-source.mjs [projectRoot]
 
 import { join } from "node:path";
 import {
   findClientCodeInSource,
+  findServerDestinations,
   findUiRuntimePackages,
   forbiddenFileReason,
   listFiles,
@@ -44,3 +47,17 @@ report(
   "package.json has no UI runtime",
   findUiRuntimePackages(packageJson).map((name) => `${name}: UI runtime is not allowed`),
 );
+
+/** Folders that are generated, installed or ignored: not part of the repository's text. */
+const SKIPPED = /^(node_modules|dist|\.astro|\.git|release|reference)\//;
+const TEXT_EXTENSIONS = /\.(md|mdx|astro|html|css|ts|tsx|js|jsx|mjs|cjs|json|ya?ml|sh|txt)$/;
+
+/** @type {string[]} */
+const destinations = [];
+for (const file of await listFiles(root)) {
+  if (SKIPPED.test(file) || !TEXT_EXTENSIONS.test(file)) continue;
+  for (const destination of findServerDestinations(await readText(join(root, file)))) {
+    destinations.push(`${file}: ${destination} (use the Host alias "setagayafes-archive")`);
+  }
+}
+report("the repository names no SSH destination on the server", destinations);
