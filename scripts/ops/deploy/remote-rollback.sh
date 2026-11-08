@@ -2,8 +2,10 @@
 # Puts the archive's public folder back as it was before a deployment by
 # remote-deploy.sh. Runs on the server (FreeBSD sh); see docs/ops/deploy.md.
 #
-#   ssh setagayafes@www3019.sakura.ne.jp 'sh -s -- <stamp>' \
+#   ssh setagayafes-archive 'sh -s -- <stamp>' \
 #     < scripts/ops/deploy/remote-rollback.sh
+#
+# "setagayafes-archive" is a Host alias in your ~/.ssh/config (docs/ops/deploy.md).
 #
 # <stamp> is the backup folder name that remote-deploy.sh printed
 # (~/archive-docs/deploy/<stamp>/). Entries the deployment created are removed;
