@@ -121,7 +121,8 @@ cd ~/www/archive
 # 旧トップ以外から参照されていないこと。HTML の href・src と、CSS の url() を見る
 # （2026-11-07 には、絶対パスの参照は旧トップだけだった）。見つかったら、何も移さずに止まる
 # BSD の grep は ./ を付けずに出すので、旧トップの index.html は両方の形で除く
-others=$(grep -rIlE --exclude-dir=_astro '((href|src)=["'"'"']?|url\([[:space:]]*["'"'"']?)(\.\./|/|https?://archive\.setagayafes\.org/)(img|css|js)/' . | grep -vE '^(\./)?index\.html$' || true)
+# 相対パスは ../../img/ のように何階層でも拾う（/todoroki/2011/ などの2階層下のページから）
+others=$(grep -rIlE --exclude-dir=_astro '((href|src)=["'"'"']?|url\([[:space:]]*["'"'"']?)((\.\./)+|/|https?://archive\.setagayafes\.org/)(img|css|js)/' . | grep -vE '^(\./)?index\.html$' || true)
 if [ -n "$others" ]; then
   echo "STOP: css/ js/ img/ are referenced from:"; echo "$others"; exit 1
 fi
