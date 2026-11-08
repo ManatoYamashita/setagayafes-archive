@@ -41,6 +41,8 @@ Host setagayafes-archive
 
 - `<サーバー名>`・`<アカウント名>` は、さくらのコントロールパネルのサーバー情報で確かめる。**このリポジトリには書かない**（公開されている。規約8節）。オーナーの手元の控えに置く
 - `pnpm guard` は、リポジトリに `アカウント名@…sakura.ne.jp` の形の接続先があると落ちる
+- 別名があることは `grep -n '^Host setagayafes-archive' ~/.ssh/config` で確かめる。`ssh -G` は、別名が無くても値を出すので確認に使えない
+- サーバーのログインシェルは csh。`ssh setagayafes-archive 'echo $(…)'` のような書き方は `Illegal variable name.` で落ちる。サーバーで動かすものは `'sh -s' <` で流すか、`sh -c` で包む
 
 ## 手順
 
@@ -92,6 +94,8 @@ pnpm check:production
 
 ### 6. 初回だけ: エラーページの PHP を片付ける（#2）
 
+**2026-11-08 に済んだ。** 41本を `~/archive-docs/quarantine-20261106/errorpage-php/` へ移し、archive 配下の PHP は0本になった。2回目からの配置では行わない。
+
 新しい `.htaccess` で、`ErrorDocument` は静的な `/errorpage/NNN.html` を指すようになった。PHP の版を公開フォルダの外へ移す。
 
 ```sh
@@ -112,20 +116,44 @@ EOF
 
 ### 7. 初回だけ: 旧トップの部品を退避する（Issue #1 の ToDo）
 
+**2026-11-08 に済んだ。** `css/`・`js/`・`img/` を `~/archive-docs/deploy/old-top/` へ移した。2回目からの配置では行わない。
+
 旧トップの `css/`・`js/`・`img/` を、公開フォルダの外へ移す。新しいトップは使っていない。
 
 ```sh
 ssh setagayafes-archive 'sh -s' <<'EOF'
 set -eu
 cd ~/www/archive
-# 旧トップ以外から参照されていないこと。HTML の href・src と、CSS の url() を見る
-# （2026-11-07 には、絶対パスの参照は旧トップだけだった）。見つかったら、何も移さずに止まる
-# BSD の grep は ./ を付けずに出すので、旧トップの index.html は両方の形で除く
-# 相対パスは ../../img/ のように何階層でも拾う（/todoroki/2011/ などの2階層下のページから）
-others=$(grep -rIlE --exclude-dir=_astro '((href|src)=["'"'"']?|url\([[:space:]]*["'"'"']?)((\.\./)+|/|https?://archive\.setagayafes\.org/)(img|css|js)/' . | grep -vE '^(\./)?index\.html$' || true)
-if [ -n "$others" ]; then
-  echo "STOP: css/ js/ img/ are referenced from:"; echo "$others"; exit 1
+# 旧トップ以外から参照されていないこと。HTML の href・src と、CSS の url() を見る。
+# 1. 参照らしいものを持つファイルを grep で挙げる（BSD の grep は ./ を付けずに出すので、
+#    旧トップの index.html は両方の形で除く。相対パスは ../../img/ のように何階層でも拾う）
+# 2. 相対パスを、そのファイルの場所から実際のパスへ解決する。ルートの /img/・/css/・/js/ を
+#    指すものだけを数える（例: /89th/common/style/default.css の ../img/ は /89th/common/img/）
+# 見つかったら、何も移さずに止まる
+# case のパターンは (…) と開き括弧から書く。$( ) の中で ) を置換の終わりと取り違えるシェルがあるため
+PATTERN='((href|src)=["'"'"']?|url\([[:space:]]*["'"'"']?)((\.\./)+|/|https?://archive\.setagayafes\.org/)(img|css|js)/[^"'"'"' )]*'
+candidates=$(mktemp)
+grep -rIlE --exclude-dir=_astro "$PATTERN" . | sed 's#^\./##' | grep -vE '^index\.html$' > "$candidates" || true
+hits=$(while IFS= read -r f; do
+  dir=$(dirname "$f")
+  grep -oE "$PATTERN" "$f" | sed -E 's/^(href|src)=["'"'"']?//; s/^url\([[:space:]]*["'"'"']?//' | sort -u | while IFS= read -r ref; do
+    case $ref in
+      (http*) abs=$(echo "$ref" | sed -E 's#^https?://archive\.setagayafes\.org##') ;;
+      (/*) abs=$ref ;;
+      (*) d=$dir; r=$ref
+         while case $r in (../*) true ;; (*) false ;; esac; do
+           r=${r#../}; case $d in (*/*) d=${d%/*} ;; (*) d="" ;; esac
+         done
+         abs="/${d:+$d/}$r" ;;
+    esac
+    case $abs in (/img/* | /css/* | /js/*) echo "$f -> $ref" ;; esac
+  done
+done < "$candidates")
+rm -f "$candidates"
+if [ -n "$hits" ]; then
+  echo "STOP: css/ js/ img/ at the root are referenced from:"; echo "$hits"; exit 1
 fi
+echo "ok   no page refers to the root css/ js/ img/"
 D=~/archive-docs/deploy/old-top
 mkdir -p "$D"
 mv css js img "$D/"
@@ -133,7 +161,10 @@ EOF
 curl -sI https://archive.setagayafes.org/img/97th.png | head -1   # 404
 ```
 
-- 旧トップ以外から参照されていれば、`STOP:` と参照元を出して、何も移さずに止まる。そのときはオーナーに相談する
+- ルートの `css/`・`js/`・`img/` を指す参照があれば、`STOP:` と参照元を出して、何も移さずに止まる。そのときはオーナーに相談する
+- 2026-11-08 に流したときは、相対パスを解決する前の版（grep だけ）が、各サイト自身の `img/`・`css/` を指す36ファイル（130件）で止まった（誤検知）。上の版は、解決してからルートを指すものだけで止まる
+  - 上の版は、仮のフォルダで sh・dash・bash の3つで確かめ（各サイト自身の `../img/` では止まらず、`../../img/`・`url("/img/…")`・`/78th/` からの `../css/`・絶対 URL では止まる）、判定の部分を本番の FreeBSD の `sh` でも流した（2026-11-08。ルートを指す参照は0件）
+- 全ファイルを読むので、6〜7分かかる。`grep: ./78th/93rd/…: No such file or directory` と出るのは、遮断してある `78th/93rd/` の中の行き先の無いリンクで、判定には影響しない
 - `/img/87th.JPG` は、`pnpm capture` が第87回の写真の取り元として指している（`scripts/lib/capture-targets.mjs`）。退避した後は取れない。写真の原画像は `src/assets/captures/87th.jpg` にあり、撮り直す必要は無い（全回を撮るときも、保存済みの写真は取り直さない）。取り直したいときは、`~/archive-docs/deploy/old-top/img/87th.JPG` から戻す
 
 ### 8. 記録する
