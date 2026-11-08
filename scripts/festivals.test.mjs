@@ -206,14 +206,14 @@ describe("RELATED_SITES", () => {
     }
   });
 
-  test("the Todoroki Festival sites wait for Issue #2; the committee site does not", () => {
+  test("every related site is linked: Issue #2 (the Todoroki Festival sites) is closed", () => {
     /** @type {Record<string, number | undefined>} */
     const blockedBy = Object.fromEntries(
       RELATED_SITES.map((site) => [site.id, "blockedBy" in site ? site.blockedBy : undefined]),
     );
     assert.deepEqual(blockedBy, {
-      "todoroki-2011": 2,
-      "todoroki-2012": 2,
+      "todoroki-2011": undefined,
+      "todoroki-2012": undefined,
       "committee-2011": undefined,
     });
   });

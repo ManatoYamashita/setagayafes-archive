@@ -26,17 +26,16 @@ export const RELATED_SITES = [
     name: { ja: "第3回 TCU等々力祭", en: "3rd TCU Todoroki Festival" },
     // Held on the same day as the 82nd Setagaya Festival.
     dates: { start: "2011-11-20", end: "2011-11-20" },
+    // Made static from WordPress in Issue #2 (closed 2026-11-08).
     path: "/todoroki/2011/",
-    // Still served by WordPress. Linked once it is made static (Issue #2).
-    blockedBy: 2,
   },
   {
     id: "todoroki-2012",
     name: { ja: "第4回 等々力祭", en: "4th Todoroki Festival" },
     // "平成24年11月24日(土)～25日(日)" on the festival's own site.
     dates: { start: "2012-11-24", end: "2012-11-25" },
+    // Made static from WordPress in Issue #2 (closed 2026-11-08).
     path: "/todoroki/2012/",
-    blockedBy: 2,
   },
   {
     id: "committee-2011",
