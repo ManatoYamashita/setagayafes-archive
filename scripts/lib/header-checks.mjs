@@ -60,6 +60,8 @@ export async function runHeaderChecks({ get, assets, pastSite, initialDomain, no
       assert.equal(headers["x-robots-tag"], undefined, "no noindex");
       assert.match(String(headers["content-security-policy"]), /script-src 'none'/);
       assert.match(String(headers["content-security-policy"]), /style-src 'sha256-/);
+      // Lighthouse fetches robots.txt from inside the page (docs/design/htaccess.md).
+      assert.match(String(headers["content-security-policy"]), /connect-src 'self'/);
       assert.equal(headers["x-content-type-options"], "nosniff");
       assert.equal(headers["referrer-policy"], "strict-origin-when-cross-origin");
       assert.match(String(headers["permissions-policy"]), /camera=\(\)/);

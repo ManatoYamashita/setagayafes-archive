@@ -23,17 +23,17 @@ archive ホストの公開フォルダ（さくらの `~/www/archive`）の直�
 
 ## 中身
 
-| 部分               | 対象                                                           | 中身                                                                                                                                                                |
-| ------------------ | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ErrorDocument`    | すべて                                                         | `/errorpage/NNN.html`（静的なページ）。PHP の版は使わない                                                                                                           |
-| noindex            | トップのページ（`/`・`/index.html`・`/en/`・`/en/index.html`） | `X-Robots-Tag` を `unset` する。上位の `.htaccess` が付けたぶんも消える                                                                                             |
-|                    | それ以外のすべて（過去回・エラーページ・画像など）             | `X-Robots-Tag: noindex, noimageindex`（これまでと同じ）                                                                                                             |
-| セキュリティヘッダ | このリポジトリが出力したパス                                   | `X-Content-Type-Options`・`Referrer-Policy`・`Permissions-Policy`・`Cross-Origin-Opener-Policy`                                                                     |
-| CSP                | トップのページ                                                 | `default-src 'none'; script-src 'none'`、`style-src` はインラインの `<style>` の sha256、`img-src 'self'`、`base-uri`・`form-action`・`frame-ancestors` は `'none'` |
-| キャッシュ         | `/_astro/`                                                     | `public, max-age=31536000, immutable`（ファイル名に中身のハッシュが入るため）                                                                                       |
-|                    | トップのページ                                                 | `no-cache`（毎回確かめる。中身が変われば取り直す）                                                                                                                  |
-| HSTS               | Host が `archive.setagayafes.org` のとき                       | `max-age=31536000`。`includeSubDomains` は付けない                                                                                                                  |
-| 圧縮               | このリポジトリが出力したパス                                   | `mod_deflate` があるときだけ。さくらでは効かないことを実測済みなので、無くても困らない                                                                              |
+| 部分               | 対象                                                           | 中身                                                                                                                                                                                      |
+| ------------------ | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ErrorDocument`    | すべて                                                         | `/errorpage/NNN.html`（静的なページ）。PHP の版は使わない                                                                                                                                 |
+| noindex            | トップのページ（`/`・`/index.html`・`/en/`・`/en/index.html`） | `X-Robots-Tag` を `unset` する。上位の `.htaccess` が付けたぶんも消える                                                                                                                   |
+|                    | それ以外のすべて（過去回・エラーページ・画像など）             | `X-Robots-Tag: noindex, noimageindex`（これまでと同じ）                                                                                                                                   |
+| セキュリティヘッダ | このリポジトリが出力したパス                                   | `X-Content-Type-Options`・`Referrer-Policy`・`Permissions-Policy`・`Cross-Origin-Opener-Policy`                                                                                           |
+| CSP                | トップのページ                                                 | `default-src 'none'; script-src 'none'`、`style-src` はインラインの `<style>` の sha256、`img-src 'self'`・`connect-src 'self'`、`base-uri`・`form-action`・`frame-ancestors` は `'none'` |
+| キャッシュ         | `/_astro/`                                                     | `public, max-age=31536000, immutable`（ファイル名に中身のハッシュが入るため）                                                                                                             |
+|                    | トップのページ                                                 | `no-cache`（毎回確かめる。中身が変われば取り直す）                                                                                                                                        |
+| HSTS               | Host が `archive.setagayafes.org` のとき                       | `max-age=31536000`。`includeSubDomains` は付けない                                                                                                                                        |
+| 圧縮               | このリポジトリが出力したパス                                   | `mod_deflate` があるときだけ。さくらでは効かないことを実測済みなので、無くても困らない                                                                                                    |
 
 ### 範囲を `<If>` で限る理由
 
@@ -42,6 +42,14 @@ archive ホストの公開フォルダ（さくらの `~/www/archive`）の直�
   - 上位の `~/www/.htaccess` は、このリポジトリの外にあり、他のホストにも効く。書き換えない
 - `<FilesMatch>` では限れない。`index.html` は過去回のフォルダにもある
 - `/` を開いたとき、Apache は `DirectoryIndex` で `/index.html` へ内部で振り替える。正規表現は `/` と `/index.html` の両方に合わせてある
+
+### `connect-src 'self'` を入れる理由
+
+- Lighthouse は robots.txt を、測っているページの中から取得する。`connect-src` が無いと `default-src 'none'` が効いて取得が CSP で禁じられ、SEO の監査「robots.txt is not valid」が0点になる
+  - 2026-11-08 の本番の実測で SEO が 92 だった。手元で同じ `dist/` に `connect-src 'self'` を足すと 100 になった（Issue #1）
+- `connect-src` が縛るのは、スクリプトからの通信（fetch・XHR・WebSocket など）と `<a ping>` だけ。`script-src 'none'` でスクリプトは動かないので、許しても使うものは無い。許すのも自分のホストだけ
+- 本物のクローラーは robots.txt を直接取りに行くので、`connect-src` が無くても検索には影響しない。直したのは、完了条件の「Lighthouse 全カテゴリ 100」を満たすため
+- `e2e/headers.e2e.mjs` が、Lighthouse と同じ方法（DevTools Protocol の `Network.loadNetworkResource`）で、CSP を掛けたページから robots.txt を取得できることを確かめる
 
 ### CSP をハッシュで書く理由
 

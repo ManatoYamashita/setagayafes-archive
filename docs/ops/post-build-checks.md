@@ -64,3 +64,20 @@
 
 - 依存（`lighthouse` パッケージ）は足さない（2026-11-07 のオーナーの決定）。Chrome の DevTools で測る
 - 手元（`pnpm preview`）と本番の両方で、モバイルの4カテゴリを測り、結果を Issue に記録する。手順は[配置の手順書](./deploy.md)の「8. 記録する」
+- **手元は、本番と同じ CSP を付けて測る。** `pnpm preview` は `.htaccess` のヘッダを付けないので、CSP が原因の減点が出ない
+- DevTools の代わりに、`npx` で一度だけ取得して走らせてもよい（`package.json` は変えない）。2026-11-08 にオーナーが許可した
+
+```sh
+# リポジトリの外で。版は公開から2週間以上たったものにする（2026-11-08 は 13.5.0）
+npx -y lighthouse@13.5.0 https://archive.setagayafes.org/ \
+  --only-categories=performance,accessibility,best-practices,seo \
+  --chrome-flags="--headless=new" --output=json --output-path=ja.json
+```
+
+- PageSpeed Insights の API は、鍵なしの共有の枠を使い切られていることがある（2026-11-08 は 429）
+
+### 2026-11-08 の本番の実測と、SEO 92 の原因
+
+- 本番の `/`・`/en/` は、性能・アクセシビリティ・おすすめの方法が 100、SEO が 92 だった
+- SEO の減点は `robots-txt` の監査（0点、「CSP violation」）。Lighthouse は robots.txt を、測っているページの中から取得する。CSP に `connect-src` が無いと `default-src 'none'` が効き、取得が禁じられる
+- CSP に `connect-src 'self'` を足した（理由は [htaccess.md](../design/htaccess.md)）。`e2e/headers.e2e.mjs` と `pnpm check:htaccess`・`pnpm check:production` が、この退行を検査する
