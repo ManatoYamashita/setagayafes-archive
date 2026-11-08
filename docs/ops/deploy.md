@@ -29,6 +29,19 @@
 - サーバーの2つのスクリプトは、zip の中に、過去回のフォルダ名・`errorpage`・`todoroki`・`tfa`・`img`・`css`・`js` や、`/` を含む変な名前があれば、何もせずに止まる
 - 控えは `~/archive-docs/deploy/<日時>/`（公開フォルダの外。700）に残る。消さない
 
+## 接続先
+
+手順のコマンドは、SSH の接続先を別名 `setagayafes-archive` で書く。別名は各自の `~/.ssh/config` に置く。
+
+```
+Host setagayafes-archive
+  HostName <サーバー名>
+  User <アカウント名>
+```
+
+- `<サーバー名>`・`<アカウント名>` は、さくらのコントロールパネルのサーバー情報で確かめる。**このリポジトリには書かない**（公開されている。規約8節）。オーナーの手元の控えに置く
+- `pnpm guard` は、リポジトリに `アカウント名@…sakura.ne.jp` の形の接続先があると落ちる
+
 ## 手順
 
 ### 1. 手元で作る
@@ -52,17 +65,20 @@ Issue #1 に、配置する zip の名前・コミット・sha256 と、作業�
 
 ```sh
 ZIP=archive-top-<コミット>.zip
-ssh setagayafes@www3019.sakura.ne.jp 'mkdir -p archive-docs/deploy/inbox && chmod 700 archive-docs/deploy'
-scp release/$ZIP release/$ZIP.sha256 setagayafes@www3019.sakura.ne.jp:archive-docs/deploy/inbox/
+ssh setagayafes-archive 'mkdir -p archive-docs/deploy/inbox && chmod 700 archive-docs/deploy'
+scp release/$ZIP release/$ZIP.sha256 setagayafes-archive:archive-docs/deploy/inbox/
 ```
 
 ### 4. 展開する
 
 ```sh
-ssh setagayafes@www3019.sakura.ne.jp "sh -s -- $ZIP" < scripts/ops/deploy/remote-deploy.sh
+ssh setagayafes-archive "sh -s -- $ZIP" < scripts/ops/deploy/remote-deploy.sh
 ```
 
 - 出力の最後に、控えの場所（`~/archive-docs/deploy/<日時>`）と戻し方が出る。`<日時>` を控えておく
+- 同じ `<日時>` の控えが既にあれば、何もせずに止まる。元の控えを上書きしないため
+- サーバーに既にあるフォルダは、過去の配置が作ったもの（控えの `entries.txt` にあるもの）でなければ入れ替えずに止まる（`.well-known` など、このリポジトリの外のフォルダを守るため）
+- **展開の途中で落ちたら、流し直す前に、その `<日時>` の控えで先に戻す**（下の「戻し方」）。そのまま流し直すと、中途半端な状態が新しい控えとして記録され、元のトップに戻れなくなる
 
 ### 5. すぐ確かめる
 
@@ -80,9 +96,9 @@ pnpm check:production
 
 ```sh
 # 404 の本文が、静的な 404.html と同じこと
-curl -s https://archive.setagayafes.org/no-such-page/ | cmp - <(ssh setagayafes@www3019.sakura.ne.jp 'cat www/archive/errorpage/404.html') && echo same
+curl -s https://archive.setagayafes.org/no-such-page/ | cmp - <(ssh setagayafes-archive 'cat www/archive/errorpage/404.html') && echo same
 
-ssh setagayafes@www3019.sakura.ne.jp 'sh -s' <<'EOF'
+ssh setagayafes-archive 'sh -s' <<'EOF'
 set -eu
 D=~/archive-docs/quarantine-20261106/errorpage-php
 mkdir -p "$D"
@@ -99,11 +115,16 @@ EOF
 旧トップの `css/`・`js/`・`img/` を、公開フォルダの外へ移す。新しいトップは使っていない。
 
 ```sh
-ssh setagayafes@www3019.sakura.ne.jp 'sh -s' <<'EOF'
+ssh setagayafes-archive 'sh -s' <<'EOF'
 set -eu
 cd ~/www/archive
-# 旧トップ以外から参照されていないこと（2026-11-07 には、絶対パスの参照は旧トップだけだった）
-grep -rIlE --exclude-dir=_astro '(href|src)=["'"'"']?(\.\./|/|https?://archive\.setagayafes\.org/)(img|css|js)/' . | grep -v '^\./index\.html$' || echo "no other references"
+# 旧トップ以外から参照されていないこと。HTML の href・src と、CSS の url() を見る
+# （2026-11-07 には、絶対パスの参照は旧トップだけだった）。見つかったら、何も移さずに止まる
+# BSD の grep は ./ を付けずに出すので、旧トップの index.html は両方の形で除く
+others=$(grep -rIlE --exclude-dir=_astro '((href|src)=["'"'"']?|url\([[:space:]]*["'"'"']?)(\.\./|/|https?://archive\.setagayafes\.org/)(img|css|js)/' . | grep -vE '^(\./)?index\.html$' || true)
+if [ -n "$others" ]; then
+  echo "STOP: css/ js/ img/ are referenced from:"; echo "$others"; exit 1
+fi
 D=~/archive-docs/deploy/old-top
 mkdir -p "$D"
 mv css js img "$D/"
@@ -111,7 +132,7 @@ EOF
 curl -sI https://archive.setagayafes.org/img/97th.png | head -1   # 404
 ```
 
-- grep に旧トップ以外のファイルが出たら、退避を止めてオーナーに相談する
+- 旧トップ以外から参照されていれば、`STOP:` と参照元を出して、何も移さずに止まる。そのときはオーナーに相談する
 - `/img/87th.JPG` は、`pnpm capture` が第87回の写真の取り元として指している（`scripts/lib/capture-targets.mjs`）。退避した後は取れない。写真の原画像は `src/assets/captures/87th.jpg` にあり、撮り直す必要は無い（全回を撮るときも、保存済みの写真は取り直さない）。取り直したいときは、`~/archive-docs/deploy/old-top/img/87th.JPG` から戻す
 
 ### 8. 記録する
@@ -125,7 +146,7 @@ Issue #1 に次を書く。
 ## 戻し方
 
 ```sh
-ssh setagayafes@www3019.sakura.ne.jp 'sh -s -- <日時>' < scripts/ops/deploy/remote-rollback.sh
+ssh setagayafes-archive 'sh -s -- <日時>' < scripts/ops/deploy/remote-rollback.sh
 pnpm check:production   # 戻した後は、旧トップに戻っているので「新しいトップが無い」で止まる
 ```
 
