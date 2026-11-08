@@ -57,7 +57,7 @@ export function styleHashesOf(html) {
 
 /**
  * The Content-Security-Policy of the top pages: nothing is allowed except the
- * page's own images and its inline styles.
+ * page's own images, its inline styles and requests to its own host.
  *
  * @param {readonly string[]} styleHashes From styleHashesOf().
  * @returns {string}
@@ -69,6 +69,10 @@ export function pageCsp(styleHashes) {
     "script-src 'none'",
     `style-src ${styles.length > 0 ? styles.join(" ") : "'none'"}`,
     "img-src 'self'",
+    // Lets tools fetch this host's own files from inside the page: Lighthouse
+    // reads robots.txt that way and fails its SEO audit without it. No script
+    // can run (script-src 'none'), so nothing else uses it.
+    "connect-src 'self'",
     "base-uri 'none'",
     "form-action 'none'",
     "frame-ancestors 'none'",

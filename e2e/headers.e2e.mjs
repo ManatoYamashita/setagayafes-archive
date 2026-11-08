@@ -79,6 +79,30 @@ describe("content security policy of the top pages", () => {
     });
   }
 
+  // Lighthouse fetches robots.txt from inside the page with this DevTools
+  // Protocol command. Under the page's CSP it needs connect-src 'self';
+  // without it the SEO audit "robots.txt is not valid" fails with a CSP
+  // violation (measured on production, 2026-11-08: SEO 92).
+  for (const { path } of PAGES) {
+    test(`${path} lets Lighthouse fetch robots.txt from inside the page`, async () => {
+      const page = await browser.newPage();
+      try {
+        await page.goto(`${withCsp.url}${path}`, { waitUntil: "load" });
+        const cdp = await page.context().newCDPSession(page);
+        const { frameTree } = await cdp.send("Page.getFrameTree");
+        const { resource } = await cdp.send("Network.loadNetworkResource", {
+          frameId: frameTree.frame.id,
+          url: `${withCsp.url}/robots.txt`,
+          options: { disableCache: true, includeCredentials: false },
+        });
+        assert.equal(resource.success, true);
+        assert.equal(resource.httpStatusCode, 200);
+      } finally {
+        await page.close();
+      }
+    });
+  }
+
   test("a changed style is blocked (the check works)", async () => {
     const strict = await serve("dist", {
       headers: () => ({ "content-security-policy": pageCsp(["'sha256-AAAA'"]) }),

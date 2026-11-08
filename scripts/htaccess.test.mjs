@@ -48,7 +48,7 @@ describe("pageCsp", () => {
     assert.equal(
       pageCsp(["'sha256-b'", "'sha256-a'", "'sha256-b'"]),
       "default-src 'none'; script-src 'none'; style-src 'sha256-a' 'sha256-b'; img-src 'self'; " +
-        "base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        "connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
     );
   });
 
