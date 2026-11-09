@@ -190,3 +190,7 @@ pnpm check:production   # 戻した後は、旧トップに戻っているので
 - サーバーは FreeBSD で、ログインシェルは csh。スクリプトは `ssh … 'sh -s' < スクリプト` で流す（`<( )` は使えない）
 - さくらは圧縮が効かない。`pnpm test:e2e` で測った転送量が、そのまま本番の値になる
 - 同じアカウントに、他のホスト（about・blog・apply など）が同居している。`~/www/archive` の外には書き込まない
+- 数分かかる処理（公開フォルダ全体の `grep`・`find` など）は、接続が切れても止まらない形で流す
+  - 読み取りだけの処理: `ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=20 setagayafes-archive …` で接続を保つ
+  - 書き込む処理（ファイルの移動など）: スクリプトを公開フォルダの外（`~/archive-docs/…`）に置き、`nohup sh <スクリプト> > <ログ> 2>&1 &` で流す。終わったらログを読む
+  - 理由: 2026-11-09、公開フォルダ全体の `grep`（約10分）の途中で SSH が切れ（`Operation timed out`）、結果が出なかった。書き込みの途中で切れると、一部だけ移った状態が残る

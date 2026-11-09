@@ -10,6 +10,21 @@
   - サイトの移し替え（静的化を含む）は、このリポジトリの外の作業。動的なサイトなら [wp-to-static.md](./wp-to-static.md) の手順で静的にしてから置く
   - フォルダ名は、序数の英語表記（`98th`）。データの `pathOf()` がこの名前を導く
 - `https://archive.setagayafes.org/98th/` がブラウザで開けること
+- 新しい回のフォルダに、編集ソフトやOSの副産物と、公開してはいけないファイル（[conventions.md](../rules/conventions.md) の2節）が無いこと
+
+  ```sh
+  ssh setagayafes-archive 'sh -s' <<'EOF'
+  cd ~/www/archive/98th || exit 1
+  # 何も出なければよい（読み取りだけ）
+  find . \( -type d \( -name '_vti_*' -o -name .git \) -prune -print \) -o -type f \( \
+    -iname '*.bak' -o -iname 'Thumbs.db' -o -iname '.DS_Store' -o -iname 'desktop.ini' \
+    -o -iname '*.sql*' -o -iname '*.log' -o -iname '*.zip' -o -iname '*.php' -o -iname '*.php.*' -o -iname '.env*' \) -print
+  EOF
+  ```
+
+  - 出たものは、サイトの本体か（ページから参照されているか）を確かめてから、公開フォルダの外（`~/archive-docs/…`）へ、相対パスを保って移す
+  - WordPress の書き出しには、テーマやプラグインの正規の `.zip`・`sitemap.xml.gz` が含まれることがある。中身を見て判断する
+  - 理由: 2026-11-09、過去回の公開フォルダから、外から取得できる `*.bak`・`Thumbs.db`・`.DS_Store`・`desktop.ini`・FrontPage の管理情報（`_vti_cnf/`・`_vti_pvt/`）を445ファイル退避した。`Thumbs.db` にはサイトから消した画像の縮小版が残りうる。FrontPage の管理情報には、制作者の PC のアカウント名が残っていた
 
 **順番に注意:** サイトのフォルダが置かれる前に `pnpm capture 98` や `pnpm check:links` を流すと、その回が 404 で落ちる。
 
