@@ -77,6 +77,10 @@ describe("forbiddenFileReason", () => {
   ]) {
     test(`allows ${path}`, () => assert.equal(forbiddenFileReason(path), null));
   }
+
+  test("reports Thumbs.db as Windows metadata, not as a database", () => {
+    assert.equal(forbiddenFileReason("img/Thumbs.db"), "Windows folder metadata");
+  });
 });
 
 describe("findClientCodeInSource", () => {

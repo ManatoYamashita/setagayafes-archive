@@ -12,6 +12,8 @@ import { attribute, decodeCharacterReferences, startTags } from "./html.mjs";
  * been found in the public folder of this host before.
  */
 const FORBIDDEN_FILE_PATTERNS = [
+  // Before the ".db" rule, so that Thumbs.db is reported for what it is.
+  { pattern: /(^|\/)(Thumbs\.db|desktop\.ini)$/i, reason: "Windows folder metadata" },
   { pattern: /\.sql(\.[a-z0-9]+)?$/i, reason: "database dump" },
   { pattern: /\.(dump|db|sqlite3?)$/i, reason: "database file" },
   { pattern: /\.(bak|backup|old|orig|save|swp|tmp)$/i, reason: "backup or temporary file" },
@@ -25,7 +27,6 @@ const FORBIDDEN_FILE_PATTERNS = [
   { pattern: /\.(php|phtml|cgi|pl|py|sh|shtml?|stm|asp|aspx|jsp)$/i, reason: "server-side code" },
   { pattern: /(^|\/)\.env(\..*)?$/i, reason: "environment file" },
   { pattern: /(^|\/)\.DS_Store$/, reason: "macOS metadata" },
-  { pattern: /(^|\/)(Thumbs\.db|desktop\.ini)$/i, reason: "Windows folder metadata" },
   // FrontPage keeps author and PC account names in _vti_cnf/ and _vti_pvt/.
   { pattern: /(^|\/)_vti_[a-z]+(\/|$)/i, reason: "FrontPage metadata" },
   { pattern: /(^|\/)\.git(\/|$)/, reason: "git metadata" },
