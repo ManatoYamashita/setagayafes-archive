@@ -52,6 +52,12 @@ describe("forbiddenFileReason", () => {
     "ssl_request_log",
     "include.shtml",
     "logo.svgz",
+    // Editor and OS leftovers found in the past festival folders (2026-11-09).
+    "img/Thumbs.db",
+    "desktop.ini",
+    "img/Desktop.ini",
+    "_vti_cnf/index.html",
+    "86th/_vti_pvt/service.cnf",
   ]) {
     test(`rejects ${path}`, () => assert.notEqual(forbiddenFileReason(path), null));
   }
@@ -67,6 +73,7 @@ describe("forbiddenFileReason", () => {
     "styles.css",
     "blog/index.html",
     "img/catalog.avif",
+    "img/my_vti_logo.png",
   ]) {
     test(`allows ${path}`, () => assert.equal(forbiddenFileReason(path), null));
   }

@@ -50,7 +50,9 @@ HTML は文字列の一致ではなく、`scripts/lib/html.mjs` の tokenizer �
 - 表計算のファイル（`*.xls`・`*.xlsx`・`*.csv`）。個人情報を含むことがあるため
 - サーバー側のコード（`*.php`・`*.cgi`・SSI の `*.shtml` など）と `.env`
 - 圧縮した SVG（`*.svgz`）。中身のスクリプトを検査できないため
-- `.DS_Store`・`.git/`
+- OS と編集ソフトの副産物: `.DS_Store`・`Thumbs.db`・`desktop.ini`・FrontPage の管理フォルダ（`_vti_cnf/`・`_vti_pvt/` など `_vti_*`）
+  - `Thumbs.db` には、サイトから消した画像の縮小版が残りうる。FrontPage の管理情報には、制作者の PC のアカウント名が残る
+- `.git/`
 
 **理由:** このホストの公開フォルダでは、過去に上記のようなファイルが公開状態で見つかっている
 （Issue #2 の経緯）。公開してはいけない控えは、サーバー上でも公開フォルダの外に置く。

@@ -16,7 +16,7 @@
 
 - **[conventions.md](./rules/conventions.md)**: このリポジトリで守る決まりと、その理由
   - JS は0（`client:*`・`<script>` は禁止）。HTTP ヘッダは新トップの範囲にだけ付ける
-  - 公開フォルダに、ダンプ・バックアップ・ログ・表計算のファイルを置かない
+  - 公開フォルダに、ダンプ・バックアップ・ログ・表計算のファイルと、OS・編集ソフトの副産物（`Thumbs.db`・`desktop.ini`・`_vti_*` など）を置かない
 - **[labels.md](./rules/labels.md)**: PR のラベルと、パスから自動で付ける仕組み
   - `docs`・`tooling` は自動。`feature`・`fix`・`server`・`security` は手で付ける
 

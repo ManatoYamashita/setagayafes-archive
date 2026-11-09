@@ -25,6 +25,9 @@ const FORBIDDEN_FILE_PATTERNS = [
   { pattern: /\.(php|phtml|cgi|pl|py|sh|shtml?|stm|asp|aspx|jsp)$/i, reason: "server-side code" },
   { pattern: /(^|\/)\.env(\..*)?$/i, reason: "environment file" },
   { pattern: /(^|\/)\.DS_Store$/, reason: "macOS metadata" },
+  { pattern: /(^|\/)(Thumbs\.db|desktop\.ini)$/i, reason: "Windows folder metadata" },
+  // FrontPage keeps author and PC account names in _vti_cnf/ and _vti_pvt/.
+  { pattern: /(^|\/)_vti_[a-z]+(\/|$)/i, reason: "FrontPage metadata" },
   { pattern: /(^|\/)\.git(\/|$)/, reason: "git metadata" },
 ];
 
