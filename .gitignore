@@ -9,6 +9,8 @@ release/
 .env
 .env.*
 .DS_Store
+Thumbs.db
+desktop.ini
 
 # Reference material that must never be committed.
 # The reference design is a third-party template; keep it here locally only.

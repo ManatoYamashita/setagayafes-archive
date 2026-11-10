@@ -16,7 +16,7 @@
 
 - **[conventions.md](./rules/conventions.md)**: このリポジトリで守る決まりと、その理由
   - JS は0（`client:*`・`<script>` は禁止）。HTTP ヘッダは新トップの範囲にだけ付ける
-  - 公開フォルダに、ダンプ・バックアップ・ログ・表計算のファイルを置かない
+  - 公開フォルダに、ダンプ・バックアップ・ログ・表計算のファイルと、OS・編集ソフトの副産物（`Thumbs.db`・`desktop.ini`・`_vti_*` など）を置かない
 - **[labels.md](./rules/labels.md)**: PR のラベルと、パスから自動で付ける仕組み
   - `docs`・`tooling` は自動。`feature`・`fix`・`server`・`security` は手で付ける
 
@@ -52,6 +52,9 @@
   - 撮影の条件、回ごとの例外、写真のメタデータの除去、撮影時点のサイト側の壊れ
 
 - **[static-archive-checks.md](./ops/static-archive-checks.md)**: 静的化後に、終了した操作と旧ドメインの画像参照を点検する
+
+- **[repair-past-sites.md](./ops/repair-past-sites.md)**: 過去回のサイトの壊れ（旧ドメインへの参照・サイトの外へ出る相対パス・CSS 変数・欠けたファイル・文字コード）を直す手順と道具（Issue #3）
+  - 道具は手元で動かし、変えたファイルだけを、控えを取ってから送る。送る前後に sha256 で確かめる
 
 - **[wp-to-static.md](./ops/wp-to-static.md)**: 動き続けている旧 WordPress・自作 PHP のサイトを静的 HTML に置き換え、PHP と DB を撤去する手順
   - 道具は `scripts/ops/wp2static/`（サーバーで動かす）と `scripts/ops/compare-pages.mjs`（置き換えの前後の撮影と比較）
