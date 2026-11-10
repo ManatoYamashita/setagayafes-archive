@@ -36,7 +36,7 @@ const notes = [festival.statusReason?.[lang], external?.label[lang]].filter(Bool
 
 <li class="card" data-era={era}>
   <article>
-    <Capture round={round} widths={[320, 480, 640, 800, 960, 1280]} sizes={sizes} />
+    <Capture round={round} widths={[320, 480, 640, 800, 960, 1080, 1280]} sizes={sizes} />
     <div class="body">
       <p class="meta">
         <span class="pill" aria-hidden="true">
@@ -150,9 +150,11 @@ const notes = [festival.statusReason?.[lang], external?.label[lang]].filter(Bool
     border-radius: 0.375rem;
   }
 
-  .card:hover .title a {
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 0.2em;
+  @media (hover: hover) {
+    .card:hover .title a {
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 0.2em;
+    }
   }
 </style>

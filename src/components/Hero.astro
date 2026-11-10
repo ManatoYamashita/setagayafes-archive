@@ -311,8 +311,10 @@ const hreflang = lang === "ja" ? undefined : "ja";
       transition: translate 0.2s ease-out;
     }
 
-    &:hover svg {
-      translate: 0.25rem 0;
+    @media (hover: hover) {
+      &:hover svg {
+        translate: 0.25rem 0;
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -327,7 +329,10 @@ const hreflang = lang === "ja" ? undefined : "ja";
     padding-block-end: 0.125rem;
   }
 
-  /* Five thin bars with the round under each; the picked one turns black. */
+  /*
+   * Five bars with the round under each. Every bar shows a muted hairline, so
+   * the picker reads as a control; the picked one turns into a thick black bar.
+   */
   .picker {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -352,12 +357,14 @@ const hreflang = lang === "ja" ? undefined : "ja";
 
     &::before {
       content: "";
-      block-size: 2px;
-      background-color: var(--color-wash);
+      block-size: 3px;
+      background: linear-gradient(var(--color-muted) 0 0) bottom / 100% 1px no-repeat;
     }
 
-    &:hover::before {
-      background-color: var(--color-muted);
+    @media (hover: hover) {
+      &:hover::before {
+        background-color: var(--color-muted);
+      }
     }
 
     &:has(:checked) {
@@ -366,7 +373,19 @@ const hreflang = lang === "ja" ? undefined : "ja";
     }
 
     &:has(:checked)::before {
-      background-color: var(--color-ink);
+      background: var(--color-ink);
+    }
+
+    /* Forced colors drop the bars' colors; mark the picked festival with the system's. */
+    @media (forced-colors: active) {
+      &::before {
+        forced-color-adjust: none;
+        background: linear-gradient(CanvasText 0 0) bottom / 100% 1px no-repeat;
+      }
+
+      &:has(:checked)::before {
+        background: SelectedItem;
+      }
     }
 
     &:has(:focus-visible) {

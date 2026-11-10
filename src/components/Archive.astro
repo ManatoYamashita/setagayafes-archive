@@ -96,14 +96,19 @@ const SIZES =
 
     /*
      * The wash band behind the grid: from the screen's left edge to about
-     * four fifths of the page, starting at the heading's middle.
+     * four fifths of the page, starting at the heading's middle. On phones
+     * it runs edge to edge, so it never cuts through the single column.
      */
     &::before {
       content: "";
       position: absolute;
       z-index: -1;
       inset-block: 5.5rem 3rem;
-      inset-inline: 0 18%;
+      inset-inline: 0;
+
+      @media (width >= 40rem) {
+        inset-inline-end: 18%;
+      }
       background-color: var(--color-wash);
     }
   }
@@ -173,8 +178,10 @@ const SIZES =
     font-weight: 700;
     cursor: pointer;
 
-    &:hover {
-      background-color: var(--color-wash);
+    @media (hover: hover) {
+      &:hover {
+        background-color: var(--color-wash);
+      }
     }
 
     &:has(:checked) {
@@ -185,6 +192,16 @@ const SIZES =
     &:has(:focus-visible) {
       outline: 2px solid var(--color-ink);
       outline-offset: 3px;
+    }
+
+    /* Forced colors drop the black fill; mark the picked era with the system's colors. */
+    @media (forced-colors: active) {
+      &:has(:checked) {
+        forced-color-adjust: none;
+        border-color: SelectedItem;
+        background-color: SelectedItem;
+        color: SelectedItemText;
+      }
     }
   }
 

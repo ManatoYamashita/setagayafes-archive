@@ -101,6 +101,7 @@ const [official, ...others] = SITE_LINKS.filter((link) => !("icon" in link));
   }
 
   .note {
+    word-break: auto-phrase;
     max-inline-size: 36rem;
     font-size: 0.75rem;
     line-height: 1.8;
@@ -146,8 +147,10 @@ const [official, ...others] = SITE_LINKS.filter((link) => !("icon" in link));
     block-size: 2.75rem;
     border-radius: 999px;
 
-    &:hover {
-      background-color: var(--color-wash);
+    @media (hover: hover) {
+      &:hover {
+        background-color: var(--color-wash);
+      }
     }
   }
 

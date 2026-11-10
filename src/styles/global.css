@@ -112,9 +112,11 @@
     text-decoration: none;
     white-space: nowrap;
 
-    &:hover {
-      background-color: var(--color-ink);
-      color: var(--color-paper);
+    @media (hover: hover) {
+      &:hover {
+        background-color: var(--color-ink);
+        color: var(--color-paper);
+      }
     }
   }
 

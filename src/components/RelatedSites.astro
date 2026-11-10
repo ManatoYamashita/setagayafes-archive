@@ -62,7 +62,7 @@ const SIZES = "auto, (width >= 48rem) min(24rem, calc((100vw - 5rem) / 3)), calc
                 {...CAPTURE_IMAGE_PROPS}
                 width={1280}
                 height={800}
-                widths={[400, 640, 960, 1280]}
+                widths={[400, 640, 960, 1080, 1280]}
                 sizes={SIZES}
                 loading="lazy"
                 class="photo"
@@ -191,8 +191,10 @@ const SIZES = "auto, (width >= 48rem) min(24rem, calc((100vw - 5rem) / 3)), calc
     transition: scale 0.4s ease-out;
   }
 
-  a.tile:hover :global(.photo) {
-    scale: 1.04;
+  @media (hover: hover) {
+    a.tile:hover :global(.photo) {
+      scale: 1.04;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -200,8 +202,10 @@ const SIZES = "auto, (width >= 48rem) min(24rem, calc((100vw - 5rem) / 3)), calc
       transition: none;
     }
 
-    a.tile:hover :global(.photo) {
-      scale: none;
+    @media (hover: hover) {
+      a.tile:hover :global(.photo) {
+        scale: none;
+      }
     }
   }
 
@@ -209,7 +213,11 @@ const SIZES = "auto, (width >= 48rem) min(24rem, calc((100vw - 5rem) / 3)), calc
     background-color: var(--color-muted);
   }
 
-  /* White text on a dark fade at the bottom, with a short bar under the name. */
+  /*
+   * White text on a dark fade at the bottom, with a short bar under the name.
+   * The fade stays dark behind the text on every photo: at least 6:1 measured
+   * on the rendered tiles at 320px and 1280px (Issue #30 review).
+   */
   .caption {
     z-index: 1;
     display: flex;
@@ -218,7 +226,12 @@ const SIZES = "auto, (width >= 48rem) min(24rem, calc((100vw - 5rem) / 3)), calc
     justify-content: end;
     gap: 0.25rem;
     padding: 1.25rem;
-    background-image: linear-gradient(to top, rgb(0 0 0 / 0.78), rgb(0 0 0 / 0.05) 70%);
+    background-image: linear-gradient(
+      to top,
+      rgb(0 0 0 / 0.85),
+      rgb(0 0 0 / 0.65) 40%,
+      rgb(0 0 0 / 0) 80%
+    );
   }
 
   .when {
@@ -226,6 +239,7 @@ const SIZES = "auto, (width >= 48rem) min(24rem, calc((100vw - 5rem) / 3)), calc
   }
 
   .name {
+    word-break: auto-phrase;
     font-size: 1.125rem;
     font-weight: 700;
     line-height: 1.4;

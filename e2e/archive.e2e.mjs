@@ -453,6 +453,23 @@ for (const lang of LANGS) {
       await close();
     });
 
+    test("keeps the picked era visible in forced colors", async () => {
+      const context = await browser.newContext({
+        viewport: { width: 1280, height: 900 },
+        forcedColors: "active",
+      });
+      const page = await context.newPage();
+      await page.goto(`${server.url}${t.path}`, { waitUntil: "load" });
+      const backgroundOf = (/** @type {string} */ id) =>
+        page
+          .locator(`label:has(#era-${id})`)
+          .evaluate(
+            (label) => label.ownerDocument.defaultView?.getComputedStyle(label).backgroundColor,
+          );
+      assert.notEqual(await backgroundOf("all"), await backgroundOf("musashi"));
+      await context.close();
+    });
+
     test("labels the group", async () => {
       const { page, close } = await open(t.path);
       const group = page.getByRole("group", { name: t.filterLegend });

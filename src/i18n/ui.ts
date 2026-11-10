@@ -41,9 +41,9 @@ interface Words {
   /**
    * The large Latin word of each section heading, and the short vertical label
    * beside it. The vertical labels are Japanese only; English leaves them empty.
+   * The hero's "Latest" has no label, as in the reference.
    */
   readonly latestWord: string;
-  readonly latestVertical: string;
   readonly archiveWord: string;
   readonly archiveVertical: string;
   readonly relatedWord: string;
@@ -53,14 +53,12 @@ interface Words {
   /** The hero's link to a festival's site: visible text, then hidden words naming the round. */
   readonly visitLabel: string;
   readonly visitTarget: (round: string) => string;
-  readonly archive: string;
   readonly archiveIntro: string;
   readonly filterLegend: string;
   readonly filterAll: string;
   readonly showing: (count: number) => string;
   /** Appended to dates that are inferred rather than stated by the site. */
   readonly estimated: string;
-  readonly relatedSites: string;
   /** Shown instead of a link while a related site is being prepared. */
   readonly comingSoon: string;
   readonly footerNote: string;
@@ -78,7 +76,7 @@ export const UI = {
     ogImageAlt: (round, festivalName) => `${round}${festivalName}の公式サイトのトップページ`,
     menu: "MENU",
     menuLabel: "世田谷祭の公式サイトとSNS",
-    footerMenuLabel: "世田谷祭の公式サイトとSNS（フッター）",
+    footerMenuLabel: "世田谷祭の公式サイトと言語の切り替え（フッター）",
     socialLabel: "世田谷祭のSNS",
     close: "閉じる",
     sectionsLabel: "ページ内の移動",
@@ -87,7 +85,6 @@ export const UI = {
     navRelated: "関連サイト",
     runBy: "運営",
     latestWord: "Latest",
-    latestVertical: "最新の回",
     archiveWord: "Archive",
     archiveVertical: "過去の回",
     relatedWord: "Related",
@@ -95,14 +92,12 @@ export const UI = {
     heroPicker: "表示する回",
     visitLabel: "サイトを見る",
     visitTarget: (round) => `（${round}）`,
-    archive: "アーカイブ",
     archiveIntro:
       "東京都市大学（旧 武蔵工業大学）の学園祭、世田谷祭の公式サイトを、各回の公開当時のまま残しています。",
     filterLegend: "時代で絞り込む",
     filterAll: "すべて",
     showing: (count) => `${count}件を表示中`,
     estimated: "（推定）",
-    relatedSites: "関連サイト",
     comingSoon: "公開準備中",
     footerNote:
       "各回のサイトは公開当時のまま保存しています。掲載している日程・連絡先・リンク先は、当時のものです。",
@@ -117,7 +112,7 @@ export const UI = {
       `The top page of the official site of the ${round} ${festivalName}`,
     menu: "MENU",
     menuLabel: "Setagaya Festival official site and social media",
-    footerMenuLabel: "Setagaya Festival official site and social media (footer)",
+    footerMenuLabel: "Setagaya Festival official sites and language (footer)",
     socialLabel: "Setagaya Festival on social media",
     close: "Close",
     sectionsLabel: "On this page",
@@ -126,7 +121,6 @@ export const UI = {
     navRelated: "Related sites",
     runBy: "Run by",
     latestWord: "Latest",
-    latestVertical: "",
     archiveWord: "Archive",
     archiveVertical: "",
     relatedWord: "Related",
@@ -134,14 +128,12 @@ export const UI = {
     heroPicker: "Festival to show",
     visitLabel: "Visit the site",
     visitTarget: (round) => ` of the ${round} festival`,
-    archive: "Archive",
     archiveIntro:
       "The official sites of the Setagaya Festival, the school festival of Tokyo City University (formerly Musashi Institute of Technology), each kept as it was published. The sites are in Japanese.",
     filterLegend: "Filter by era",
     filterAll: "All",
     showing: (count) => `Showing ${count} ${count === 1 ? "festival" : "festivals"}`,
     estimated: " (estimated)",
-    relatedSites: "Related sites",
     comingSoon: "Coming soon",
     footerNote:
       "Each festival’s site is kept as it was published. The dates, contacts and links on those sites are from that time.",

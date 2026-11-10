@@ -27,10 +27,10 @@
 
 ### 画面（design/）
 
-- **[screen.md](./design/screen.md)**: トップの部品、JS を使わない MENU・絞り込み・グリッドの作り方、英語版、写真の扱い、実測
+- **[screen.md](./design/screen.md)**: トップの部品、参考画像からの置き換え、JS を使わない MENU・ヒーローの切り替え・絞り込み、英語版、写真の扱い、実測
   - 画面の高さが足りないときは MENU の内側をスクロールし、「閉じる」まで操作できるようにする
-  - 絞り込みは radio＋`:has()`、グリッドの型は `:nth-child(An+B of S)` で絞り込みごとに数え直す
-  - カードの見た目と Tab の順をそろえ、画像候補は絞り込み後の表示幅から選ぶ
+  - ヒーローは最新5回を radio＋`:has()` で手動で切り替える。隠れた回の写真は取得されない
+  - 一覧は全回を均等な3列に並べ、時代の絞り込みは radio＋`:has()`
   - `/en/` は同じ部品に `lang` を渡す。文言は `src/i18n/ui.ts`。テーマは原文を題名に残し、英訳を添える
 - **[htaccess.md](./design/htaccess.md)**: archive 直下の `.htaccess`（ビルドで生成）。ヘッダを新トップの範囲にだけ付ける書き方、noindex の除外、CSP、HSTS
   - http→https はコントロールパネルの 302 のまま、HSTS で補う（パネルは 302 しか返せない。`.htaccess` の 301 はループの危険があり、見送った）
@@ -47,7 +47,7 @@
   - 新しい回のフォルダがサーバーに置かれてから始める（先に流すと撮影とリンクの検査が 404 で落ちる）
   - 始める前に、新しい回のフォルダに `*.bak`・`Thumbs.db`・`.DS_Store`・`desktop.ini`・`_vti_*` などが無いことを確かめる
 
-- **[capture.md](./ops/capture.md)**: サムネイルの撮影（`pnpm capture`）と、AVIF・OGP 画像の生成
+- **[capture.md](./ops/capture.md)**: サムネイルの撮影（`pnpm capture`。関連サイトは `pnpm capture related`）と、AVIF・OGP 画像の生成
   - 原画像だけをコミットし、AVIF と OGP の JPEG はビルド時に作る
   - 撮影の条件、回ごとの例外、写真のメタデータの除去、撮影時点のサイト側の壊れ
 
