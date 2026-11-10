@@ -15,21 +15,26 @@ interface Props {
   widths: number[];
   /** The `sizes` attribute: how wide the box is at each viewport width. */
   sizes: string;
-  /** The hero image is the LCP element; everything else loads lazily. */
-  priority?: boolean;
+  /**
+   * "high": the hero's first picture, the LCP element (eager, high priority).
+   * "low": a hero picture that stays hidden until it is picked (lazy, low priority).
+   * Omitted: lazy at the normal priority, for pictures below the fold.
+   */
+  priority?: "high" | "low";
   /** Plate colors: "light" for cards, "dark" for the hero. */
   tone?: "light" | "dark";
   class?: string;
 }
 
-const { round, widths, sizes, priority = false, tone = "light", class: className } = Astro.props;
+const { round, widths, sizes, priority, tone = "light", class: className } = Astro.props;
+const eager = priority === "high";
 
 const width = Math.max(...widths);
 // Lazy pictures let the browser use the box's laid-out width ("auto"), which
 // stays right when a filter makes a card wide. The given value is the fallback
 // for browsers without "auto". Eager pictures cannot use "auto" (the spec
 // ignores it there), so they keep the given value.
-const sizesAttribute = priority ? sizes : `auto, ${sizes}`;
+const sizesAttribute = eager ? sizes : `auto, ${sizes}`;
 const height = Math.round((width * 10) / 16);
 ---
 
@@ -43,8 +48,8 @@ const height = Math.round((width * 10) / 16);
       height={height}
       widths={widths}
       sizes={sizesAttribute}
-      loading={priority ? "eager" : "lazy"}
-      fetchpriority={priority ? "high" : undefined}
+      loading={eager ? "eager" : "lazy"}
+      fetchpriority={priority}
       class="size-full object-cover object-top"
     />
   ) : (

@@ -7,13 +7,18 @@ import { dirname, join } from "node:path";
 import { describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { FESTIVALS, pathOf } from "../src/data/festivals.ts";
+import { RELATED_SITES } from "../src/data/related-sites.ts";
 import {
   ARCHIVE_ORIGIN,
   CAPTURE_DIR,
   OVERRIDES,
+  RELATED_CAPTURE_DIR,
   allFestivalNumbers,
+  allRelatedIds,
   captureTarget,
+  parseCaptureArgs,
   parseFestivalArgs,
+  relatedTarget,
 } from "./lib/capture-targets.mjs";
 import { exifOrientation, metadataSegments, stripJpegMetadata } from "./lib/jpeg.mjs";
 
@@ -68,6 +73,7 @@ describe("captureTarget", () => {
       number: 81,
       slug: "81st",
       url: `${ARCHIVE_ORIGIN}/81st/`,
+      dir: CAPTURE_DIR,
       file: "81st.png",
       settleMs: 3000,
     });
@@ -83,6 +89,39 @@ describe("captureTarget", () => {
     const target = captureTarget(87);
     assert.equal(target.kind, "photo");
     assert.equal(target.file, "87th.jpg");
+  });
+});
+
+describe("related sites", () => {
+  test("a related site is captured from its folder into its own directory", () => {
+    const site = RELATED_SITES[0];
+    assert.deepEqual(relatedTarget(site.id), {
+      kind: "site",
+      slug: site.id,
+      url: `${ARCHIVE_ORIGIN}${site.path}`,
+      dir: RELATED_CAPTURE_DIR,
+      file: `${site.id}.png`,
+      settleMs: 3000,
+    });
+  });
+
+  test("refuses an id that is not in the data", () => {
+    assert.throws(() => relatedTarget("nope"), /not in src\/data\/related-sites\.ts/);
+  });
+
+  test("the command line selects festivals and related sites", () => {
+    const all = parseCaptureArgs([]);
+    assert.equal(all.length, allFestivalNumbers().length + allRelatedIds().length);
+    assert.deepEqual(
+      parseCaptureArgs(["related"]).map((target) => target.slug),
+      allRelatedIds(),
+    );
+    const [id] = allRelatedIds();
+    assert.deepEqual(
+      parseCaptureArgs(["94", id ?? ""]).map((target) => target.slug),
+      ["94th", id],
+    );
+    assert.throws(() => parseCaptureArgs(["../etc"]), /not a festival number/);
   });
 });
 
@@ -180,7 +219,6 @@ describe(`${CAPTURE_DIR}/`, async () => {
       .sort();
     assert.deepEqual([...files].sort(), expected);
   });
-
   for (const file of files.filter((name) => name.endsWith(".jpg"))) {
     test(`${file} carries no metadata`, async () => {
       const bytes = new Uint8Array(await readFile(join(dir, file)));
@@ -192,4 +230,15 @@ describe(`${CAPTURE_DIR}/`, async () => {
       assert.deepEqual(stripJpegMetadata(bytes), bytes);
     });
   }
+});
+
+describe(`${RELATED_CAPTURE_DIR}/`, async () => {
+  const files = await readdir(join(root, RELATED_CAPTURE_DIR));
+
+  test("has one original for every linked related site, and nothing else", () => {
+    const expected = allRelatedIds()
+      .map((id) => relatedTarget(id).file)
+      .sort();
+    assert.deepEqual([...files].sort(), expected);
+  });
 });

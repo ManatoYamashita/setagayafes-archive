@@ -37,6 +37,26 @@ export function hasCapture(number: number): boolean {
   return captures.has(number);
 }
 
+/** Related site id -> original image (src/assets/related/<id>.png). */
+const relatedFiles = import.meta.glob<ImageMetadata>("../assets/related/*.png", {
+  eager: true,
+  import: "default",
+});
+const relatedCaptures = new Map<string, ImageMetadata>();
+for (const [path, image] of Object.entries(relatedFiles)) {
+  const match = /\/([a-z0-9-]+)\.png$/.exec(path);
+  if (!match?.[1]) throw new Error(`unexpected file in src/assets/related/: ${path}`);
+  relatedCaptures.set(match[1], image);
+}
+
+/**
+ * A related site's capture, or undefined before `pnpm capture <id>` has been
+ * run for it (the band then shows a plain plate).
+ */
+export function relatedCaptureOf(id: string): ImageMetadata | undefined {
+  return relatedCaptures.get(id);
+}
+
 /** @throws When the festival has not been captured yet (run `pnpm capture <number>`). */
 export function captureOf(number: number): ImageMetadata {
   const image = captures.get(number);

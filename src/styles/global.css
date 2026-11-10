@@ -3,6 +3,10 @@
 /*
  * Design tokens. The palette is strictly monochrome and the type uses system
  * fonts only (no web fonts are downloaded). See docs/rules/conventions.md.
+ *
+ * --font-display sets the large Latin headings (Latest, Archive, Related) in a
+ * geometric sans that ships with the OS: Futura on Apple systems, Century
+ * Gothic on Windows with Office. Elsewhere it falls back to the system sans.
  */
 @theme {
   --color-*: initial;
@@ -18,6 +22,8 @@
   --font-sans:
     system-ui, -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI",
     "Meiryo", sans-serif;
+  --font-display:
+    Futura, "Futura PT", "Century Gothic", "Avenir Next", "Avenir", system-ui, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
@@ -52,7 +58,7 @@
 }
 
 @layer components {
-  /* The rounded outline label used for eras and statuses. */
+  /* The rounded outline label (e.g. "Coming soon"). */
   .tag {
     display: inline-flex;
     align-items: center;
@@ -64,15 +70,91 @@
     white-space: nowrap;
   }
 
-  /* The solid dot used as a section marker and in the MENU button. */
-  .dot {
-    display: inline-block;
-    flex: none;
-    inline-size: 0.625rem;
-    block-size: 0.625rem;
-    border: 1px solid currentColor;
+  /* The filled black label on a card: the festival's round. */
+  .pill {
+    display: inline-flex;
+    align-items: center;
     border-radius: 999px;
-    background-color: currentColor;
+    padding: 0.125rem 0.625rem;
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+
+  /* The grey "#…" chips on a card: era and status. */
+  .hashtag {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 0.25rem;
+    padding: 0.125rem 0.375rem;
+    /* Muted text on wash still reads at 6.4:1. */
+    background-color: var(--color-wash);
+    color: var(--color-muted);
+    font-size: 0.75rem;
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+
+  /* The outlined, rounded link button ("Official site" in the header and footer). */
+  .outline-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-block-size: 2.75rem;
+    border: 1px solid var(--color-ink);
+    border-radius: 999px;
+    padding-inline: 1.125rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+
+    &:hover {
+      background-color: var(--color-ink);
+      color: var(--color-paper);
+    }
+  }
+
+  /*
+   * A section heading after the reference layout: a large Latin word with,
+   * on the Japanese page, a short vertical label between two rules beside it.
+   */
+  .display-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+  }
+
+  /* In vertical-rl the flex row runs top to bottom: rule, label, rule. */
+  .display-heading .vertical {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    writing-mode: vertical-rl;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.12em;
+
+    &::before,
+    &::after {
+      content: "";
+      /* Physical sizes: short horizontal rules above and below the label. */
+      width: 0.875rem;
+      height: 1px;
+      background-color: currentColor;
+    }
+  }
+
+  .display-heading .word {
+    font-family: var(--font-display);
+    font-size: clamp(3rem, 2rem + 4vw, 5.25rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.01em;
   }
 
   /* Page width and the 16px side gutter on phones. */
