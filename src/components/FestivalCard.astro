@@ -76,9 +76,9 @@ const notes = [festival.statusReason?.[lang], external?.label[lang]].filter(Bool
     overflow: hidden;
     border-radius: 0.375rem;
     background-color: var(--color-paper);
-    /* A hairline keeps the white card apart from the white page beside the band. */
-    outline: 1px solid rgb(0 0 0 / 0.08);
-    outline-offset: -1px;
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.04),
+      0 6px 20px rgb(0 0 0 / 0.05);
   }
 
   .body {
