@@ -1,303 +1,164 @@
 ---
-// The top of the page after the reference layout: a large picture on the left,
-// the site name in a white panel cut into its top-right corner, and the
-// "Latest" heading with the picked festival's text on the right.
+// The top of the page, after a centered product-hero layout: a small badge
+// with the archive's span, the site's name in very large type over two lines
+// (the second muted), a lead, two buttons, and a large rounded frame with the
+// latest festival's screenshot.
 //
-// The five most recent festivals take turns in the same place. The picker is
-// five radio buttons and :has() — no JavaScript, and nothing moves on its own.
-// The festivals come from the data, so next year's entry joins without
-// touching this file.
-//
-// Only the first picture loads at once (it is the LCP element). The others are
-// lazy and low priority: while their slide is display:none they are not
-// fetched at all, so the first view costs one picture.
-import {
-  ERA_NAMES,
-  FESTIVALS,
-  STATUS_LABELS,
-  eraOf,
-  linkOf,
-  type Lang,
-} from "../data/festivals.ts";
-import { HOME_PATHS, UI, headingOf, roundLabel } from "../i18n/ui.ts";
-import { formatDateRange } from "../lib/format.ts";
+// The rounds, years and count come from the data, so next year's entry
+// updates the badge, the lead and the picture without touching this file.
+import { FESTIVALS, latestFestival, linkOf, yearOf, type Lang } from "../data/festivals.ts";
+import { UI, roundLabel } from "../i18n/ui.ts";
 import Capture from "./Capture.astro";
 
 interface Props {
   lang: Lang;
 }
 
-/** How many festivals the hero offers. The CSS below spells out one rule per slide. */
-const SLIDE_COUNT = 5;
-
 const { lang } = Astro.props;
 const ui = UI[lang];
-const slides = FESTIVALS.toSorted((a, b) => b.round - a.round)
-  .slice(0, SLIDE_COUNT)
-  .map((festival, index) => ({
-    festival,
-    number: index + 1,
-    label: roundLabel(festival.round, lang),
-    heading: headingOf(festival, lang),
-    status: STATUS_LABELS[festival.status],
-    href: linkOf(festival),
-  }));
+const latest = latestFestival();
+const firstRound = Math.min(...FESTIVALS.map((festival) => festival.round));
+const span = {
+  first: { round: firstRound, year: yearOf(firstRound) },
+  last: { round: latest.round, year: yearOf(latest.round) },
+  count: FESTIVALS.length,
+};
+const label = roundLabel(latest.round, lang);
+const href = linkOf(latest);
+const [titleLead, titleRest] = ui.heroTitle;
 // The festival sites are in Japanese; say so on links from the English page.
 const hreflang = lang === "ja" ? undefined : "ja";
 ---
 
-<div class="page top">
-  <h1 class="brand">
-    <a href={HOME_PATHS[lang]}>{ui.siteName}</a>
+<section id="latest" class="page hero" aria-labelledby="hero-title">
+  <p class="badge">{ui.heroBadge(span)}</p>
+
+  <h1 id="hero-title" class="title">
+    <span class="line">
+      {titleLead.map((phrase, index) => (
+        <>
+          {index > 0 && <wbr />}
+          {phrase}
+        </>
+      ))}
+    </span>
+    <span class="line rest">{titleRest}</span>
   </h1>
 
-  <section id="latest" class="hero" aria-labelledby="latest-title">
-    <h2 id="latest-title" class="heading">
-      <span class="word" lang={lang === "en" ? undefined : "en"}>
-        {ui.latestWord}
-      </span>
-    </h2>
+  <p class="lead">{ui.heroLead(span)}</p>
 
-    {slides.map(({ festival, number, label, heading, status, href }) => (
-      <div class="slide" data-slide={number}>
-        <a class="picture" href={href} hreflang={hreflang} tabindex="-1" aria-hidden="true">
-          <Capture
-            round={festival.round}
-            tone="dark"
-            priority={number === 1 ? "high" : "low"}
-            widths={[640, 960, 1280, 1600]}
-            sizes="(width >= 76rem) 49rem, (width >= 64rem) calc((100vw - 3rem) * 2 / 3), calc(100vw - 2rem)"
-          />
-        </a>
-        <div class="text">
-          <p class="meta">
-            <span>{label}</span>
-            <time datetime={festival.dates.start}>
-              {formatDateRange(festival.dates.start, festival.dates.end)}
-            </time>
-          </p>
-          <h3 class="title">
-            <span lang={heading.lang === lang ? undefined : heading.lang}>{heading.text}</span>
-            {heading.translation && <span class="translation">{heading.translation}</span>}
-          </h3>
-          <p class="tags">
-            <span class="hashtag">#{ERA_NAMES[eraOf(festival.round)][lang]}</span>
-            {status && <span class="hashtag">#{status[lang]}</span>}
-          </p>
-          {/* The name starts with the visible words and adds the round. */}
-          <a
-            class="visit"
-            href={href}
-            hreflang={hreflang}
-            aria-label={`${ui.visitLabel}${ui.visitTarget(label)}`}
-          >
-            <span class="visit-text">{ui.visitLabel}</span>
-            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
-              <path d="M2 8h11M9 4l4 4-4 4" />
-            </svg>
-          </a>
-        </div>
-      </div>
-    ))}
+  <div class="actions">
+    <a class="primary" href={href} hreflang={hreflang}>
+      {ui.visit(label)}
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+        <path d="M2 8h11M9 4l4 4-4 4"></path>
+      </svg>
+    </a>
+    <a class="outline-button secondary" href="#archive">
+      {ui.seeArchive}
+    </a>
+  </div>
 
-    <fieldset class="picker">
-      <legend class="sr-only">{ui.heroPicker}</legend>
-      {slides.map(({ festival, number, label }) => (
-        <label class="pick">
-          <input
-            class="sr-only"
-            type="radio"
-            name="hero"
-            id={`hero-${number}`}
-            checked={number === 1}
-          />
-          <span aria-hidden="true">{festival.round}</span>
-          <span class="sr-only">{label}</span>
-        </label>
-      ))}
-    </fieldset>
-  </section>
-</div>
+  {/* The button above names the same site; the frame is a larger click target only. */}
+  <a class="frame" href={href} hreflang={hreflang} tabindex="-1" aria-hidden="true">
+    <Capture
+      round={latest.round}
+      tone="dark"
+      priority="high"
+      widths={[640, 960, 1280, 1600, 2000]}
+      sizes="(width >= 68rem) 64rem, calc(100vw - 2rem)"
+    />
+    <span class="frame-badge">{ui.latestBadge(label)}</span>
+  </a>
+</section>
 
 <style>
-  .top {
-    /* The site name sits over the hero's top-right corner on wide screens. */
+  .hero {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    padding-block-end: 4rem;
+    justify-items: center;
+    padding-block: 3.5rem 5rem;
+    text-align: center;
 
-    @media (width >= 64rem) {
-      --brand-height: 7.5rem;
-      & > * {
-        grid-area: 1 / 1;
-      }
+    @media (width >= 48rem) {
+      padding-block: 5rem 6rem;
     }
   }
 
-  .brand {
-    padding-block: 0.5rem 1.25rem;
-    font-size: 1.75rem;
+  /* The small pills: above the title, and on the frame. */
+  .badge,
+  .frame-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .badge {
+    border: 1px solid var(--color-ink);
+  }
+
+  .title {
+    margin-block-start: 1.5rem;
+    font-size: clamp(2.5rem, 1rem + 6vw, 6rem);
     font-weight: 800;
-    line-height: 1.2;
-    letter-spacing: 0.04em;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    /*
+     * Break Japanese only at the <wbr> between phrases ("東京都市大学／世田谷祭"):
+     * auto-phrase treats the whole name as one phrase and split it mid-word.
+     */
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
 
-    & a {
-      text-decoration: none;
-    }
+  .line {
+    display: block;
+  }
 
-    @media (width >= 64rem) {
-      z-index: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      align-self: start;
-      justify-self: end;
-      /* Five of twelve columns: one over the picture, four over the text. */
-      inline-size: calc(100% * 5 / 12);
-      block-size: var(--brand-height);
-      padding: 0 1.5rem;
-      border-end-start-radius: 4.5rem;
-      background-color: var(--color-paper);
-      font-size: clamp(1.5rem, 0.5rem + 1.5vw, 2rem);
+  /* The second line is muted, as in the reference (7:1 on white). */
+  .rest {
+    color: var(--color-muted);
+  }
+
+  .lead {
+    max-inline-size: 40rem;
+    margin-block-start: 1.75rem;
+    font-size: 1rem;
+    line-height: 1.9;
+    /* A long paragraph reads better ragged-right on phones. */
+    text-align: start;
+
+    @media (width >= 40rem) {
       text-align: center;
     }
   }
 
-  .hero {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.5rem;
-
-    @media (width >= 64rem) {
-      grid-template-columns: repeat(12, minmax(0, 1fr));
-      grid-template-rows: var(--brand-height) 1fr auto auto auto;
-      gap: 0;
-    }
-  }
-
-  /* One slide shows at a time; a slide's parts sit in the hero's own grid. */
-  .slide {
-    display: none;
-  }
-
-  .hero:has(#hero-1:checked) [data-slide="1"],
-  .hero:has(#hero-2:checked) [data-slide="2"],
-  .hero:has(#hero-3:checked) [data-slide="3"],
-  .hero:has(#hero-4:checked) [data-slide="4"],
-  .hero:has(#hero-5:checked) [data-slide="5"] {
-    display: contents;
-  }
-
-  /* Without :has(), show the newest festival alone and drop the picker. */
-  @supports not selector(:has(*)) {
-    [data-slide="1"] {
-      display: contents;
-    }
-
-    .picker {
-      display: none;
-    }
-  }
-
-  .picture {
-    display: block;
-    grid-row: 1;
-
-    @media (width >= 64rem) {
-      grid-column: 1 / 9;
-      grid-row: 1 / -1;
-      align-self: start;
-    }
-  }
-
-  /* The right-hand column on wide screens. */
-  .heading,
-  .text,
-  .picker {
-    @media (width >= 64rem) {
-      grid-column: 9 / -1;
-      padding-inline-start: 2.5rem;
-    }
-  }
-
-  .heading {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-    grid-row: 2;
-    font-family: var(--font-display);
-    font-size: clamp(2.25rem, 1.5rem + 2vw, 3.25rem);
-    font-weight: 500;
-    line-height: 1;
-
-    /* The long rule after the word, running to the page's right edge. */
-    &::after {
-      content: "";
-      flex: 1;
-      block-size: 1px;
-      background-color: currentColor;
-    }
-
-    @media (width >= 64rem) {
-      grid-row: 3;
-      align-self: end;
-      margin-block-end: 1.75rem;
-    }
-  }
-
-  .text {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 0.75rem 1rem;
-    grid-row: 3;
-    align-items: start;
-
-    @media (width >= 64rem) {
-      grid-row: 4;
-    }
-  }
-
-  /* The round and dates run down beside the title, as in the reference. */
-  .meta {
-    display: flex;
-    gap: 0.5rem;
-    grid-row: 1 / span 3;
-    writing-mode: vertical-rl;
-    font-size: 0.75rem;
-    color: var(--color-muted);
-    line-height: 1.2;
-    letter-spacing: 0.04em;
-  }
-
-  .title {
-    font-size: 1.375rem;
-    font-weight: 700;
-    line-height: 1.45;
-    overflow-wrap: anywhere;
-  }
-
-  /* The English rendering of a Japanese theme, under the original on "/en/". */
-  .translation {
-    display: block;
-    margin-block-start: 0.25rem;
-    font-size: 0.9375rem;
-    font-weight: 400;
-    color: var(--color-muted);
-  }
-
-  .tags {
+  .actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.375rem;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-block-start: 2.25rem;
   }
 
-  .visit {
+  .primary,
+  .secondary {
+    min-block-size: 3rem;
+    padding-inline: 1.5rem;
+    font-size: 0.875rem;
+  }
+
+  .primary {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    justify-self: end;
-    min-block-size: 2.75rem;
-    font-size: 0.8125rem;
+    border: 1px solid var(--color-ink);
+    border-radius: 999px;
+    background-color: var(--color-ink);
+    color: var(--color-paper);
     font-weight: 700;
     text-decoration: none;
 
@@ -308,75 +169,32 @@ const hreflang = lang === "ja" ? undefined : "ja";
       stroke-linecap: round;
       stroke-linejoin: round;
     }
-  }
-
-  .visit-text {
-    border-block-end: 1px solid currentColor;
-    padding-block-end: 0.125rem;
-  }
-
-  /*
-   * Five bars with the round under each. Every bar shows a muted hairline, so
-   * the picker reads as a control; the picked one turns into a thick black bar.
-   */
-  .picker {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.375rem;
-    grid-row: 4;
-    margin-block-start: 0.5rem;
-
-    @media (width >= 64rem) {
-      grid-row: 5;
-    }
-  }
-
-  .pick {
-    display: grid;
-    align-content: start;
-    gap: 0.375rem;
-    min-block-size: 2.75rem;
-    padding-block-start: 0.5rem;
-    font-size: 0.75rem;
-    color: var(--color-muted);
-    cursor: pointer;
-
-    &::before {
-      content: "";
-      block-size: 3px;
-      background: linear-gradient(var(--color-muted) 0 0) bottom / 100% 1px no-repeat;
-    }
 
     @media (hover: hover) {
-      &:hover::before {
-        background-color: var(--color-muted);
+      &:hover {
+        background-color: var(--color-paper);
+        color: var(--color-ink);
       }
     }
+  }
 
-    &:has(:checked) {
-      color: var(--color-ink);
-      font-weight: 700;
-    }
+  .frame {
+    position: relative;
+    display: block;
+    inline-size: 100%;
+    max-inline-size: 64rem;
+    margin-block-start: 3.5rem;
+    overflow: hidden;
+    border: 1px solid rgb(0 0 0 / 0.12);
+    border-radius: 1.25rem;
+  }
 
-    &:has(:checked)::before {
-      background: var(--color-ink);
-    }
-
-    /* Forced colors drop the bars' colors; mark the picked festival with the system's. */
-    @media (forced-colors: active) {
-      &::before {
-        forced-color-adjust: none;
-        background: linear-gradient(CanvasText 0 0) bottom / 100% 1px no-repeat;
-      }
-
-      &:has(:checked)::before {
-        background: SelectedItem;
-      }
-    }
-
-    &:has(:focus-visible) {
-      outline: 2px solid var(--color-ink);
-      outline-offset: 2px;
-    }
+  .frame-badge {
+    position: absolute;
+    inset-block-start: 1rem;
+    inset-inline-start: 1rem;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.12);
   }
 </style>

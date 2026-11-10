@@ -18,6 +18,7 @@ import {
   latestFestival,
   ordinalOf,
   linkOf,
+  yearOf,
 } from "../src/data/festivals.ts";
 import { RELATED_SITES } from "../src/data/related-sites.ts";
 import { headingOf } from "../src/i18n/ui.ts";
@@ -30,10 +31,12 @@ const PAGES = {
   ja: {
     path: "/",
     siteName: "世田谷祭アーカイブ",
+    heroTitle: "東京都市大学世田谷祭\nアーカイブ",
+    seeArchive: "過去の回を見る",
     menuLinks: ["公式サイト", "公式ブログ", "X", "Instagram", "English"],
     close: "閉じる",
     round: (/** @type {number} */ round) => `第${round}回`,
-    visit: (/** @type {number} */ round) => `サイトを見る（第${round}回）`,
+    visit: (/** @type {number} */ round) => `第${round}回のサイトを見る`,
     showing: (/** @type {number} */ count) => `${count}件を表示中`,
     filterLegend: "時代で絞り込む",
     estimated: "（推定）",
@@ -42,10 +45,12 @@ const PAGES = {
   en: {
     path: "/en/",
     siteName: "Setagaya Festival Archive",
+    heroTitle: "Setagaya Festival\nArchive",
+    seeArchive: "See past festivals",
     menuLinks: ["Official site", "Official blog", "X", "Instagram", "日本語"],
     close: "Close",
     round: (/** @type {number} */ round) => ordinalOf(round),
-    visit: (/** @type {number} */ round) => `Visit the site of the ${ordinalOf(round)} festival`,
+    visit: (/** @type {number} */ round) => `Visit the ${ordinalOf(round)} festival’s site`,
     showing: (/** @type {number} */ count) => `Showing ${count} festivals`,
     filterLegend: "Filter by era",
     estimated: "(estimated)",
@@ -62,8 +67,6 @@ const JAPANESE = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
 const latest = latestFestival();
 /** The grid lists every festival, the hero's too (Issue #30). */
 const listed = FESTIVALS.toSorted((a, b) => b.round - a.round);
-/** The hero offers the five most recent festivals. */
-const heroFestivals = listed.slice(0, 5);
 const countOf = (/** @type {string} */ era) =>
   listed.filter((festival) => eraOf(festival.round) === era).length;
 
@@ -129,7 +132,8 @@ for (const lang of LANGS) {
     test("has one h1 and landmarks in order", async () => {
       const { page, close } = await open(t.path);
       assert.equal(await page.locator("h1").count(), 1);
-      assert.equal(await page.locator("h1").innerText(), t.siteName);
+      assert.equal(await page.locator("h1").innerText(), t.heroTitle);
+      assert.equal(await page.title(), t.siteName);
       assert.equal(await page.locator("header").count(), 1);
       assert.equal(await page.locator("main").count(), 1);
       assert.equal(await page.locator("footer").count(), 1);
@@ -209,64 +213,31 @@ for (const lang of LANGS) {
   });
 
   describe(`${lang}: hero`, () => {
-    test("shows the latest festival first and links to its site", async () => {
+    test("names the archive's span and links to the latest festival and the list", async () => {
       const { page, close } = await open(t.path);
       const hero = page.locator("#latest");
-      assert.equal(latest.round, heroFestivals[0]?.round);
-      const heading = headingOf(latest, lang);
-      assert.equal(
-        await hero.locator("h3:visible").innerText(),
-        [heading.text, heading.translation].filter(Boolean).join("\n"),
-      );
+      const rounds = FESTIVALS.map((festival) => festival.round);
+      const first = Math.min(...rounds);
+      const badge = await hero.locator(".badge").innerText();
       assert.match(
-        await hero.locator(".meta:visible").innerText(),
-        new RegExp(t.round(latest.round)),
+        badge,
+        new RegExp(`^${yearOf(first)}–${yearOf(latest.round)} / ${FESTIVALS.length}`),
       );
+      assert.match(await hero.locator(".lead").innerText(), new RegExp(t.round(first)));
       const cta = hero.getByRole("link", { name: t.visit(latest.round), exact: true });
       assert.equal(await cta.getAttribute("href"), linkOf(latest));
+      const list = hero.getByRole("link", { name: t.seeArchive, exact: true });
+      assert.equal(await list.getAttribute("href"), "#archive");
       await close();
     });
 
-    test("switches between the five latest festivals with the picker", async () => {
+    test("loads its picture eagerly with high priority when there is one", async () => {
       const { page, close } = await open(t.path);
-      const hero = page.locator("#latest");
-      assert.equal(await hero.getByRole("radio").count(), heroFestivals.length);
-      for (const [index, festival] of heroFestivals.entries()) {
-        await hero.locator(`label:has(#hero-${index + 1})`).click();
-        assert.equal(await hero.locator(".slide .text:visible").count(), 1);
-        const heading = headingOf(festival, lang);
-        assert.match(
-          await hero.locator("h3:visible").innerText(),
-          new RegExp(escape(heading.text)),
-        );
-        const cta = hero.getByRole("link", { name: t.visit(festival.round), exact: true });
-        assert.equal(await cta.getAttribute("href"), linkOf(festival));
-      }
-      // Arrow keys move through the radio group.
-      await page.locator("#hero-1").focus();
-      await page.keyboard.press("ArrowRight");
-      assert.equal(await page.locator("#hero-2").isChecked(), true);
-      await close();
-    });
-
-    test("loads only the first picture at once, with high priority", async () => {
-      const { page, close } = await open(t.path);
-      await page.waitForLoadState("networkidle");
-      const images = page.locator("#latest img");
-      const count = await images.count();
-      if (count > 0) {
-        assert.equal(await images.first().getAttribute("loading"), "eager");
-        assert.equal(await images.first().getAttribute("fetchpriority"), "high");
-        for (let index = 1; index < count; index += 1) {
-          const image = images.nth(index);
-          assert.equal(await image.getAttribute("loading"), "lazy");
-          assert.equal(await image.getAttribute("fetchpriority"), "low");
-          assert.equal(
-            await image.evaluate((element) => /** @type {HTMLImageElement} */ (element).currentSrc),
-            "",
-            "a hidden slide's picture is not fetched",
-          );
-        }
+      const image = page.locator("#latest img");
+      if ((await image.count()) > 0) {
+        assert.equal(await image.count(), 1);
+        assert.equal(await image.getAttribute("loading"), "eager");
+        assert.equal(await image.getAttribute("fetchpriority"), "high");
       }
       // Card pictures never compete with it.
       for (const card of await page.locator(".grid img").all()) {
@@ -401,6 +372,8 @@ for (const lang of LANGS) {
     test("makes the whole card clickable", async () => {
       const { page, close } = await open(t.path);
       const card = page.locator(".grid > li").first();
+      // The hero is tall: bring the card into the viewport before clicking by coordinates.
+      await card.scrollIntoViewIfNeeded();
       const box = await card.boundingBox();
       assert.ok(box);
       // Click the picture area, not the heading.
@@ -628,13 +601,7 @@ describe("languages", () => {
       assert.equal(await link.getAttribute("lang"), other);
       await link.click();
       await page.waitForURL(`${server.url}${PAGES[other].path}`);
-      assert.equal(await page.locator("h1").innerText(), PAGES[other].siteName);
-      await close();
-    });
-
-    test(`${lang}: the site name links to its own language's top page`, async () => {
-      const { page, close } = await open(t.path);
-      assert.equal(await page.locator("h1 a").getAttribute("href"), t.path);
+      assert.equal(await page.locator("h1").innerText(), PAGES[other].heroTitle);
       await close();
     });
   }
@@ -686,8 +653,8 @@ describe("languages", () => {
 
   test("en: links to the festival sites say they are in Japanese", async () => {
     const { page, close } = await open(PAGES.en.path);
-    // The site name in the hero links to this page itself, in English.
-    const links = page.locator("main a[href]:not(h1 a)");
+    // Links within this page ("#archive") stay in English.
+    const links = page.locator('main a[href]:not([href^="#"])');
     assert.ok((await links.count()) > listed.length);
     for (const link of await links.all()) {
       assert.equal(await link.getAttribute("hreflang"), "ja", await link.getAttribute("href"));
@@ -702,7 +669,7 @@ describe("languages", () => {
     assert.equal(await page.locator("main [lang]:not(.word)").count(), 0);
     assert.deepEqual(
       await page.locator("main .word").evaluateAll((words) => words.map((word) => word.lang)),
-      ["en", "en", "en"],
+      ["en", "en"],
     );
     await close();
   });

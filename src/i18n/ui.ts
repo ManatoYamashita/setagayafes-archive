@@ -20,6 +20,13 @@ export function otherLang(lang: Lang): Lang {
   return lang === "ja" ? "en" : "ja";
 }
 
+/** The festivals the archive covers, for the hero's badge and lead. */
+export interface ArchiveSpan {
+  readonly first: { readonly round: number; readonly year: number };
+  readonly last: { readonly round: number; readonly year: number };
+  readonly count: number;
+}
+
 interface Words {
   readonly siteName: string;
   /** Meta description. `first` is the oldest festival in the archive. */
@@ -41,19 +48,25 @@ interface Words {
   /**
    * The large Latin word of each section heading, and the short vertical label
    * beside it. The vertical labels are Japanese only; English leaves them empty.
-   * The hero's "Latest" has no label, as in the reference.
    */
-  readonly latestWord: string;
   readonly archiveWord: string;
   readonly archiveVertical: string;
   readonly relatedWord: string;
   readonly relatedVertical: string;
-  /** Names the hero's picker of the latest festivals. */
-  readonly heroPicker: string;
-  /** The hero's link to a festival's site: visible text, then hidden words naming the round. */
-  readonly visitLabel: string;
-  readonly visitTarget: (round: string) => string;
-  readonly archiveIntro: string;
+  /**
+   * The hero's title over two lines; the second is muted. The first line is
+   * given in phrases: on narrow screens it breaks between them only.
+   */
+  readonly heroTitle: readonly [readonly string[], string];
+  /** The hero's badge and lead: the oldest and newest festival and how many there are. */
+  readonly heroBadge: (span: ArchiveSpan) => string;
+  readonly heroLead: (span: ArchiveSpan) => string;
+  /** The badge on the hero's picture of the newest festival. */
+  readonly latestBadge: (round: string) => string;
+  /** The hero's button to the newest festival's site. */
+  readonly visit: (round: string) => string;
+  /** The hero's button to the list of every festival on this page. */
+  readonly seeArchive: string;
   readonly filterLegend: string;
   readonly filterAll: string;
   readonly showing: (count: number) => string;
@@ -62,10 +75,6 @@ interface Words {
   /** Shown instead of a link while a related site is being prepared. */
   readonly comingSoon: string;
   readonly footerNote: string;
-  /** Closes a sentence: "。" in Japanese, "." in English. */
-  readonly fullStop: string;
-  /** Between two sentences: nothing in Japanese, a space in English. */
-  readonly sentenceGap: string;
 }
 
 export const UI = {
@@ -84,16 +93,17 @@ export const UI = {
     navArchive: "アーカイブ",
     navRelated: "関連サイト",
     runBy: "運営",
-    latestWord: "Latest",
     archiveWord: "Archive",
     archiveVertical: "過去の回",
     relatedWord: "Related",
     relatedVertical: "関連サイト",
-    heroPicker: "表示する回",
-    visitLabel: "サイトを見る",
-    visitTarget: (round) => `（${round}）`,
-    archiveIntro:
-      "東京都市大学（旧 武蔵工業大学）の学園祭、世田谷祭の公式サイトを、各回の公開当時のまま残しています。",
+    heroTitle: [["東京都市大学", "世田谷祭"], "アーカイブ"],
+    heroBadge: ({ first, last, count }) => `${first.year}–${last.year} / ${count}回`,
+    heroLead: ({ first, last, count }) =>
+      `東京都市大学（旧 武蔵工業大学）の学園祭、世田谷祭の公式サイトを、第${first.round}回（${first.year}年）から第${last.round}回（${last.year}年）までの${count}回分、公開当時のまま保存しています。各回のテーマ・日程・企画の案内を、当時のデザインのまま見られます。中止やオンライン開催になった回のサイトも含みます。`,
+    latestBadge: (round) => `最新の回 ${round}`,
+    visit: (round) => `${round}のサイトを見る`,
+    seeArchive: "過去の回を見る",
     filterLegend: "時代で絞り込む",
     filterAll: "すべて",
     showing: (count) => `${count}件を表示中`,
@@ -101,8 +111,6 @@ export const UI = {
     comingSoon: "公開準備中",
     footerNote:
       "各回のサイトは公開当時のまま保存しています。掲載している日程・連絡先・リンク先は、当時のものです。",
-    fullStop: "。",
-    sentenceGap: "",
   },
   en: {
     siteName: "Setagaya Festival Archive",
@@ -120,16 +128,17 @@ export const UI = {
     navArchive: "Archive",
     navRelated: "Related sites",
     runBy: "Run by",
-    latestWord: "Latest",
     archiveWord: "Archive",
     archiveVertical: "",
     relatedWord: "Related",
     relatedVertical: "",
-    heroPicker: "Festival to show",
-    visitLabel: "Visit the site",
-    visitTarget: (round) => ` of the ${round} festival`,
-    archiveIntro:
-      "The official sites of the Setagaya Festival, the school festival of Tokyo City University (formerly Musashi Institute of Technology), each kept as it was published. The sites are in Japanese.",
+    heroTitle: [["Setagaya Festival"], "Archive"],
+    heroBadge: ({ first, last, count }) => `${first.year}–${last.year} / ${count} festivals`,
+    heroLead: ({ first, last, count }) =>
+      `The official sites of the Setagaya Festival, the school festival of Tokyo City University (formerly Musashi Institute of Technology), kept as they were published: ${count} festivals, from the ${ordinalOf(first.round)} (${first.year}) to the ${ordinalOf(last.round)} (${last.year}). Each site shows that year’s theme, dates and events in its original design, including the festivals that were cancelled or held online. The sites are in Japanese.`,
+    latestBadge: (round) => `Latest: ${round}`,
+    visit: (round) => `Visit the ${round} festival’s site`,
+    seeArchive: "See past festivals",
     filterLegend: "Filter by era",
     filterAll: "All",
     showing: (count) => `Showing ${count} ${count === 1 ? "festival" : "festivals"}`,
@@ -137,8 +146,6 @@ export const UI = {
     comingSoon: "Coming soon",
     footerNote:
       "Each festival’s site is kept as it was published. The dates, contacts and links on those sites are from that time.",
-    fullStop: ".",
-    sentenceGap: " ",
   },
 } as const satisfies Record<Lang, Words>;
 

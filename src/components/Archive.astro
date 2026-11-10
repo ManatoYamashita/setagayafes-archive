@@ -47,7 +47,6 @@ const SIZES =
           {ui.archiveWord}
         </span>
       </h2>
-      <p class="intro">{ui.archiveIntro}</p>
     </div>
 
     <div class="tools">
@@ -114,23 +113,8 @@ const SIZES =
   }
 
   .head {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.25rem;
-    align-items: end;
     margin-inline: auto;
     max-inline-size: 64rem;
-
-    @media (width >= 48rem) {
-      grid-template-columns: auto minmax(0, 26rem);
-      justify-content: space-between;
-    }
-  }
-
-  .intro {
-    font-size: 0.8125rem;
-    line-height: 1.8;
-    color: var(--color-muted);
   }
 
   .tools {

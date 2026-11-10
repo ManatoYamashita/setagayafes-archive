@@ -49,7 +49,19 @@ describe("UI", () => {
       ...Object.fromEntries(Object.entries(en).filter(([, value]) => typeof value === "string")),
       description: en.description({ round: 75, year: 2004 }),
       ogImageAlt: en.ogImageAlt("97th", "Setagaya Festival"),
-      visitTarget: en.visitTarget("97th"),
+      heroTitle: [...en.heroTitle[0], en.heroTitle[1]].join(" "),
+      heroBadge: en.heroBadge({
+        first: { round: 75, year: 2004 },
+        last: { round: 97, year: 2026 },
+        count: 23,
+      }),
+      heroLead: en.heroLead({
+        first: { round: 75, year: 2004 },
+        last: { round: 97, year: 2026 },
+        count: 23,
+      }),
+      latestBadge: en.latestBadge("97th"),
+      visit: en.visit("97th"),
       showing: en.showing(22),
     };
     assert.deepEqual(Object.keys(texts).toSorted(), Object.keys(en).toSorted());
