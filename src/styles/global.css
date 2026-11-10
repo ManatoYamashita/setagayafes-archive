@@ -122,7 +122,7 @@
 
   /*
    * A section heading after the reference layout: a large Latin word with,
-   * on the Japanese page, a short vertical label between two rules beside it.
+   * on the Japanese page, a short vertical label beside it.
    */
   .display-heading {
     display: flex;
@@ -130,30 +130,17 @@
     gap: 0.875rem;
   }
 
-  /* In vertical-rl the flex row runs top to bottom: rule, label, rule. */
   .display-heading .vertical {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
     writing-mode: vertical-rl;
     font-size: 0.75rem;
     font-weight: 700;
     line-height: 1;
     letter-spacing: 0.12em;
-
-    &::before,
-    &::after {
-      content: "";
-      /* Physical sizes: short horizontal rules above and below the label. */
-      width: 0.875rem;
-      height: 1px;
-      background-color: currentColor;
-    }
   }
 
   .display-heading .word {
     font-family: var(--font-display);
-    font-size: clamp(3rem, 2rem + 4vw, 5.25rem);
+    font-size: clamp(2.25rem, 1.5rem + 2.5vw, 3.5rem);
     font-weight: 700;
     line-height: 1;
     letter-spacing: -0.01em;

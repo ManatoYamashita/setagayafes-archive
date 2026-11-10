@@ -226,7 +226,7 @@ const hreflang = lang === "ja" ? undefined : "ja";
     gap: 1.25rem;
     grid-row: 2;
     font-family: var(--font-display);
-    font-size: clamp(2.5rem, 1.5rem + 2.5vw, 3.75rem);
+    font-size: clamp(2.25rem, 1.5rem + 2vw, 3.25rem);
     font-weight: 500;
     line-height: 1;
 
@@ -234,7 +234,7 @@ const hreflang = lang === "ja" ? undefined : "ja";
     &::after {
       content: "";
       flex: 1;
-      block-size: 2px;
+      block-size: 1px;
       background-color: currentColor;
     }
 
@@ -262,10 +262,9 @@ const hreflang = lang === "ja" ? undefined : "ja";
     display: flex;
     gap: 0.5rem;
     grid-row: 1 / span 3;
-    border-inline-end: 1px solid var(--color-line);
-    padding-inline-end: 0.75rem;
     writing-mode: vertical-rl;
     font-size: 0.75rem;
+    color: var(--color-muted);
     line-height: 1.2;
     letter-spacing: 0.04em;
   }
@@ -308,19 +307,6 @@ const hreflang = lang === "ja" ? undefined : "ja";
       stroke-width: 1.75;
       stroke-linecap: round;
       stroke-linejoin: round;
-      transition: translate 0.2s ease-out;
-    }
-
-    @media (hover: hover) {
-      &:hover svg {
-        translate: 0.25rem 0;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      & svg {
-        transition: none;
-      }
     }
   }
 

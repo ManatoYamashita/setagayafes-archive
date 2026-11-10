@@ -1,7 +1,6 @@
 ---
 // Sites that are not Setagaya Festival rounds but live on the same host, as
-// picture tiles on a wash band after the reference layout. Large rings cross
-// the band's edges; they are decoration only.
+// picture tiles on a wash band after the reference layout.
 //
 // A site with `blockedBy` is listed without a link until that Issue is closed
 // (used for the Todoroki Festival sites until they were made static: Issue #2).
@@ -32,14 +31,6 @@ const SIZES = "auto, (width >= 48rem) min(24rem, calc((100vw - 5rem) / 3)), calc
 ---
 
 <section id="related" class="band" aria-labelledby="related-title">
-  <div class="rings" aria-hidden="true">
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
-  </div>
-
   <div class="page inner">
     <h2 id="related-title" class="display-heading">
       {ui.relatedVertical && <span class="vertical">{ui.relatedVertical}</span>}
@@ -97,63 +88,13 @@ const SIZES = "auto, (width >= 48rem) min(24rem, calc((100vw - 5rem) / 3)), calc
 
 <style>
   .band {
-    position: relative;
-    isolation: isolate;
     background-color: var(--color-wash);
-    /* The rings are cut by the band's edges, as in the reference. */
-    overflow: clip;
   }
 
   .inner {
     display: grid;
     gap: 2rem;
     padding-block: 3.5rem 4.5rem;
-  }
-
-  /* Thick black rings echoing the reference's circles, behind the tiles. */
-  .rings {
-    position: absolute;
-    z-index: -1;
-    inset: 0;
-
-    & span {
-      position: absolute;
-      aspect-ratio: 1;
-      inline-size: clamp(10rem, 22vw, 20rem);
-      border: 0.375rem solid var(--color-ink);
-      border-radius: 50%;
-    }
-
-    /* Two rings hang from the top edge, three rise from the bottom edge. */
-    & span:nth-child(-n + 2) {
-      inset-block-start: 0;
-      translate: 0 -58%;
-    }
-
-    & span:nth-child(n + 3) {
-      inset-block-end: 0;
-      translate: 0 55%;
-    }
-
-    & span:nth-child(1) {
-      inset-inline-start: 38%;
-    }
-
-    & span:nth-child(2) {
-      inset-inline-start: 72%;
-    }
-
-    & span:nth-child(3) {
-      inset-inline-start: -3%;
-    }
-
-    & span:nth-child(4) {
-      inset-inline-start: 40%;
-    }
-
-    & span:nth-child(5) {
-      inset-inline-end: -5%;
-    }
   }
 
   .tiles {
@@ -188,25 +129,6 @@ const SIZES = "auto, (width >= 48rem) min(24rem, calc((100vw - 5rem) / 3)), calc
     aspect-ratio: 5 / 4;
     object-fit: cover;
     object-position: top;
-    transition: scale 0.4s ease-out;
-  }
-
-  @media (hover: hover) {
-    a.tile:hover :global(.photo) {
-      scale: 1.04;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .tile :global(.photo) {
-      transition: none;
-    }
-
-    @media (hover: hover) {
-      a.tile:hover :global(.photo) {
-        scale: none;
-      }
-    }
   }
 
   .plate {
@@ -214,7 +136,7 @@ const SIZES = "auto, (width >= 48rem) min(24rem, calc((100vw - 5rem) / 3)), calc
   }
 
   /*
-   * White text on a dark fade at the bottom, with a short bar under the name.
+   * White text on a dark fade at the bottom.
    * The fade stays dark behind the text on every photo: at least 6:1 measured
    * on the rendered tiles at 320px and 1280px (Issue #30 review).
    */
@@ -243,15 +165,6 @@ const SIZES = "auto, (width >= 48rem) min(24rem, calc((100vw - 5rem) / 3)), calc
     font-size: 1.125rem;
     font-weight: 700;
     line-height: 1.4;
-
-    &::after {
-      content: "";
-      display: block;
-      inline-size: 2.5rem;
-      block-size: 3px;
-      margin-block-start: 0.375rem;
-      background-color: currentColor;
-    }
   }
 
   a.tile:focus-visible {
