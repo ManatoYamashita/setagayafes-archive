@@ -8,6 +8,7 @@
 import { FESTIVALS, latestFestival, linkOf, yearOf, type Lang } from "../data/festivals.ts";
 import { UI, roundLabel } from "../i18n/ui.ts";
 import Capture from "./Capture.astro";
+import PreviewActions from "./PreviewActions.astro";
 
 interface Props {
   lang: Lang;
@@ -56,8 +57,8 @@ const hreflang = lang === "ja" ? undefined : "ja";
     </a>
   </div>
 
-  {/* The button above names the same site; the frame is a larger click target only. */}
-  <a class="frame" href={href} hreflang={hreflang} tabindex="-1" aria-hidden="true">
+  {/* Over the picture, the same buttons as on the cards (PreviewActions.astro). */}
+  <div class="frame">
     <Capture
       round={latest.round}
       tone="dark"
@@ -65,7 +66,8 @@ const hreflang = lang === "ja" ? undefined : "ja";
       widths={[640, 960, 1280, 1600, 2000]}
       sizes="(width >= 68rem) 64rem, calc(100vw - 2rem)"
     />
-  </a>
+    <PreviewActions festival={latest} lang={lang} />
+  </div>
 </section>
 
 <style>
@@ -158,12 +160,83 @@ const hreflang = lang === "ja" ? undefined : "ja";
   }
 
   .frame {
-    display: block;
+    display: grid;
     inline-size: 100%;
     max-inline-size: 64rem;
     margin-block-start: 3.5rem;
     overflow: hidden;
     border: 1px solid rgb(0 0 0 / 0.12);
     border-radius: 1.25rem;
+  }
+
+  /* The picture and the buttons share one cell. :global: other components. */
+  .frame > :global(.capture),
+  .frame > :global(.preview-actions) {
+    grid-area: 1 / 1;
+  }
+
+  /* A dark veil with the buttons, shown on hover or when a button has focus. */
+  .frame > :global(.preview-actions) {
+    /* Above the picture, whose box is positioned (Capture.astro). */
+    position: relative;
+    z-index: 1;
+    background-color: rgb(0 0 0 / 0.55);
+    opacity: 0;
+    transition: opacity 0.2s ease-out;
+  }
+
+  .frame > :global(.preview-actions > *) {
+    pointer-events: none;
+  }
+
+  .frame:focus-within > :global(.preview-actions) {
+    opacity: 1;
+  }
+
+  .frame:focus-within > :global(.preview-actions > *) {
+    pointer-events: auto;
+  }
+
+  @media (hover: hover) {
+    .frame:hover > :global(.preview-actions) {
+      opacity: 1;
+    }
+
+    .frame:hover > :global(.preview-actions > *) {
+      pointer-events: auto;
+    }
+  }
+
+  /* Touch screens: no veil; the buttons sit in a row under the picture. */
+  @media (hover: none) {
+    .frame {
+      overflow: visible;
+      border: 0;
+      border-radius: 0;
+    }
+
+    .frame > :global(.capture) {
+      overflow: hidden;
+      border: 1px solid rgb(0 0 0 / 0.12);
+      border-radius: 1.25rem;
+    }
+
+    .frame > :global(.preview-actions),
+    .frame:focus-within > :global(.preview-actions) {
+      grid-area: 2 / 1;
+      padding-block-start: 1rem;
+      background: none;
+      opacity: 1;
+    }
+
+    .frame > :global(.preview-actions > *) {
+      pointer-events: auto;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .frame > :global(.preview-actions) {
+      transition: none;
+    }
   }
 </style>

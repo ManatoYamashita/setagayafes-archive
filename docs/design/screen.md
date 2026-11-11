@@ -7,16 +7,18 @@
 レイアウトは、オーナーが示した参考画像（第三者のオウンドメディアのトップ）に倣う（Issue #30）。
 写すのはレイアウトと視覚の文法だけで、参考元の社名・ロゴ・写真は使わない。参考画像は `/reference/` に置き、コミットしない。
 
-| 部品           | ファイル                            | 中身                                                                                                                                                                                              |
-| -------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ページ         | `src/components/Home.astro`         | 部品を並べる。`src/pages/index.astro`・`en/index.astro` から `lang` を渡す                                                                                                                        |
-| ヘッダー       | `src/components/SiteHeader.astro`   | MENU のアイコン、ページ内リンク（`#latest`・`#archive`・`#related`・言語）、枠付きの「公式サイト」、運営者                                                                                        |
-| ヒーロー       | `src/components/Hero.astro`         | 中央寄せ。2行の `h1`（2行目は灰色）、説明文、ボタン2つ、最新回の写真の角丸の枠                                                                                                                    |
-| 絞り込み・一覧 | `src/components/Archive.astro`      | 「Archive」の見出し、時代の絞り込み、全回の均等な3列（新しい順）。後ろに洗いの帯を敷く                                                                                                            |
-| カード         | `src/components/FestivalCard.astro` | 写真 → 黒いピル（回）と日付 → テーマ（太字）→ 灰色の「#」タグ（時代・通常開催以外の状態）。ポインタを乗せると、少し浮き、影が深まり、写真がわずかに拡大する（動きを減らす設定では、影と下線だけ） |
-| 写真           | `src/components/Capture.astro`      | サムネイル。無い回は回の数字を大きく組んだ代替表示                                                                                                                                                |
-| 関連サイト     | `src/components/RelatedSites.astro` | 洗いの帯に写真のタイルを並べる。`blockedBy` のある項目はリンクを張らない                                                                                                                          |
-| フッター       | `src/components/SiteFooter.astro`   | サイト名、SNS のアイコン、©、公式ブログ・言語・「公式サイト」。MENU と同じリンクを、並べ方を変えて持つ                                                                                            |
+| 部品             | ファイル                              | 中身                                                                                                                                                                                                                                           |
+| ---------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ページ           | `src/components/Home.astro`           | 部品を並べる。`src/pages/index.astro`・`en/index.astro` から `lang` を渡す                                                                                                                                                                     |
+| ヘッダー         | `src/components/SiteHeader.astro`     | MENU のアイコン、ページ内リンク（`#latest`・`#archive`・`#related`・言語）、枠付きの「公式サイト」、運営者                                                                                                                                     |
+| ヒーロー         | `src/components/Hero.astro`           | 中央寄せ。2行の `h1`（2行目は灰色）、説明文、ボタン2つ、最新回の写真の角丸の枠。枠にはカードと同じ「サイトを見る」「プレビュー」                                                                                                               |
+| 絞り込み・一覧   | `src/components/Archive.astro`        | 「Archive」の見出し、時代の絞り込み、全回の均等な3列（新しい順）。後ろに洗いの帯を敷く                                                                                                                                                         |
+| カード           | `src/components/FestivalCard.astro`   | 写真 → 黒いピル（回）と日付 → テーマ（太字）→ 灰色の「#」タグ（時代・通常開催以外の状態）。ポインタを乗せる（またはキーボードで移る）と、写真に黒い膜と「サイトを見る」「プレビュー」が出る。タッチ端末では、この2つをカードの下端に常に並べる |
+| 写真の上のボタン | `src/components/PreviewActions.astro` | 「サイトを見る」と「プレビュー」。置き場所と出し方は、使う側（カード・ヒーロー）が決める                                                                                                                                                       |
+| プレビュー       | `src/components/SitePreview.astro`    | その回のサイトを iframe で開く popover。`Home.astro` が回ごとに1つずつ置く                                                                                                                                                                     |
+| 写真             | `src/components/Capture.astro`        | サムネイル。無い回は回の数字を大きく組んだ代替表示                                                                                                                                                                                             |
+| 関連サイト       | `src/components/RelatedSites.astro`   | 洗いの帯に写真のタイルを並べる。`blockedBy` のある項目はリンクを張らない                                                                                                                                                                       |
+| フッター         | `src/components/SiteFooter.astro`     | サイト名、SNS のアイコン、©、公式ブログ・言語・「公式サイト」。MENU と同じリンクを、並べ方を変えて持つ                                                                                                                                         |
 
 ### 参考画像からの置き換え（2026-11-09 にオーナーと決めた）
 
@@ -45,6 +47,20 @@
 - 説明文の回・年・回数は、データ（`FESTIVALS`）から導く。年次の追加で書き換える文言は無い
 - 参考にあったバッジ（見出しの上と枠の左上）は、2026-11-11 のオーナーの指示で外した
 - 「過去の回を見る」はページ内の `#archive` へ飛ぶ。英語版でも `hreflang` を付けない（e2e は `href^="#"` を除いて検査する）
+
+### プレビュー: `popover` と、sandbox を付けた iframe
+
+- 2026-11-11 にオーナーと決めた（Issue #30）。カードとヒーローの写真の「プレビュー」で、その回のサイトを、このページの上の大きなパネルで開く
+- `<button popovertarget="preview-97">` と `<div id="preview-97" popover role="dialog">` で開閉する。JS は使わない。Esc・外側のクリック・「閉じる」で閉じる
+  - `<dialog>` をモーダルで開くには JS か `commandfor` が要る。どちらも使えない（規約 §1）。popover は背景を操作不可にしないが、`::backdrop` で暗くする
+- iframe は `loading="lazy"`。閉じている popover は `display: none` なので、開くまで取得されない（Chromium で実測。転送量の予算は変わらない）。Firefox・Safari では確かめていない
+- iframe には `sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"` を付ける。`allow-same-origin` は付けない
+  - 過去回のサイトは同じホストにあり、古い JS が動く。同じオリジンのまま埋めると、その JS が新トップを書き換えられる。sandbox で別のオリジンとして扱わせ、`script-src 'none'` の守りを保つ
+  - 代わりに、Cookie や localStorage を使う仕掛けは、プレビューの中では動かないことがある。「サイトを見る」で開けば当時のとおりに動く
+- CSP に `frame-src 'self'` を足した。過去回のサイトは、同じホストからの iframe を許している（第97回は `X-Frame-Options: SAMEORIGIN`、他の回はヘッダ無し。2026-11-11 に確かめた）
+- 外部にある回（第87回、Wayback Machine）は `frame-src 'self'` の外なので、プレビューを出さない（`src/lib/preview.ts` の `hasPreview()`）
+- 写真の上の膜は、膜そのものはクリックを通し（`pointer-events: none`）、ボタンだけが受ける。膜の外はカード全体のリンク（見出しのリンクを `::after` で伸ばしたもの）のまま
+- 膜は `position: relative`・`z-index: 1` で写真の上に置く。写真の箱（`Capture.astro`）が位置指定されているので、指定しないと写真の下に描かれる
 
 ### 絞り込み: radio と `:has()`
 

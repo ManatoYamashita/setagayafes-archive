@@ -64,6 +64,16 @@ interface Words {
   readonly visit: (round: string) => string;
   /** The hero's button to the list of every festival on this page. */
   readonly seeArchive: string;
+  /**
+   * The two buttons over a festival's picture, and their accessible names,
+   * which start with the visible words and add the round.
+   */
+  readonly visitShort: string;
+  readonly visitName: (round: string) => string;
+  readonly previewButton: string;
+  readonly previewName: (round: string) => string;
+  /** The title of the iframe in the preview dialog. */
+  readonly previewFrameTitle: (round: string) => string;
   readonly filterLegend: string;
   readonly filterAll: string;
   readonly showing: (count: number) => string;
@@ -99,6 +109,11 @@ export const UI = {
       `東京都市大学（旧 武蔵工業大学）の学園祭、世田谷祭の公式サイトを、第${first.round}回（${first.year}年）から第${last.round}回（${last.year}年）までの${count}回分、公開当時のまま保存しています。各回のテーマ・日程・企画の案内を、当時のデザインのまま見られます。中止やオンライン開催になった回のサイトも含みます。`,
     visit: (round) => `${round}のサイトを見る`,
     seeArchive: "過去の回を見る",
+    visitShort: "サイトを見る",
+    visitName: (round) => `サイトを見る（${round}）`,
+    previewButton: "プレビュー",
+    previewName: (round) => `プレビュー（${round}）`,
+    previewFrameTitle: (round) => `${round}のサイトのプレビュー`,
     filterLegend: "時代で絞り込む",
     filterAll: "すべて",
     showing: (count) => `${count}件を表示中`,
@@ -132,6 +147,11 @@ export const UI = {
       `The official sites of the Setagaya Festival, the school festival of Tokyo City University (formerly Musashi Institute of Technology), kept as they were published: ${count} festivals, from the ${ordinalOf(first.round)} (${first.year}) to the ${ordinalOf(last.round)} (${last.year}). Each site shows that year’s theme, dates and events in its original design, including the festivals that were cancelled or held online. The sites are in Japanese.`,
     visit: (round) => `Visit the ${round} festival’s site`,
     seeArchive: "See past festivals",
+    visitShort: "Visit the site",
+    visitName: (round) => `Visit the site: the ${round} festival`,
+    previewButton: "Preview",
+    previewName: (round) => `Preview: the ${round} festival’s site`,
+    previewFrameTitle: (round) => `Preview of the ${round} festival’s site`,
     filterLegend: "Filter by era",
     filterAll: "All",
     showing: (count) => `Showing ${count} ${count === 1 ? "festival" : "festivals"}`,

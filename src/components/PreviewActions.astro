@@ -1,0 +1,115 @@
+---
+// The two buttons over a festival's picture: "Visit the site" and "Preview".
+// "Preview" opens the festival's preview dialog (SitePreview.astro) with
+// popovertarget: no JavaScript. A festival whose site is not on this host
+// (the 87th) gets only "Visit the site".
+//
+// Where the buttons sit and when they show is up to the parent (the card or
+// the hero frame): over the picture on hover or focus, or in a row below it
+// on touch screens. Here they are only drawn.
+import { linkOf, type Festival, type Lang } from "../data/festivals.ts";
+import { UI, roundLabel } from "../i18n/ui.ts";
+import { hasPreview, previewIdOf } from "../lib/preview.ts";
+
+interface Props {
+  festival: Festival;
+  lang: Lang;
+}
+
+const { festival, lang } = Astro.props;
+const ui = UI[lang];
+const label = roundLabel(festival.round, lang);
+// The festival sites are in Japanese; say so on links from the English page.
+const hreflang = lang === "ja" ? undefined : "ja";
+---
+
+<div class="preview-actions">
+  <a
+    class="action solid"
+    href={linkOf(festival)}
+    hreflang={hreflang}
+    aria-label={ui.visitName(label)}
+  >
+    {ui.visitShort}
+  </a>
+  {hasPreview(festival) && (
+    <button
+      type="button"
+      class="action"
+      popovertarget={previewIdOf(festival.round)}
+      aria-label={ui.previewName(label)}
+    >
+      {ui.previewButton}
+    </button>
+  )}
+</div>
+
+<style>
+  .preview-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .action {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 2.5rem;
+    border: 1px solid var(--color-paper);
+    border-radius: 999px;
+    padding-inline: 1.125rem;
+    /* A dark fill keeps the white text readable over a bright screenshot. */
+    background-color: rgb(0 0 0 / 0.55);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--color-paper);
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline-color: var(--color-paper);
+    }
+  }
+
+  .solid {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  @media (hover: hover) {
+    .action:hover {
+      background-color: var(--color-paper);
+      color: var(--color-ink);
+    }
+
+    .solid:hover {
+      background-color: var(--color-wash);
+    }
+  }
+
+  /* On touch screens the row sits on white, below the picture: black outlines. */
+  @media (hover: none) {
+    .preview-actions {
+      justify-content: start;
+    }
+
+    .action {
+      min-block-size: 2.75rem;
+      border-color: var(--color-ink);
+      background-color: transparent;
+      color: var(--color-ink);
+
+      &:focus-visible {
+        outline-color: var(--color-ink);
+      }
+    }
+
+    .solid {
+      background-color: var(--color-ink);
+      color: var(--color-paper);
+    }
+  }
+</style>

@@ -56,6 +56,9 @@ describe("UI", () => {
         count: 23,
       }),
       visit: en.visit("97th"),
+      visitName: en.visitName("97th"),
+      previewName: en.previewName("97th"),
+      previewFrameTitle: en.previewFrameTitle("97th"),
       showing: en.showing(22),
     };
     assert.deepEqual(Object.keys(texts).toSorted(), Object.keys(en).toSorted());

@@ -4,6 +4,10 @@
 // grey "#" chips for the era and any status other than "held".
 // The whole card is clickable through the heading link (stretched with
 // ::after), so the link text stays the theme instead of the whole card.
+//
+// Pointing at the card (or moving focus into it) darkens the picture and
+// shows "Visit the site" and "Preview" over it. Touch screens have no hover,
+// so there the two buttons sit in a row at the bottom of the card instead.
 import {
   ERA_NAMES,
   STATUS_LABELS,
@@ -15,6 +19,7 @@ import {
 import { UI, headingOf, roundLabel } from "../i18n/ui.ts";
 import { formatDateRange } from "../lib/format.ts";
 import Capture from "./Capture.astro";
+import PreviewActions from "./PreviewActions.astro";
 
 interface Props {
   festival: Festival;
@@ -37,6 +42,7 @@ const notes = [festival.statusReason?.[lang], external?.label[lang]].filter(Bool
 <li class="card" data-era={era}>
   <article>
     <Capture round={round} widths={[320, 480, 640, 800, 960, 1080, 1280]} sizes={sizes} />
+    <PreviewActions festival={festival} lang={lang} />
     <div class="body">
       <p class="meta">
         <span class="pill" aria-hidden="true">
@@ -79,14 +85,79 @@ const notes = [festival.statusReason?.[lang], external?.label[lang]].filter(Bool
     box-shadow:
       0 1px 2px rgb(0 0 0 / 0.04),
       0 6px 20px rgb(0 0 0 / 0.05);
-    transition:
-      translate 0.25s ease-out,
-      box-shadow 0.25s ease-out;
   }
 
-  /* :global: the picture is rendered by Capture.astro, outside this scope. */
-  article :global(.capture img) {
-    transition: scale 0.4s ease-out;
+  /*
+   * The picture and the buttons share the first row; the text is the second.
+   * :global: both are rendered by other components, outside this scope.
+   */
+  article > :global(.capture),
+  article > :global(.preview-actions) {
+    grid-area: 1 / 1;
+  }
+
+  .body {
+    grid-row: 2;
+  }
+
+  /* Over the picture: a dark veil, hidden until the card is pointed at or focused. */
+  article > :global(.preview-actions) {
+    /* Above the stretched heading link, so the buttons get the clicks. */
+    position: relative;
+    z-index: 1;
+    background-color: rgb(0 0 0 / 0.55);
+    opacity: 0;
+    transition: opacity 0.2s ease-out;
+    /* The veil itself lets clicks through to the card's link. */
+    pointer-events: none;
+  }
+
+  article > :global(.preview-actions > *) {
+    pointer-events: none;
+  }
+
+  .card:focus-within article > :global(.preview-actions) {
+    opacity: 1;
+  }
+
+  .card:focus-within article > :global(.preview-actions > *) {
+    pointer-events: auto;
+  }
+
+  @media (hover: hover) {
+    .card:hover article > :global(.preview-actions) {
+      opacity: 1;
+    }
+
+    .card:hover article > :global(.preview-actions > *) {
+      pointer-events: auto;
+    }
+  }
+
+  /* Touch screens: no veil; the buttons sit in a row at the bottom of the card. */
+  @media (hover: none) {
+    article {
+      grid-template-rows: auto 1fr auto;
+    }
+
+    article > :global(.preview-actions),
+    .card:focus-within article > :global(.preview-actions) {
+      grid-area: 3 / 1;
+      padding: 0 1.125rem 1.25rem;
+      background: none;
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    article > :global(.preview-actions > *) {
+      pointer-events: auto;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    article > :global(.preview-actions) {
+      transition: none;
+    }
   }
 
   .body {
@@ -152,53 +223,17 @@ const notes = [festival.statusReason?.[lang], external?.label[lang]].filter(Bool
     padding-block-start: 0.25rem;
   }
 
-  .card:has(a:focus-visible) {
+  .card:has(.title a:focus-visible) {
     outline: 2px solid var(--color-ink);
     outline-offset: 4px;
     border-radius: 0.375rem;
   }
 
-  /*
-   * Pointing at a card (or tabbing to it) lifts it a little, deepens its
-   * shadow, zooms the picture slightly and underlines the theme.
-   */
   @media (hover: hover) {
-    .card:hover article {
-      translate: 0 -4px;
-      box-shadow:
-        0 2px 4px rgb(0 0 0 / 0.06),
-        0 16px 36px rgb(0 0 0 / 0.12);
-    }
-
-    .card:hover :global(.capture img) {
-      scale: 1.04;
-    }
-
     .card:hover .title a {
       text-decoration: underline;
       text-decoration-thickness: 1px;
       text-underline-offset: 0.2em;
-    }
-  }
-
-  .card:has(a:focus-visible) article {
-    translate: 0 -4px;
-  }
-
-  /* Without motion: keep the deeper shadow and the underline, drop the movement. */
-  @media (prefers-reduced-motion: reduce) {
-    article,
-    article :global(.capture img) {
-      transition: none;
-    }
-
-    .card:hover article,
-    .card:has(a:focus-visible) article {
-      translate: none;
-    }
-
-    .card:hover :global(.capture img) {
-      scale: none;
     }
   }
 </style>

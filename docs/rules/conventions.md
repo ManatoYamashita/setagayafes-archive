@@ -17,6 +17,9 @@
   - MENU: `popover` または `<details>`
   - 絞り込み: radio ＋ `:has()`
 
+- 過去回のサイトを iframe で埋めるときは、`sandbox` に `allow-same-origin` を付けない（プレビュー。[screen.md](../design/screen.md)）
+  - 過去回のサイトは同じホストにあり、古い JS が動く。同じオリジンのまま埋めると、その JS がこのページを操作できてしまう
+
 **理由:** CSP を `script-src 'none'` で運用する。JS が0なら、XSS の影響を構造的に断てる。
 転送量の予算（後述）も守りやすい。
 

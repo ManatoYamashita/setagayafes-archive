@@ -9,6 +9,7 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { after, before, describe, test } from "node:test";
+import { URL } from "node:url";
 import { chromium } from "playwright";
 import {
   ERA_NAMES,
@@ -41,6 +42,7 @@ const PAGES = {
     filterLegend: "時代で絞り込む",
     estimated: "（推定）",
     comingSoon: "公開準備中",
+    preview: (/** @type {number} */ round) => `プレビュー（第${round}回）`,
   },
   en: {
     path: "/en/",
@@ -55,6 +57,7 @@ const PAGES = {
     filterLegend: "Filter by era",
     estimated: "(estimated)",
     comingSoon: "Coming soon",
+    preview: (/** @type {number} */ round) => `Preview: the ${ordinalOf(round)} festival’s site`,
   },
 };
 
@@ -73,6 +76,9 @@ const countOf = (/** @type {string} */ era) =>
 /** Whether `pnpm capture` has produced a screenshot for the festival. */
 const captured = (/** @type {number} */ round) =>
   ["png", "jpg"].some((ext) => existsSync(`src/assets/captures/${ordinalOf(round)}.${ext}`));
+
+/** The festival folders on this host, e.g. "/97th/": what the previews load. */
+const FESTIVAL_PATHS = new Set(FESTIVALS.map((festival) => linkOf(festival)));
 
 /** @type {Awaited<ReturnType<typeof serve>>} */
 let server;
@@ -486,17 +492,28 @@ for (const lang of LANGS) {
           [...boxes.keys()],
           "source order is left to right, top to bottom",
         );
+        // Each card has its buttons ("Visit the site", "Preview") before its
+        // heading link. Tab through the grid and note which card each heading
+        // link that receives focus belongs to.
         const cards = visibleCards(page);
-        await cards.first().getByRole("link").focus();
-        for (const index of reading) {
-          const link = cards.nth(index).getByRole("link");
-          assert.equal(
-            await link.evaluate((element) => element === document.activeElement),
-            true,
-            `Tab reaches card ${index + 1} in visual reading order`,
-          );
+        await cards.first().locator("a, button").first().focus();
+        /** @type {number[]} */
+        const order = [];
+        for (let step = 0; step < boxes.length * 4; step += 1) {
+          const index = await page.evaluate(() => {
+            const active = document.activeElement;
+            const card = active?.closest(".grid > li");
+            if (!card) return -1;
+            const visible = [...document.querySelectorAll(".grid > li")].filter((item) =>
+              item.checkVisibility(),
+            );
+            return active?.closest("h3") ? visible.indexOf(card) : -2;
+          });
+          if (index === -1) break;
+          if (index >= 0) order.push(index);
           await page.keyboard.press("Tab");
         }
+        assert.deepEqual(order, reading, "Tab reaches the cards in visual reading order");
       });
     }
 
@@ -523,6 +540,89 @@ for (const lang of LANGS) {
         await close();
       });
     }
+  });
+
+  describe(`${lang}: preview`, () => {
+    test("opens the latest festival's site in a sandboxed iframe from the hero", async () => {
+      const { page, close } = await open(t.path);
+      await page.waitForLoadState("networkidle");
+      // Nothing from the festival folders is fetched before a preview opens.
+      const fetched = await page.evaluate(() =>
+        // eslint-disable-next-line no-undef -- runs in the page.
+        performance.getEntriesByType("resource").map((entry) => entry.name),
+      );
+      assert.deepEqual(
+        fetched.filter((url) => FESTIVAL_PATHS.has(new URL(url).pathname)),
+        [],
+        "no preview loads on its own",
+      );
+
+      const hero = page.locator("#latest");
+      await hero.locator(".frame").hover();
+      const button = hero.getByRole("button", { name: t.preview(latest.round), exact: true });
+      await button.click();
+      const dialog = page.locator(`#preview-${latest.round}`);
+      await dialog.waitFor({ state: "visible" });
+      const frame = dialog.locator("iframe");
+      assert.equal(await frame.getAttribute("src"), linkOf(latest));
+      assert.equal(await frame.getAttribute("loading"), "lazy");
+      assert.equal(
+        await frame.getAttribute("sandbox"),
+        "allow-scripts allow-popups allow-popups-to-escape-sandbox",
+        "no allow-same-origin: the old sites' scripts cannot reach this page",
+      );
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden" });
+      await close();
+    });
+
+    test("closes with the close button", async () => {
+      const { page, close } = await open(t.path);
+      const card = page.locator(".grid > li").first();
+      await card.hover();
+      await card.getByRole("button", { name: t.preview(latest.round), exact: true }).click();
+      const dialog = page.locator(`#preview-${latest.round}`);
+      await dialog.waitFor({ state: "visible" });
+      await dialog.getByRole("button", { name: t.close, exact: true }).click();
+      await dialog.waitFor({ state: "hidden" });
+      await close();
+    });
+
+    test("is offered for every festival whose site is on this host", async () => {
+      const { page, close } = await open(t.path);
+      for (const festival of listed) {
+        const card = page.locator(".grid > li", {
+          has: page.locator(`h3 a[href="${linkOf(festival)}"]`),
+        });
+        const buttons = card.locator("button[popovertarget]");
+        assert.equal(
+          await buttons.count(),
+          festival.externalLink ? 0 : 1,
+          `round ${festival.round}`,
+        );
+      }
+      await close();
+    });
+
+    test("shows the buttons under the picture on touch screens", async () => {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        hasTouch: true,
+        isMobile: true,
+      });
+      const page = await context.newPage();
+      await page.goto(`${server.url}${t.path}`, { waitUntil: "load" });
+      const card = page.locator(".grid > li").first();
+      await card.scrollIntoViewIfNeeded();
+      const button = card.getByRole("button", { name: t.preview(latest.round), exact: true });
+      assert.equal(await button.isVisible(), true);
+      const [picture, buttonBox] = await Promise.all([
+        card.locator("img").boundingBox(),
+        button.boundingBox(),
+      ]);
+      assert.ok(picture && buttonBox && buttonBox.y > picture.y + picture.height);
+      await context.close();
+    });
   });
 
   describe(`${lang}: related sites`, () => {
