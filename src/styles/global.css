@@ -34,11 +34,6 @@
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-text-size-adjust: 100%;
-    /*
-     * Keep the scrollbar's room when an open preview stops the page from
-     * scrolling (SitePreview.astro), so the page does not shift sideways.
-     */
-    scrollbar-gutter: stable;
     /* Lining, equal-width digits keep dates and round numbers aligned. */
     font-variant-numeric: tabular-nums;
   }

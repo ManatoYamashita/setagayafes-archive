@@ -61,7 +61,8 @@
 - 外部にある回（第87回、Wayback Machine）は `frame-src 'self'` の外なので、プレビューを出さない（`src/lib/preview.ts` の `hasPreview()`）
 - 開いている間は、後ろのページをスクロールさせない（2026-11-11 のオーナーの指示）。`html:has(.preview:popover-open) { overflow: hidden }` で止める。JS は使わない
   - ホイールとタッチのスクロールは、iframe の中のサイトにだけ効く。サイトの端まで行っても後ろへ伝わらない（`overscroll-behavior: contain`）
-  - スクロールバーが消えて横にずれないよう、`html` に `scrollbar-gutter: stable` を付けた
+  - スクロールバーが消えて横にずれないよう、開いている間だけ `html` に `scrollbar-gutter: stable` を付ける
+    - 常に付けると、スクロールバーが常に出る環境（CI の Linux）で、`scrollWidth - clientWidth` が -15 になった。スクロールバーの幅を二重に取っている恐れがあるので、開いている間に限った
   - e2e は、パネルの帯の上でホイールを回してもページが動かず、閉じれば動くことを見る
 - 写真の上の膜は、膜そのものはクリックを通し（`pointer-events: none`）、ボタンだけが受ける。膜の外はカード全体のリンク（見出しのリンクを `::after` で伸ばしたもの）のまま
 - 膜は `position: relative`・`z-index: 1` で写真の上に置く。写真の箱（`Capture.astro`）が位置指定されているので、指定しないと写真の下に描かれる

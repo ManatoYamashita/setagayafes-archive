@@ -58,6 +58,8 @@ const hreflang = lang === "ja" ? undefined : "ja";
    */
   :global(html:has(.preview:popover-open)) {
     overflow: hidden;
+    /* Keep the scrollbar's room, so the page does not shift sideways. */
+    scrollbar-gutter: stable;
   }
 
   .preview {
