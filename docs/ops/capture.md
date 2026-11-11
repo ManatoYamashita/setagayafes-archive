@@ -22,27 +22,33 @@ AVIF と JPEG をビルド時に作るのは、次の理由による。
 # 初回だけ。撮影に使うブラウザを入れる
 pnpm exec playwright install --only-shell chromium
 
-pnpm capture          # 全回
-pnpm capture 98       # 第98回だけ（年次の追加）
-pnpm capture 90 96th  # 複数
+pnpm capture                # 全回と関連サイト
+pnpm capture 98             # 第98回だけ（年次の追加）
+pnpm capture 90 96th        # 複数
+pnpm capture related        # 関連サイトだけ（src/data/related-sites.ts）
+pnpm capture todoroki-2011  # 関連サイトを1件。id で指定する
 ```
 
 - 撮る回は festivals データ（`src/data/festivals.ts` の `FESTIVALS`）から読む。データに無い回は撮れない
   - 新しい回は、先にデータへ1件足してから `pnpm capture <回>` を流す
   - `pnpm test` は、データの全回に原画像があることを検査する。データと原画像は同じ PR に入れる
 - URL はデータの `pathOf`（`/81st/` など）から作る。`externalLink` を持つ回（このホストにサイトが無い回）は、`OVERRIDES` に写真を指定しないとエラーになる
+- 関連サイトは同じ条件で撮り、原画像を `src/assets/related/<id>.png` に置く（Issue #30。トップの関連サイトの帯の写真）
+  - `blockedBy` を持つ関連サイト（公開準備中）は撮らない。リンクを張る PR で撮る
+  - `pnpm test` は、リンクする関連サイトすべてに原画像があり、余分な画像が無いことを検査する
 - 撮影は手元で行う。CI では行わない
 - 1回ずつ順に撮る（共用サーバーへの負荷を抑えるため）。全回で約3分
 - 撮影に失敗した回は、原画像を書き換えない（一時ファイルへ書いてから置き換える）
 
 画面からは `src/lib/captures.ts` を使う。
 
-| 名前                  | 内容                                                                   |
-| --------------------- | ---------------------------------------------------------------------- |
-| `captureOf(回数)`     | 原画像（`ImageMetadata`）。`<Image>`・`<Picture>` の `src` に渡す      |
-| `CAPTURE_IMAGE_PROPS` | 全サムネイルで共通の指定（AVIF、`fit: "cover"`、上端を基準に切り出す） |
-| `ogImageOf(回数)`     | OGP 用の JPEG（1200×630）                                              |
-| `hasCapture(回数)`    | 原画像の有無                                                           |
+| 名前                   | 内容                                                                   |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `captureOf(回数)`      | 原画像（`ImageMetadata`）。`<Image>`・`<Picture>` の `src` に渡す      |
+| `CAPTURE_IMAGE_PROPS`  | 全サムネイルで共通の指定（AVIF、`fit: "cover"`、上端を基準に切り出す） |
+| `ogImageOf(回数)`      | OGP 用の JPEG（1200×630）                                              |
+| `hasCapture(回数)`     | 原画像の有無                                                           |
+| `relatedCaptureOf(id)` | 関連サイトの原画像。撮影前は `undefined`（帯は無地の面を出す）         |
 
 ## 撮影の条件
 

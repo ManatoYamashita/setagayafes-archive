@@ -7,12 +7,16 @@
 // capture it. Node reads the TypeScript file directly (type stripping).
 
 import { FESTIVALS, ordinalOf, pathOf } from "../../src/data/festivals.ts";
+import { RELATED_SITES } from "../../src/data/related-sites.ts";
 
 /** Base URL of the archive host. Each festival lives in pathOf(round), e.g. /81st/. */
 export const ARCHIVE_ORIGIN = "https://archive.setagayafes.org";
 
-/** Output folder for the original images, relative to the project root. */
+/** Output folder for the festivals' original images, relative to the project root. */
 export const CAPTURE_DIR = "src/assets/captures";
+
+/** Output folder for the related sites' original images (src/data/related-sites.ts). */
+export const RELATED_CAPTURE_DIR = "src/assets/related";
 
 /**
  * Browser conditions shared by every capture. 1280 CSS px is wide enough for
@@ -45,8 +49,11 @@ export const OVERRIDES = {
 };
 
 /**
- * @typedef {{ kind: "site", number: number, slug: string, url: string, file: string, settleMs: number }} SiteTarget
- * @typedef {{ kind: "photo", number: number, slug: string, url: string, file: string }} PhotoTarget
+ * `dir` is the output folder (CAPTURE_DIR or RELATED_CAPTURE_DIR); `file` is
+ * the file name in it. `number` is the festival's round, absent for a related site.
+ *
+ * @typedef {{ kind: "site", number?: number, slug: string, url: string, dir: string, file: string, settleMs: number }} SiteTarget
+ * @typedef {{ kind: "photo", number: number, slug: string, url: string, dir: string, file: string }} PhotoTarget
  * @typedef {SiteTarget | PhotoTarget} CaptureTarget
  */
 
@@ -71,7 +78,14 @@ export function captureTarget(number) {
   const slug = ordinalOf(number);
   const override = OVERRIDES[number] ?? {};
   if (override.photo) {
-    return { kind: "photo", number, slug, url: override.photo, file: `${slug}.jpg` };
+    return {
+      kind: "photo",
+      number,
+      slug,
+      url: override.photo,
+      dir: CAPTURE_DIR,
+      file: `${slug}.jpg`,
+    };
   }
   if ("externalLink" in festival) {
     throw new Error(
@@ -84,6 +98,7 @@ export function captureTarget(number) {
     number,
     slug,
     url: `${ARCHIVE_ORIGIN}${pathOf(number)}`,
+    dir: CAPTURE_DIR,
     file: `${slug}.png`,
     settleMs: override.settleMs ?? DEFAULT_SETTLE_MS,
   };
@@ -112,5 +127,57 @@ export function parseFestivalArgs(args) {
       throw new Error(`wrong ordinal suffix: "${arg}" (expected "${ordinalOf(number)}")`);
     }
     return number;
+  });
+}
+
+/** @returns {string[]} The id of every related site that is linked (not blocked). */
+export function allRelatedIds() {
+  return RELATED_SITES.filter((site) => !("blockedBy" in site)).map((site) => site.id);
+}
+
+/**
+ * A related site (src/data/related-sites.ts), captured under the same
+ * conditions as the festivals. Its picture is shown in the related sites band.
+ *
+ * @param {string} id
+ * @returns {SiteTarget}
+ * @throws When the id is not in the data, or the site is not linked yet.
+ */
+export function relatedTarget(id) {
+  const site = RELATED_SITES.find((candidate) => candidate.id === id);
+  if (!site) throw new Error(`related site "${id}" is not in src/data/related-sites.ts`);
+  if ("blockedBy" in site) {
+    throw new Error(
+      `related site "${id}" waits for Issue #${site.blockedBy}; capture it after that`,
+    );
+  }
+  return {
+    kind: "site",
+    slug: id,
+    url: `${ARCHIVE_ORIGIN}${site.path}`,
+    dir: RELATED_CAPTURE_DIR,
+    file: `${id}.png`,
+    settleMs: DEFAULT_SETTLE_MS,
+  };
+}
+
+/**
+ * Reads the command line of `pnpm capture`. Festival numbers are read by
+ * parseFestivalArgs; a related site's id selects that site, and "related"
+ * selects every related site. With no arguments, everything is selected.
+ *
+ * @param {string[]} args
+ * @returns {CaptureTarget[]}
+ */
+export function parseCaptureArgs(args) {
+  if (args.length === 0) {
+    return [...allFestivalNumbers().map(captureTarget), ...allRelatedIds().map(relatedTarget)];
+  }
+  const relatedIds = new Set(RELATED_SITES.map((site) => site.id));
+  return args.flatMap((arg) => {
+    const name = arg.trim();
+    if (name === "related") return allRelatedIds().map(relatedTarget);
+    if (relatedIds.has(name)) return [relatedTarget(name)];
+    return parseFestivalArgs([arg]).map(captureTarget);
   });
 }

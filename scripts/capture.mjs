@@ -4,10 +4,13 @@
 //   pnpm capture            # every festival
 //   pnpm capture 98         # only the 98th (add it to src/data/festivals.ts first)
 //   pnpm capture 94 97th    # several
+//   pnpm capture related    # every related site (src/data/related-sites.ts)
+//   pnpm capture todoroki-2011  # one related site, by its id
 //
 // The first run needs the browser: `pnpm exec playwright install chromium-headless-shell`.
 //
-// The originals go to src/assets/captures/ and are committed. The AVIF
+// The originals go to src/assets/captures/ (festivals) and src/assets/related/
+// (related sites) and are committed. The AVIF
 // thumbnails and the OGP JPEG are made from them at build time
 // (src/lib/captures.ts), so this script never writes to public/ or dist/.
 //
@@ -18,50 +21,46 @@
 import { mkdir, rename, writeFile, access } from "node:fs/promises";
 import { join } from "node:path";
 import { chromium } from "playwright";
-import {
-  CAPTURE_CONDITIONS,
-  CAPTURE_DIR,
-  captureTarget,
-  parseFestivalArgs,
-} from "./lib/capture-targets.mjs";
+import { CAPTURE_CONDITIONS, parseCaptureArgs } from "./lib/capture-targets.mjs";
 import { stripJpegMetadata } from "./lib/jpeg.mjs";
 
 const NAVIGATION_TIMEOUT_MS = 60_000;
 const NETWORK_IDLE_TIMEOUT_MS = 15_000;
 
 const root = process.cwd();
-const outDir = join(root, CAPTURE_DIR);
 const args = process.argv.slice(2);
 const explicit = args.length > 0;
 /** @type {import("./lib/capture-targets.mjs").CaptureTarget[]} */
 let targets;
 try {
-  targets = parseFestivalArgs(args).map(captureTarget);
+  targets = parseCaptureArgs(args);
 } catch (error) {
   console.error(/** @type {Error} */ (error).message);
   process.exit(1);
 }
 
-await mkdir(outDir, { recursive: true });
+for (const dir of new Set(targets.map((target) => target.dir))) {
+  await mkdir(join(root, dir), { recursive: true });
+}
 
 /**
  * Writes through a temporary file so that a failed run never leaves a broken
  * original behind.
  *
- * @param {string} file
+ * @param {import("./lib/capture-targets.mjs").CaptureTarget} target
  * @param {Uint8Array} data
  */
-async function writeAtomically(file, data) {
-  const path = join(outDir, file);
+async function writeAtomically(target, data) {
+  const path = join(root, target.dir, target.file);
   const temporary = `${path}.partial`;
   await writeFile(temporary, data);
   await rename(temporary, path);
 }
 
-/** @param {string} file */
-async function exists(file) {
+/** @param {import("./lib/capture-targets.mjs").CaptureTarget} target */
+async function exists(target) {
   try {
-    await access(join(outDir, file));
+    await access(join(root, target.dir, target.file));
     return true;
   } catch {
     return false;
@@ -73,7 +72,7 @@ async function fetchPhoto(target) {
   const response = await fetch(target.url);
   if (!response.ok) throw new Error(`HTTP ${response.status} for ${target.url}`);
   const stripped = stripJpegMetadata(new Uint8Array(await response.arrayBuffer()));
-  await writeAtomically(target.file, stripped);
+  await writeAtomically(target, stripped);
 }
 
 /**
@@ -104,7 +103,7 @@ async function captureSite(browser, target) {
       caret: "hide",
       scale: "device",
     });
-    await writeAtomically(target.file, png);
+    await writeAtomically(target, png);
   } finally {
     await context.close();
   }
@@ -116,10 +115,10 @@ const browser = await chromium.launch();
 try {
   // One at a time, to be gentle with the shared host.
   for (const target of targets) {
-    const label = `${target.slug.padEnd(5)} ${target.url}`;
+    const label = `${target.slug.padEnd(14)} ${target.url}`;
     try {
       if (target.kind === "photo") {
-        if (!explicit && (await exists(target.file))) {
+        if (!explicit && (await exists(target))) {
           console.log(`skip ${label} (photo already saved; name it to fetch again)`);
           continue;
         }
@@ -127,7 +126,7 @@ try {
       } else {
         await captureSite(browser, target);
       }
-      console.log(`ok   ${label} -> ${CAPTURE_DIR}/${target.file}`);
+      console.log(`ok   ${label} -> ${target.dir}/${target.file}`);
     } catch (error) {
       failures.push(target.slug);
       console.error(`FAIL ${label}: ${/** @type {Error} */ (error).message}`);

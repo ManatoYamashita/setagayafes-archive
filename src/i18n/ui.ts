@@ -20,6 +20,13 @@ export function otherLang(lang: Lang): Lang {
   return lang === "ja" ? "en" : "ja";
 }
 
+/** The festivals the archive covers, for the hero's lead. */
+export interface ArchiveSpan {
+  readonly first: { readonly round: number; readonly year: number };
+  readonly last: { readonly round: number; readonly year: number };
+  readonly count: number;
+}
+
 interface Words {
   readonly siteName: string;
   /** Meta description. `first` is the oldest festival in the archive. */
@@ -29,27 +36,52 @@ interface Words {
   readonly menu: string;
   readonly menuLabel: string;
   readonly footerMenuLabel: string;
+  readonly socialLabel: string;
   readonly close: string;
-  readonly latest: string;
-  /** The hero's lead sentence. */
-  readonly heroLead: (round: string, festivalName: string) => string;
-  /** The hero's call to action. */
+  /** Links to the page's sections in the header. */
+  readonly sectionsLabel: string;
+  readonly navLatest: string;
+  readonly navArchive: string;
+  readonly navRelated: string;
+  /** Before the organiser's name at the right end of the header. */
+  readonly runBy: string;
+  /**
+   * The large Latin word of each section heading, and the short vertical label
+   * beside it. The vertical labels are Japanese only; English leaves them empty.
+   */
+  readonly archiveWord: string;
+  readonly archiveVertical: string;
+  readonly relatedWord: string;
+  readonly relatedVertical: string;
+  /**
+   * The hero's title over two lines; the second is muted. The first line is
+   * given in phrases: on narrow screens it breaks between them only.
+   */
+  readonly heroTitle: readonly [readonly string[], string];
+  /** The hero's lead: the oldest and newest festival and how many there are. */
+  readonly heroLead: (span: ArchiveSpan) => string;
+  /** The hero's button to the newest festival's site. */
   readonly visit: (round: string) => string;
-  readonly archive: string;
-  readonly archiveIntro: string;
+  /** The hero's button to the list of every festival on this page. */
+  readonly seeArchive: string;
+  /**
+   * The two buttons over a festival's picture, and their accessible names,
+   * which start with the visible words and add the round.
+   */
+  readonly visitShort: string;
+  readonly visitName: (round: string) => string;
+  readonly previewButton: string;
+  readonly previewName: (round: string) => string;
+  /** The title of the iframe in the preview dialog. */
+  readonly previewFrameTitle: (round: string) => string;
   readonly filterLegend: string;
   readonly filterAll: string;
   readonly showing: (count: number) => string;
   /** Appended to dates that are inferred rather than stated by the site. */
   readonly estimated: string;
-  readonly relatedSites: string;
   /** Shown instead of a link while a related site is being prepared. */
   readonly comingSoon: string;
   readonly footerNote: string;
-  /** Closes a sentence: "。" in Japanese, "." in English. */
-  readonly fullStop: string;
-  /** Between two sentences: nothing in Japanese, a space in English. */
-  readonly sentenceGap: string;
 }
 
 export const UI = {
@@ -60,25 +92,35 @@ export const UI = {
     ogImageAlt: (round, festivalName) => `${round}${festivalName}の公式サイトのトップページ`,
     menu: "MENU",
     menuLabel: "世田谷祭の公式サイトとSNS",
-    footerMenuLabel: "世田谷祭の公式サイトとSNS（フッター）",
+    footerMenuLabel: "世田谷祭の公式サイトと言語の切り替え（フッター）",
+    socialLabel: "世田谷祭のSNS",
     close: "閉じる",
-    latest: "最新の回",
-    heroLead: (round, festivalName) =>
-      `${round}${festivalName}の公式サイトを、公開当時のまま残しています。`,
+    sectionsLabel: "ページ内の移動",
+    navLatest: "最新",
+    navArchive: "アーカイブ",
+    navRelated: "関連サイト",
+    runBy: "運営",
+    archiveWord: "Archive",
+    archiveVertical: "過去の回",
+    relatedWord: "Related",
+    relatedVertical: "関連サイト",
+    heroTitle: [["東京都市大学", "世田谷祭"], "アーカイブ"],
+    heroLead: ({ first, last, count }) =>
+      `東京都市大学（旧 武蔵工業大学）の学園祭、世田谷祭の公式サイトを、第${first.round}回（${first.year}年）から第${last.round}回（${last.year}年）までの${count}回分、公開当時のまま保存しています。各回のテーマ・日程・企画の案内を、当時のデザインのまま見られます。中止やオンライン開催になった回のサイトも含みます。`,
     visit: (round) => `${round}のサイトを見る`,
-    archive: "アーカイブ",
-    archiveIntro:
-      "東京都市大学（旧 武蔵工業大学）の学園祭、世田谷祭の公式サイトを、各回の公開当時のまま残しています。",
+    seeArchive: "過去の回を見る",
+    visitShort: "サイトを見る",
+    visitName: (round) => `サイトを見る（${round}）`,
+    previewButton: "プレビュー",
+    previewName: (round) => `プレビュー（${round}）`,
+    previewFrameTitle: (round) => `${round}のサイトのプレビュー`,
     filterLegend: "時代で絞り込む",
     filterAll: "すべて",
     showing: (count) => `${count}件を表示中`,
     estimated: "（推定）",
-    relatedSites: "関連サイト",
     comingSoon: "公開準備中",
     footerNote:
       "各回のサイトは公開当時のまま保存しています。掲載している日程・連絡先・リンク先は、当時のものです。",
-    fullStop: "。",
-    sentenceGap: "",
   },
   en: {
     siteName: "Setagaya Festival Archive",
@@ -88,25 +130,35 @@ export const UI = {
       `The top page of the official site of the ${round} ${festivalName}`,
     menu: "MENU",
     menuLabel: "Setagaya Festival official site and social media",
-    footerMenuLabel: "Setagaya Festival official site and social media (footer)",
+    footerMenuLabel: "Setagaya Festival official sites and language (footer)",
+    socialLabel: "Setagaya Festival on social media",
     close: "Close",
-    latest: "Latest",
-    heroLead: (round, festivalName) =>
-      `The official site of the ${round} ${festivalName}, kept as it was published.`,
+    sectionsLabel: "On this page",
+    navLatest: "Latest",
+    navArchive: "Archive",
+    navRelated: "Related sites",
+    runBy: "Run by",
+    archiveWord: "Archive",
+    archiveVertical: "",
+    relatedWord: "Related",
+    relatedVertical: "",
+    heroTitle: [["Setagaya Festival"], "Archive"],
+    heroLead: ({ first, last, count }) =>
+      `The official sites of the Setagaya Festival, the school festival of Tokyo City University (formerly Musashi Institute of Technology), kept as they were published: ${count} festivals, from the ${ordinalOf(first.round)} (${first.year}) to the ${ordinalOf(last.round)} (${last.year}). Each site shows that year’s theme, dates and events in its original design, including the festivals that were cancelled or held online. The sites are in Japanese.`,
     visit: (round) => `Visit the ${round} festival’s site`,
-    archive: "Archive",
-    archiveIntro:
-      "The official sites of the Setagaya Festival, the school festival of Tokyo City University (formerly Musashi Institute of Technology), each kept as it was published. The sites are in Japanese.",
+    seeArchive: "See past festivals",
+    visitShort: "Visit the site",
+    visitName: (round) => `Visit the site: the ${round} festival`,
+    previewButton: "Preview",
+    previewName: (round) => `Preview: the ${round} festival’s site`,
+    previewFrameTitle: (round) => `Preview of the ${round} festival’s site`,
     filterLegend: "Filter by era",
     filterAll: "All",
     showing: (count) => `Showing ${count} ${count === 1 ? "festival" : "festivals"}`,
     estimated: " (estimated)",
-    relatedSites: "Related sites",
     comingSoon: "Coming soon",
     footerNote:
       "Each festival’s site is kept as it was published. The dates, contacts and links on those sites are from that time.",
-    fullStop: ".",
-    sentenceGap: " ",
   },
 } as const satisfies Record<Lang, Words>;
 

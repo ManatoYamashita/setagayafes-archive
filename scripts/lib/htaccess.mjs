@@ -73,6 +73,10 @@ export function pageCsp(styleHashes) {
     // reads robots.txt that way and fails its SEO audit without it. No script
     // can run (script-src 'none'), so nothing else uses it.
     "connect-src 'self'",
+    // The preview dialog shows a festival's site, on this host, in an iframe.
+    // The iframe is sandboxed without allow-same-origin, so the site's own
+    // scripts cannot reach this page (Issue #30).
+    "frame-src 'self'",
     "base-uri 'none'",
     "form-action 'none'",
     "frame-ancestors 'none'",

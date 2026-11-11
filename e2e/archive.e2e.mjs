@@ -9,6 +9,7 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { after, before, describe, test } from "node:test";
+import { URL } from "node:url";
 import { chromium } from "playwright";
 import {
   ERA_NAMES,
@@ -18,6 +19,7 @@ import {
   latestFestival,
   ordinalOf,
   linkOf,
+  yearOf,
 } from "../src/data/festivals.ts";
 import { RELATED_SITES } from "../src/data/related-sites.ts";
 import { headingOf } from "../src/i18n/ui.ts";
@@ -30,6 +32,8 @@ const PAGES = {
   ja: {
     path: "/",
     siteName: "世田谷祭アーカイブ",
+    heroTitle: "東京都市大学世田谷祭\nアーカイブ",
+    seeArchive: "過去の回を見る",
     menuLinks: ["公式サイト", "公式ブログ", "X", "Instagram", "English"],
     close: "閉じる",
     round: (/** @type {number} */ round) => `第${round}回`,
@@ -38,10 +42,13 @@ const PAGES = {
     filterLegend: "時代で絞り込む",
     estimated: "（推定）",
     comingSoon: "公開準備中",
+    preview: (/** @type {number} */ round) => `プレビュー（第${round}回）`,
   },
   en: {
     path: "/en/",
     siteName: "Setagaya Festival Archive",
+    heroTitle: "Setagaya Festival\nArchive",
+    seeArchive: "See past festivals",
     menuLinks: ["Official site", "Official blog", "X", "Instagram", "日本語"],
     close: "Close",
     round: (/** @type {number} */ round) => ordinalOf(round),
@@ -50,6 +57,7 @@ const PAGES = {
     filterLegend: "Filter by era",
     estimated: "(estimated)",
     comingSoon: "Coming soon",
+    preview: (/** @type {number} */ round) => `Preview: the ${ordinalOf(round)} festival’s site`,
   },
 };
 
@@ -60,15 +68,17 @@ const LANGS = ["ja", "en"];
 const JAPANESE = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
 
 const latest = latestFestival();
-const listed = FESTIVALS.filter((festival) => festival.round !== latest.round).toSorted(
-  (a, b) => b.round - a.round,
-);
+/** The grid lists every festival, the hero's too (Issue #30). */
+const listed = FESTIVALS.toSorted((a, b) => b.round - a.round);
 const countOf = (/** @type {string} */ era) =>
   listed.filter((festival) => eraOf(festival.round) === era).length;
 
 /** Whether `pnpm capture` has produced a screenshot for the festival. */
 const captured = (/** @type {number} */ round) =>
   ["png", "jpg"].some((ext) => existsSync(`src/assets/captures/${ordinalOf(round)}.${ext}`));
+
+/** The festival folders on this host, e.g. "/97th/": what the previews load. */
+const FESTIVAL_PATHS = new Set(FESTIVALS.map((festival) => linkOf(festival)));
 
 /** @type {Awaited<ReturnType<typeof serve>>} */
 let server;
@@ -128,7 +138,8 @@ for (const lang of LANGS) {
     test("has one h1 and landmarks in order", async () => {
       const { page, close } = await open(t.path);
       assert.equal(await page.locator("h1").count(), 1);
-      assert.equal(await page.locator("h1").innerText(), t.siteName);
+      assert.equal(await page.locator("h1").innerText(), t.heroTitle);
+      assert.equal(await page.title(), t.siteName);
       assert.equal(await page.locator("header").count(), 1);
       assert.equal(await page.locator("main").count(), 1);
       assert.equal(await page.locator("footer").count(), 1);
@@ -199,8 +210,7 @@ for (const lang of LANGS) {
 
     test("can be operated from the keyboard", async () => {
       const { page, close } = await open(t.path);
-      // Tab: site name link, then MENU.
-      await page.keyboard.press("Tab");
+      // MENU is the first stop.
       await page.keyboard.press("Tab");
       await page.keyboard.press("Enter");
       await page.locator("#site-menu").waitFor({ state: "visible" });
@@ -209,24 +219,27 @@ for (const lang of LANGS) {
   });
 
   describe(`${lang}: hero`, () => {
-    test("shows the latest festival and links to its site", async () => {
+    test("names the archive's span and links to the latest festival and the list", async () => {
       const { page, close } = await open(t.path);
-      const hero = page.locator("section", { has: page.locator("#hero-title") });
-      const heading = headingOf(latest, lang);
-      assert.equal(
-        await hero.locator("h2").innerText(),
-        [heading.text, heading.translation].filter(Boolean).join("\n"),
-      );
-      assert.match(await hero.locator(".meta").innerText(), new RegExp(t.round(latest.round)));
+      const hero = page.locator("#latest");
+      const rounds = FESTIVALS.map((festival) => festival.round);
+      const first = Math.min(...rounds);
+      const lead = await hero.locator(".lead").innerText();
+      assert.match(lead, new RegExp(String(yearOf(first))));
+      assert.match(lead, new RegExp(String(yearOf(latest.round))));
+      assert.match(lead, new RegExp(t.round(first)));
       const cta = hero.getByRole("link", { name: t.visit(latest.round), exact: true });
       assert.equal(await cta.getAttribute("href"), linkOf(latest));
+      const list = hero.getByRole("link", { name: t.seeArchive, exact: true });
+      assert.equal(await list.getAttribute("href"), "#archive");
       await close();
     });
 
     test("loads its picture eagerly with high priority when there is one", async () => {
       const { page, close } = await open(t.path);
-      const image = page.locator("section:has(#hero-title) img");
+      const image = page.locator("#latest img");
       if ((await image.count()) > 0) {
+        assert.equal(await image.count(), 1);
         assert.equal(await image.getAttribute("loading"), "eager");
         assert.equal(await image.getAttribute("fetchpriority"), "high");
       }
@@ -239,7 +252,7 @@ for (const lang of LANGS) {
   });
 
   describe(`${lang}: archive grid`, () => {
-    test("lists every other festival, newest first, linked to its site", async () => {
+    test("lists every festival, newest first, linked to its site", async () => {
       const { page, close } = await open(t.path);
       const cards = page.locator(".grid > li");
       assert.equal(await cards.count(), listed.length);
@@ -316,22 +329,23 @@ for (const lang of LANGS) {
     });
 
     for (const { width, autoSizes } of [
+      { width: 412, autoSizes: true },
       { width: 1023, autoSizes: true },
       { width: 1280, autoSizes: true },
       { width: 1023, autoSizes: false },
       { width: 1280, autoSizes: false },
     ]) {
       test(`loads enough image resolution at ${width}px and DPR 2 (auto sizes: ${autoSizes})`, async (context) => {
-        const first = listed.find((festival) => eraOf(festival.round) === "musashi");
-        if (!first || !captured(first.round)) {
-          context.skip("no captured musashi festival");
+        const first = listed.find((festival) => captured(festival.round));
+        if (!first) {
+          context.skip("no captured festival");
           return;
         }
         const { page, close } = await open(t.path, { width, deviceScaleFactor: 2 });
         context.after(close);
 
-        const selector = '.grid > li[data-era="musashi"] img';
-        const image = page.locator(selector).first();
+        const selector = `.grid > li:has(a[href="${linkOf(first)}"]) img`;
+        const image = page.locator(selector);
         if (!autoSizes) {
           await image.evaluate((element) => {
             const image = /** @type {HTMLImageElement} */ (element);
@@ -339,30 +353,21 @@ for (const lang of LANGS) {
           });
         }
         await image.scrollIntoViewIfNeeded();
-        const beforeSrc = await image.evaluate(async (element) => {
-          const image = /** @type {HTMLImageElement} */ (element);
-          await image.decode();
-          return image.currentSrc;
-        });
-        const before = await image.boundingBox();
-        assert.ok(before);
-
-        await page.locator("label:has(#era-musashi)").click();
-        const after = await image.boundingBox();
-        assert.ok(after && after.width > before.width);
+        const box = await image.boundingBox();
+        assert.ok(box);
 
         await page.waitForFunction(
-          ({ selector, beforeSrc, autoSizes, requiredWidth }) => {
+          ({ selector, requiredWidth }) => {
             const image = /** @type {HTMLImageElement | null} */ (document.querySelector(selector));
             if (!image?.complete || !image.naturalWidth) return false;
-            if (autoSizes && image.currentSrc === beforeSrc) return false;
             // naturalWidth accounts for density, so compare the selected width descriptor.
             return image.srcset.split(",").some((candidate) => {
               const [url, width] = candidate.trim().split(/\s+/);
               return image.currentSrc.endsWith(url) && Number.parseInt(width, 10) >= requiredWidth;
             });
           },
-          { selector, beforeSrc, autoSizes, requiredWidth: Math.ceil(after.width * 2) },
+          // The largest candidate is 1280px; a wider box at DPR 2 settles for it.
+          { selector, requiredWidth: Math.min(1280, Math.ceil(box.width * 2)) },
           { timeout: 3000 },
         );
       });
@@ -371,6 +376,8 @@ for (const lang of LANGS) {
     test("makes the whole card clickable", async () => {
       const { page, close } = await open(t.path);
       const card = page.locator(".grid > li").first();
+      // The hero is tall: bring the card into the viewport before clicking by coordinates.
+      await card.scrollIntoViewIfNeeded();
       const box = await card.boundingBox();
       assert.ok(box);
       // Click the picture area, not the heading.
@@ -423,6 +430,23 @@ for (const lang of LANGS) {
       await close();
     });
 
+    test("keeps the picked era visible in forced colors", async () => {
+      const context = await browser.newContext({
+        viewport: { width: 1280, height: 900 },
+        forcedColors: "active",
+      });
+      const page = await context.newPage();
+      await page.goto(`${server.url}${t.path}`, { waitUntil: "load" });
+      const backgroundOf = (/** @type {string} */ id) =>
+        page
+          .locator(`label:has(#era-${id})`)
+          .evaluate(
+            (label) => label.ownerDocument.defaultView?.getComputedStyle(label).backgroundColor,
+          );
+      assert.notEqual(await backgroundOf("all"), await backgroundOf("musashi"));
+      await context.close();
+    });
+
     test("labels the group", async () => {
       const { page, close } = await open(t.path);
       const group = page.getByRole("group", { name: t.filterLegend });
@@ -432,15 +456,19 @@ for (const lang of LANGS) {
   });
 
   describe(`${lang}: layout`, () => {
-    test("features the first card of the pattern on wide screens, also after filtering", async () => {
+    test("uses three even columns on wide screens, also after filtering", async () => {
       const { page, close } = await open(t.path, { width: 1280 });
-      const widthOf = async (/** @type {number} */ n) =>
-        (await visibleCards(page).nth(n).boundingBox())?.width ?? 0;
-
-      assert.ok((await widthOf(0)) > (await widthOf(1)) * 1.8, "first card spans two columns");
-
-      await page.locator("label:has(#era-musashi)").click();
-      assert.ok((await widthOf(0)) > (await widthOf(1)) * 1.8, "pattern restarts after filtering");
+      const boxesOf = async () =>
+        Promise.all([0, 1, 2, 3].map(async (n) => visibleCards(page).nth(n).boundingBox()));
+      for (const era of ["all", "musashi"]) {
+        await page.locator(`label:has(#era-${era})`).click();
+        const [a, b, c, d] = await boxesOf();
+        assert.ok(a && b && c && d);
+        assert.equal(Math.round(a.width), Math.round(b.width), `${era}: same width`);
+        assert.equal(Math.round(b.width), Math.round(c.width), `${era}: same width`);
+        assert.equal(Math.round(a.y), Math.round(c.y), `${era}: three in a row`);
+        assert.ok(d.y > a.y + a.height, `${era}: the fourth starts a new row`);
+      }
       await close();
     });
 
@@ -464,17 +492,28 @@ for (const lang of LANGS) {
           [...boxes.keys()],
           "source order is left to right, top to bottom",
         );
+        // Each card has its buttons ("Visit the site", "Preview") before its
+        // heading link. Tab through the grid and note which card each heading
+        // link that receives focus belongs to.
         const cards = visibleCards(page);
-        await cards.first().getByRole("link").focus();
-        for (const index of reading) {
-          const link = cards.nth(index).getByRole("link");
-          assert.equal(
-            await link.evaluate((element) => element === document.activeElement),
-            true,
-            `Tab reaches card ${index + 1} in visual reading order`,
-          );
+        await cards.first().locator("a, button").first().focus();
+        /** @type {number[]} */
+        const order = [];
+        for (let step = 0; step < boxes.length * 4; step += 1) {
+          const index = await page.evaluate(() => {
+            const active = document.activeElement;
+            const card = active?.closest(".grid > li");
+            if (!card) return -1;
+            const visible = [...document.querySelectorAll(".grid > li")].filter((item) =>
+              item.checkVisibility(),
+            );
+            return active?.closest("h3") ? visible.indexOf(card) : -2;
+          });
+          if (index === -1) break;
+          if (index >= 0) order.push(index);
           await page.keyboard.press("Tab");
         }
+        assert.deepEqual(order, reading, "Tab reaches the cards in visual reading order");
       });
     }
 
@@ -503,6 +542,115 @@ for (const lang of LANGS) {
     }
   });
 
+  describe(`${lang}: preview`, () => {
+    test("opens the latest festival's site in a sandboxed iframe from the hero", async () => {
+      const { page, close } = await open(t.path);
+      await page.waitForLoadState("networkidle");
+      // Nothing from the festival folders is fetched before a preview opens.
+      const fetched = await page.evaluate(() =>
+        // eslint-disable-next-line no-undef -- runs in the page.
+        performance.getEntriesByType("resource").map((entry) => entry.name),
+      );
+      assert.deepEqual(
+        fetched.filter((url) => FESTIVAL_PATHS.has(new URL(url).pathname)),
+        [],
+        "no preview loads on its own",
+      );
+
+      const hero = page.locator("#latest");
+      await hero.locator(".frame").hover();
+      const button = hero.getByRole("button", { name: t.preview(latest.round), exact: true });
+      await button.click();
+      const dialog = page.locator(`#preview-${latest.round}`);
+      await dialog.waitFor({ state: "visible" });
+      const frame = dialog.locator("iframe");
+      assert.equal(await frame.getAttribute("src"), linkOf(latest));
+      assert.equal(await frame.getAttribute("loading"), "lazy");
+      assert.equal(
+        await frame.getAttribute("sandbox"),
+        "allow-scripts allow-popups allow-popups-to-escape-sandbox",
+        "no allow-same-origin: the old sites' scripts cannot reach this page",
+      );
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden" });
+      await close();
+    });
+
+    test("closes with the close button", async () => {
+      const { page, close } = await open(t.path);
+      const card = page.locator(".grid > li").first();
+      await card.hover();
+      await card.getByRole("button", { name: t.preview(latest.round), exact: true }).click();
+      const dialog = page.locator(`#preview-${latest.round}`);
+      await dialog.waitFor({ state: "visible" });
+      await dialog.getByRole("button", { name: t.close, exact: true }).click();
+      await dialog.waitFor({ state: "hidden" });
+      await close();
+    });
+
+    test("keeps the page still while a preview is open", async () => {
+      const { page, close } = await open(t.path);
+      const hero = page.locator("#latest");
+      await hero.locator(".frame").hover();
+      const before = await page.evaluate(() => window.scrollY);
+      await hero.getByRole("button", { name: t.preview(latest.round), exact: true }).click();
+      const dialog = page.locator(`#preview-${latest.round}`);
+      await dialog.waitFor({ state: "visible" });
+      // Wheel over the dialog's bar, where the iframe cannot take the scroll.
+      const bar = await dialog.locator(".bar").boundingBox();
+      assert.ok(bar);
+      await page.mouse.move(bar.x + bar.width / 2, bar.y + bar.height / 2);
+      await page.mouse.wheel(0, 800);
+      await page.waitForTimeout(300);
+      assert.equal(await page.evaluate(() => window.scrollY), before, "the page does not scroll");
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden" });
+      await page.mouse.wheel(0, 800);
+      await page.waitForTimeout(300);
+      assert.ok(
+        (await page.evaluate(() => window.scrollY)) > before,
+        "it scrolls again after closing",
+      );
+      await close();
+    });
+
+    test("is offered for every festival whose site is on this host", async () => {
+      const { page, close } = await open(t.path);
+      for (const festival of listed) {
+        const card = page.locator(".grid > li", {
+          has: page.locator(`h3 a[href="${linkOf(festival)}"]`),
+        });
+        const buttons = card.locator("button[popovertarget]");
+        assert.equal(
+          await buttons.count(),
+          festival.externalLink ? 0 : 1,
+          `round ${festival.round}`,
+        );
+      }
+      await close();
+    });
+
+    test("shows the buttons under the picture on touch screens", async () => {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        hasTouch: true,
+        isMobile: true,
+      });
+      const page = await context.newPage();
+      await page.goto(`${server.url}${t.path}`, { waitUntil: "load" });
+      const card = page.locator(".grid > li").first();
+      await card.scrollIntoViewIfNeeded();
+      const button = card.getByRole("button", { name: t.preview(latest.round), exact: true });
+      assert.equal(await button.isVisible(), true);
+      const [picture, buttonBox] = await Promise.all([
+        card.locator("img").boundingBox(),
+        button.boundingBox(),
+      ]);
+      assert.ok(picture && buttonBox && buttonBox.y > picture.y + picture.height);
+      await context.close();
+    });
+  });
+
   describe(`${lang}: related sites`, () => {
     test("links only the sites that are not blocked", async () => {
       const { page, close } = await open(t.path);
@@ -516,6 +664,16 @@ for (const lang of LANGS) {
           assert.match(await item.innerText(), new RegExp(t.comingSoon));
         } else {
           assert.equal(await link.getAttribute("href"), site.path);
+          if (existsSync(`src/assets/related/${site.id}.png`)) {
+            const image = link.locator("img");
+            assert.match((await image.getAttribute("src")) ?? "", /\.avif$/);
+            assert.equal(
+              await image.getAttribute("alt"),
+              "",
+              "decorative: the name labels the tile",
+            );
+            assert.equal(await image.getAttribute("loading"), "lazy");
+          }
         }
       }
       await close();
@@ -531,7 +689,8 @@ for (const lang of LANGS) {
       const footerLinks = await page
         .locator("footer a")
         .evaluateAll((links) => links.map((link) => link.getAttribute("href")));
-      assert.deepEqual(footerLinks, menuLinks);
+      // The footer groups them differently (icons, text links, button): compare as sets.
+      assert.deepEqual(footerLinks.toSorted(), menuLinks.toSorted());
       await close();
     });
   });
@@ -566,13 +725,7 @@ describe("languages", () => {
       assert.equal(await link.getAttribute("lang"), other);
       await link.click();
       await page.waitForURL(`${server.url}${PAGES[other].path}`);
-      assert.equal(await page.locator("h1").innerText(), PAGES[other].siteName);
-      await close();
-    });
-
-    test(`${lang}: the site name links to its own language's top page`, async () => {
-      const { page, close } = await open(t.path);
-      assert.equal(await page.locator("h1 a").getAttribute("href"), t.path);
+      assert.equal(await page.locator("h1").innerText(), PAGES[other].heroTitle);
       await close();
     });
   }
@@ -624,7 +777,8 @@ describe("languages", () => {
 
   test("en: links to the festival sites say they are in Japanese", async () => {
     const { page, close } = await open(PAGES.en.path);
-    const links = page.locator("main a[href]");
+    // Links within this page ("#archive") stay in English.
+    const links = page.locator('main a[href]:not([href^="#"])');
     assert.ok((await links.count()) > listed.length);
     for (const link of await links.all()) {
       assert.equal(await link.getAttribute("hreflang"), "ja", await link.getAttribute("href"));
@@ -635,7 +789,12 @@ describe("languages", () => {
   test("ja: shows no translations", async () => {
     const { page, close } = await open(PAGES.ja.path);
     assert.equal(await page.locator(".translation").count(), 0);
-    assert.equal(await page.locator("main [lang]").count(), 0);
+    // Only the large Latin words of the section headings (Latest, Archive, Related).
+    assert.equal(await page.locator("main [lang]:not(.word)").count(), 0);
+    assert.deepEqual(
+      await page.locator("main .word").evaluateAll((words) => words.map((word) => word.lang)),
+      ["en", "en"],
+    );
     await close();
   });
 });

@@ -7,6 +7,8 @@ import { OG_IMAGE_SIZE, hasCapture, ogImageOf } from "../lib/captures.ts";
 import Archive from "./Archive.astro";
 import Hero from "./Hero.astro";
 import RelatedSites from "./RelatedSites.astro";
+import SitePreview from "./SitePreview.astro";
+import { hasPreview } from "../lib/preview.ts";
 import SiteFooter from "./SiteFooter.astro";
 import SiteHeader from "./SiteHeader.astro";
 
@@ -44,6 +46,10 @@ const image =
     <Hero lang={lang} />
     <Archive lang={lang} />
     <RelatedSites lang={lang} />
+    {/* The preview dialogs, one per festival; the hero and the cards open them. */}
+    {FESTIVALS.filter(hasPreview).map((festival) => (
+      <SitePreview festival={festival} lang={lang} />
+    ))}
   </main>
   <SiteFooter lang={lang} />
 </Base>

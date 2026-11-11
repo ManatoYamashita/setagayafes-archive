@@ -1,20 +1,11 @@
 ---
-// Every festival except the one in the hero, newest first, with a filter by
-// era (university name).
+// Every festival, newest first, in three even columns after the reference
+// layout, with a filter by era (university name). The hero's festivals are
+// listed here too, so a filter never hides the newest ones.
 //
-// The filter is three radio buttons and :has() — no JavaScript. Hiding cards
-// with display:none would break a pattern built on plain :nth-child, so the
-// grid pattern counts only the cards that match the current filter, with
-// :nth-child(An+B of S). The era names are fixed ("musashi", "tcu"), so the
-// selectors below spell them out.
-import {
-  ERA_NAMES,
-  FESTIVALS,
-  eraOf,
-  latestFestival,
-  type Era,
-  type Lang,
-} from "../data/festivals.ts";
+// The filter is three radio buttons and :has() — no JavaScript. The era names
+// are fixed ("musashi", "tcu"), so the selectors below spell them out.
+import { ERA_NAMES, FESTIVALS, eraOf, type Era, type Lang } from "../data/festivals.ts";
 import { UI } from "../i18n/ui.ts";
 import FestivalCard from "./FestivalCard.astro";
 
@@ -25,10 +16,7 @@ interface Props {
 const { lang } = Astro.props;
 const ui = UI[lang];
 
-const hero = latestFestival();
-const festivals = FESTIVALS.filter((festival) => festival.round !== hero.round).toSorted(
-  (a, b) => b.round - a.round,
-);
+const festivals = FESTIVALS.toSorted((a, b) => b.round - a.round);
 const festivalsByEra = Map.groupBy(festivals, (festival) => eraOf(festival.round));
 
 const ERAS: readonly Era[] = ["musashi", "tcu"];
@@ -42,100 +30,91 @@ const filters = [
 ];
 
 /*
- * Fallback source sizes allow for the larger width in either the full list
- * or the filtered list:
- * - 3 columns (>= 64rem): cards 12n+1 and 12n+8 span 2 columns
- * - 2 columns (>= 40rem): the first card of every 5 spans 2 columns
- * - 1 column below that
- * A filter changes which cards are wide, so lazy pictures also put "auto"
- * first in `sizes` (see Capture.astro) and this is only the fallback.
+ * Every card has the same width: a third of the grid (max 64rem, 1.5rem gaps)
+ * from 64rem, half the page from 40rem, the full page below. Lazy pictures put
+ * "auto" first in `sizes` (Capture.astro); this is the fallback.
  */
-function sizesOf(index: number, indexInEra: number): string {
-  const positions = [index, indexInEra];
-  const wide = positions.some((position) => position % 12 === 0 || position % 12 === 7)
-    ? "min(48rem, 64vw)"
-    : "min(23rem, 31vw)";
-  const medium = positions.some((position) => position % 5 === 0)
-    ? "calc(100vw - 3rem)"
-    : "calc(50vw - 2.25rem)";
-  return `(width >= 64rem) ${wide}, (width >= 40rem) ${medium}, calc(100vw - 2rem)`;
-}
+const SIZES =
+  "(width >= 64rem) min(20.5rem, calc((100vw - 6rem) / 3)), (width >= 40rem) calc(50vw - 2.25rem), calc(100vw - 2rem)";
 ---
 
-<section class="page archive" aria-labelledby="archive-title">
-  <div class="head">
-    <h2 id="archive-title" class="heading">
-      <span class="dot" aria-hidden="true"></span>
-      {ui.archive}
-    </h2>
-    <p class="intro">{ui.archiveIntro}</p>
-  </div>
-
-  <div class="tools">
-    <fieldset class="filter">
-      <legend>{ui.filterLegend}</legend>
-      <div class="options">
-        {filters.map((filter) => (
-          <label class="option">
-            <input
-              class="sr-only"
-              type="radio"
-              name="era"
-              id={`era-${filter.id}`}
-              value={filter.id}
-              checked={filter.id === "all"}
-            />
-            {filter.label}
-            <span class="count">{filter.count}</span>
-          </label>
-        ))}
-      </div>
-    </fieldset>
-    <p class="result">
-      {filters.map((filter) => (
-        <span class="result-text" data-filter={filter.id}>
-          {ui.showing(filter.count)}
+<section id="archive" class="archive" aria-labelledby="archive-title">
+  <div class="page">
+    <div class="head">
+      <h2 id="archive-title" class="display-heading">
+        {ui.archiveVertical && <span class="vertical">{ui.archiveVertical}</span>}
+        <span class="word" lang={lang === "en" ? undefined : "en"}>
+          {ui.archiveWord}
         </span>
-      ))}
-    </p>
-  </div>
+      </h2>
+    </div>
 
-  <ul class="grid" role="list">
-    {festivals.map((festival, index) => {
-      const indexInEra = festivalsByEra.get(eraOf(festival.round))?.indexOf(festival) ?? index;
-      return <FestivalCard festival={festival} lang={lang} sizes={sizesOf(index, indexInEra)} />;
-    })}
-  </ul>
+    <div class="tools">
+      <fieldset class="filter">
+        <legend>{ui.filterLegend}</legend>
+        <div class="options">
+          {filters.map((filter) => (
+            <label class="option">
+              <input
+                class="sr-only"
+                type="radio"
+                name="era"
+                id={`era-${filter.id}`}
+                value={filter.id}
+                checked={filter.id === "all"}
+              />
+              {filter.label}
+              <span class="count">{filter.count}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <p class="result">
+        {filters.map((filter) => (
+          <span class="result-text" data-filter={filter.id}>
+            {ui.showing(filter.count)}
+          </span>
+        ))}
+      </p>
+    </div>
+
+    <ul class="grid" role="list">
+      {festivals.map((festival) => (
+        <FestivalCard festival={festival} lang={lang} sizes={SIZES} />
+      ))}
+    </ul>
+  </div>
 </section>
 
 <style>
   .archive {
-    padding-block: 2.5rem 4rem;
-  }
+    position: relative;
+    /* Keeps the band (z-index -1) above the body's background. */
+    isolation: isolate;
+    padding-block: 2rem 5rem;
 
-  .head {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.75rem;
+    /*
+     * The wash band behind the grid: from the screen's left edge to about
+     * four fifths of the page, starting at the heading's middle. On phones
+     * it runs edge to edge, so it never cuts through the single column.
+     */
+    &::before {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      inset-block: 3.75rem 3rem;
+      inset-inline: 0;
 
-    @media (width >= 48rem) {
-      grid-template-columns: 1fr minmax(0, 30rem);
-      align-items: baseline;
+      @media (width >= 40rem) {
+        inset-inline-end: 18%;
+      }
+      background-color: var(--color-wash);
     }
   }
 
-  .heading {
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    font-size: 0.9375rem;
-    font-weight: 600;
-  }
-
-  .intro {
-    font-size: 0.875rem;
-    line-height: 1.8;
-    color: var(--color-muted);
+  .head {
+    margin-inline: auto;
+    max-inline-size: 64rem;
   }
 
   .tools {
@@ -144,7 +123,8 @@ function sizesOf(index: number, indexInEra: number): string {
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem 1.5rem;
-    margin-block: 1.5rem 2.5rem;
+    margin: 2.5rem auto 2rem;
+    max-inline-size: 64rem;
   }
 
   .filter {
@@ -177,11 +157,15 @@ function sizesOf(index: number, indexInEra: number): string {
     border: 1px solid var(--color-ink);
     border-radius: 999px;
     padding-inline: 0.875rem;
+    background-color: var(--color-paper);
     font-size: 0.8125rem;
+    font-weight: 700;
     cursor: pointer;
 
-    &:hover {
-      background-color: var(--color-wash);
+    @media (hover: hover) {
+      &:hover {
+        background-color: var(--color-wash);
+      }
     }
 
     &:has(:checked) {
@@ -193,10 +177,21 @@ function sizesOf(index: number, indexInEra: number): string {
       outline: 2px solid var(--color-ink);
       outline-offset: 3px;
     }
+
+    /* Forced colors drop the black fill; mark the picked era with the system's colors. */
+    @media (forced-colors: active) {
+      &:has(:checked) {
+        forced-color-adjust: none;
+        border-color: SelectedItem;
+        background-color: SelectedItem;
+        color: SelectedItemText;
+      }
+    }
   }
 
   .count {
     font-size: 0.75rem;
+    font-weight: 400;
     opacity: 0.75;
   }
 
@@ -223,9 +218,11 @@ function sizesOf(index: number, indexInEra: number): string {
 
   .grid {
     display: grid;
+    /* minmax(0, …): never let a long line widen the column past the screen. */
     grid-template-columns: minmax(0, 1fr);
-    gap: 3rem 1.5rem;
-    align-items: start;
+    gap: 1.5rem;
+    margin-inline: auto;
+    max-inline-size: 64rem;
 
     @media (width >= 40rem) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -233,47 +230,7 @@ function sizesOf(index: number, indexInEra: number): string {
 
     @media (width >= 64rem) {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 3.5rem 2rem;
-    }
-  }
-
-  /*
-   * 2 columns: one wide card, then two rows of two.
-   */
-  @media (40rem <= width < 64rem) {
-    .archive:has(#era-all:checked) .grid > :global(:nth-child(5n + 1 of [data-era])),
-    .archive:has(#era-musashi:checked) .grid > :global(:nth-child(5n + 1 of [data-era="musashi"])),
-    .archive:has(#era-tcu:checked) .grid > :global(:nth-child(5n + 1 of [data-era="tcu"])) {
-      grid-column: 1 / -1;
-      --card-title-size: 1.75rem;
-    }
-  }
-
-  /*
-   * 3 columns, after the reference layout: a large card over two rows with
-   * two small cards stacked beside it, then a row of three. The large card
-   * alternates sides every six cards.
-   *
-   * The source order must stay the reading order (left to right, top to
-   * bottom) so that Tab follows the picture. So there is no dense packing:
-   * on the right-hand side the large card is the second of its group
-   * (12n+8), after the small card on its left.
-   */
-  @media (width >= 64rem) {
-    .archive:has(#era-all:checked) .grid > :global(:nth-child(12n + 1 of [data-era])),
-    .archive:has(#era-musashi:checked) .grid > :global(:nth-child(12n + 1 of [data-era="musashi"])),
-    .archive:has(#era-tcu:checked) .grid > :global(:nth-child(12n + 1 of [data-era="tcu"])) {
-      grid-column: 1 / span 2;
-      grid-row: span 2;
-      --card-title-size: 2.25rem;
-    }
-
-    .archive:has(#era-all:checked) .grid > :global(:nth-child(12n + 8 of [data-era])),
-    .archive:has(#era-musashi:checked) .grid > :global(:nth-child(12n + 8 of [data-era="musashi"])),
-    .archive:has(#era-tcu:checked) .grid > :global(:nth-child(12n + 8 of [data-era="tcu"])) {
-      grid-column: 2 / span 2;
-      grid-row: span 2;
-      --card-title-size: 2.25rem;
+      row-gap: 2rem;
     }
   }
 </style>

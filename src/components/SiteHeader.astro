@@ -1,11 +1,15 @@
 ---
-// Site name on the left, MENU on the right, a rule below.
+// One row after the reference layout: the MENU icon, links to the page's
+// sections and the outlined "Official site" button on the left, the organiser
+// on the right. On phones only the icon and the button stay; the sections
+// follow one another on the page.
+//
 // The menu is a native popover opened by `popovertarget`: no JavaScript, and
 // the browser handles Escape, outside clicks and focus return. The same links
 // are in the footer, so they stay reachable where popover is unsupported.
 // The last item switches to the other language's top page.
 import type { Lang } from "../data/festivals.ts";
-import { SITE_LINKS } from "../data/site-links.ts";
+import { ORGANIZER, SITE_LINKS } from "../data/site-links.ts";
 import { HOME_PATHS, LANG_NAMES, UI, otherLang } from "../i18n/ui.ts";
 
 interface Props {
@@ -16,20 +20,49 @@ const { lang } = Astro.props;
 const ui = UI[lang];
 const other = otherLang(lang);
 const MENU_ID = "site-menu";
+const [official] = SITE_LINKS;
+const sections = [
+  { href: "#latest", label: ui.navLatest },
+  { href: "#archive", label: ui.navArchive },
+  { href: "#related", label: ui.navRelated },
+];
 ---
 
 <header class="page">
   <div class="bar">
-    <h1 class="name">
-      <a href={HOME_PATHS[lang]}>
-        <span class="mark" aria-hidden="true"></span>
-        {ui.siteName}
-      </a>
-    </h1>
-    <button type="button" class="menu-button" popovertarget={MENU_ID}>
-      {ui.menu}
-      <span class="dot" aria-hidden="true"></span>
+    <button type="button" class="menu-button" popovertarget={MENU_ID} aria-label={ui.menu}>
+      {/* Three lines of falling length, after the reference's menu glyph (without its magnifier: there is no search). */}
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
+        <path d="M3 6.5h18M3 12h14M3 17.5h10" />
+      </svg>
     </button>
+
+    <nav class="sections" aria-label={ui.sectionsLabel}>
+      <ul role="list">
+        {sections.map((section) => (
+          <li>
+            <a href={section.href}>{section.label}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+
+    {/* Leaves the page, so it is not one of the section links. */}
+    <a class="language" href={HOME_PATHS[other]} hreflang={other} lang={other}>
+      {LANG_NAMES[other]}
+    </a>
+
+    <a class="outline-button official" href={official.url}>
+      {official.label[lang]}
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
+        <path d="M6 3.5h6.5V10M12.5 3.5 4 12" />
+      </svg>
+    </a>
+
+    <p class="org">
+      <span class="run-by">{ui.runBy}</span>
+      {ORGANIZER[lang]}
+    </p>
   </div>
 
   <nav id={MENU_ID} class="menu" popover aria-label={ui.menuLabel}>
@@ -55,62 +88,104 @@ const MENU_ID = "site-menu";
   .bar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    min-block-size: 3.5rem;
-    border-block-end: 1px solid var(--color-line);
+    gap: 0.25rem 1.25rem;
+    min-block-size: 4.5rem;
   }
 
-  .name {
-    font-size: 0.875rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
+  svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+  }
 
-    & a {
+  .menu-button {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    margin-inline-start: -0.625rem;
+    border-radius: 999px;
+    cursor: pointer;
+
+    @media (hover: hover) {
+      &:hover {
+        background-color: var(--color-wash);
+      }
+    }
+  }
+
+  /* The section links and the language switch: wide screens only. */
+  .sections,
+  .language {
+    display: none;
+  }
+
+  @media (width >= 64rem) {
+    .sections {
+      display: block;
+    }
+
+    .sections ul {
+      display: flex;
+      gap: 1.25rem;
+    }
+
+    .sections a,
+    .language {
       display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
-      padding-block: 0.75rem;
+      min-block-size: 2.75rem;
+      font-size: 0.8125rem;
+      font-weight: 700;
       text-decoration: none;
     }
   }
 
-  /* A filled square: the site's mark, echoing the plates in the grid. */
-  .mark {
-    inline-size: 0.875rem;
-    block-size: 0.875rem;
-    background-color: var(--color-ink);
+  @media (hover: hover) {
+    .sections a:hover,
+    .language:hover {
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 0.3em;
+    }
   }
 
-  .menu-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-block-size: 2.75rem;
-    padding-inline: 0.25rem;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    cursor: pointer;
+  .official {
+    min-block-size: 2.25rem;
+    padding-inline: 0.875rem;
   }
 
-  /* The dot turns hollow while the menu is open. */
-  header:has(.menu:popover-open) .menu-button .dot {
-    background-color: transparent;
+  .org {
+    display: none;
+    margin-inline-start: auto;
+    font-size: 0.75rem;
+
+    @media (width >= 64rem) {
+      display: block;
+    }
+  }
+
+  .run-by {
+    margin-inline-end: 0.5rem;
+    color: var(--color-muted);
   }
 
   .menu {
     /* Reset the centered UA popover and pin it under the MENU button. */
-    --menu-top: 3.5rem;
+    --menu-top: 4.25rem;
     position: fixed;
-    /* Line up with the page's right edge, also on screens wider than the page. */
-    inset: var(--menu-top) max(1rem, calc((100vw - 76rem) / 2 + 1.5rem)) auto auto;
+    /* Line up with the page's left edge, also on screens wider than the page. */
+    /* % of the viewport without the scrollbar (the containing block of position: fixed). */
+    inset: var(--menu-top) auto auto max(1rem, calc((100% - 76rem) / 2 + 1.5rem));
     margin: 0;
-    inline-size: min(18rem, calc(100vw - 2rem));
+    inline-size: min(18rem, calc(100% - 2rem));
     max-block-size: calc(100dvh - var(--menu-top) - 0.5rem);
     overflow-y: auto;
     overscroll-behavior-y: contain;
     border: 1px solid var(--color-line);
+    border-radius: 0.5rem;
     padding: 0.5rem 1.25rem 1.25rem;
     background-color: var(--color-paper);
     color: var(--color-ink);
@@ -130,9 +205,11 @@ const MENU_ID = "site-menu";
       text-decoration: none;
     }
 
-    & a:hover {
-      text-decoration: underline;
-      text-underline-offset: 0.2em;
+    @media (hover: hover) {
+      & a:hover {
+        text-decoration: underline;
+        text-underline-offset: 0.2em;
+      }
     }
   }
 
@@ -145,9 +222,11 @@ const MENU_ID = "site-menu";
     font-size: 0.8125rem;
     cursor: pointer;
 
-    &:hover {
-      background-color: var(--color-ink);
-      color: var(--color-paper);
+    @media (hover: hover) {
+      &:hover {
+        background-color: var(--color-ink);
+        color: var(--color-paper);
+      }
     }
   }
 </style>

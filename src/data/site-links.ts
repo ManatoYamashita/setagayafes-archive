@@ -6,15 +6,18 @@ import type { Localized } from "./festivals.ts";
 export interface SiteLink {
   readonly label: Localized;
   readonly url: string;
+  /** Social media: the footer shows these as icons, with the label as the name. */
+  readonly icon?: "x" | "instagram";
 }
 
 export const SITE_LINKS = [
   { label: { ja: "公式サイト", en: "Official site" }, url: "https://setagayafes.org/" },
   { label: { ja: "公式ブログ", en: "Official blog" }, url: "https://blog.setagayafes.org/" },
-  { label: { ja: "X", en: "X" }, url: "https://x.com/setagayafes_tcu" },
+  { label: { ja: "X", en: "X" }, url: "https://x.com/setagayafes_tcu", icon: "x" },
   {
     label: { ja: "Instagram", en: "Instagram" },
     url: "https://www.instagram.com/setagayafes_sfa/",
+    icon: "instagram",
   },
 ] as const satisfies readonly SiteLink[];
 

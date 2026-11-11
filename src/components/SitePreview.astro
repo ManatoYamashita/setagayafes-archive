@@ -1,0 +1,156 @@
+---
+// The preview dialog of a festival's site: a popover (no JavaScript) that
+// nearly fills the screen, with the festival's name, a link to the site and a
+// close button above an iframe of the site. Esc and a click outside close it
+// too (the browser does this for popovers).
+//
+// The iframe is lazy: while the popover is closed (display: none) the browser
+// does not fetch it, so the page weight is the same as without previews.
+// It is sandboxed without allow-same-origin: the old sites' scripts still run,
+// but as another origin, so they cannot reach this page (Issue #30).
+import { linkOf, type Festival, type Lang } from "../data/festivals.ts";
+import { UI, headingOf, roundLabel } from "../i18n/ui.ts";
+import { previewIdOf } from "../lib/preview.ts";
+
+interface Props {
+  festival: Festival;
+  lang: Lang;
+}
+
+const { festival, lang } = Astro.props;
+const ui = UI[lang];
+const id = previewIdOf(festival.round);
+const label = roundLabel(festival.round, lang);
+const heading = headingOf(festival, lang);
+const href = linkOf(festival);
+const hreflang = lang === "ja" ? undefined : "ja";
+---
+
+<div id={id} class="preview" popover role="dialog" aria-labelledby={`${id}-title`}>
+  <div class="bar">
+    <p id={`${id}-title`} class="name">
+      {label}
+      <span lang={heading.lang === lang ? undefined : heading.lang}>{heading.text}</span>
+    </p>
+    <a class="open" href={href} hreflang={hreflang}>
+      {ui.visitShort}
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
+        <path d="M6 3.5h6.5V10M12.5 3.5 4 12"></path>
+      </svg>
+    </a>
+    <button type="button" class="close" popovertarget={id} popovertargetaction="hide">
+      {ui.close}
+    </button>
+  </div>
+  <iframe
+    src={href}
+    title={ui.previewFrameTitle(label)}
+    loading="lazy"
+    sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+    referrerpolicy="same-origin"
+  ></iframe>
+</div>
+
+<style>
+  /*
+   * While a preview is open, the page behind it does not scroll: the wheel
+   * and touch scrolling go to the site in the iframe only. CSS only (:has()).
+   */
+  :global(html:has(.preview:popover-open)) {
+    overflow: hidden;
+    /* Keep the scrollbar's room, so the page does not shift sideways. */
+    scrollbar-gutter: stable;
+  }
+
+  .preview {
+    /* Scrolling that reaches the end of the site stays in the panel. */
+    overscroll-behavior: contain;
+    /* Reset the centered UA popover to a large panel with a margin all round. */
+    position: fixed;
+    inset: 0.5rem;
+    inline-size: auto;
+    block-size: auto;
+    margin: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0.75rem;
+    padding: 0;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+
+    @media (width >= 48rem) {
+      inset: 2rem;
+    }
+
+    &:popover-open {
+      display: flex;
+      flex-direction: column;
+    }
+
+    &::backdrop {
+      background-color: rgb(0 0 0 / 0.6);
+    }
+  }
+
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    border-block-end: 1px solid var(--color-wash);
+    padding: 0.5rem 0.75rem 0.5rem 1.25rem;
+  }
+
+  .name {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.5rem;
+    margin-inline-end: auto;
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+
+  .open,
+  .close {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-block-size: 2.75rem;
+    border-radius: 999px;
+    padding-inline: 1rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .open {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.25em;
+
+    & svg {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.75;
+      stroke-linecap: round;
+    }
+  }
+
+  .close {
+    border: 1px solid var(--color-ink);
+  }
+
+  @media (hover: hover) {
+    .close:hover {
+      background-color: var(--color-ink);
+      color: var(--color-paper);
+    }
+  }
+
+  iframe {
+    flex: 1;
+    inline-size: 100%;
+    border: 0;
+    background-color: var(--color-paper);
+  }
+</style>

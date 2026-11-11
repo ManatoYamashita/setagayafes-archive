@@ -1,10 +1,15 @@
 ---
-// Sites that are not Setagaya Festival rounds but live on the same host.
+// Sites that are not Setagaya Festival rounds but live on the same host, as
+// picture tiles on a wash band after the reference layout.
+//
 // A site with `blockedBy` is listed without a link until that Issue is closed
 // (used for the Todoroki Festival sites until they were made static: Issue #2).
+// Its picture comes from `pnpm capture related`; before that, a plain plate.
+import { Image } from "astro:assets";
 import type { Lang } from "../data/festivals.ts";
 import { RELATED_SITES } from "../data/related-sites.ts";
 import { UI } from "../i18n/ui.ts";
+import { CAPTURE_IMAGE_PROPS, relatedCaptureOf } from "../lib/captures.ts";
 import { formatDateRange } from "../lib/format.ts";
 
 interface Props {
@@ -20,32 +25,59 @@ function whenOf(site: (typeof RELATED_SITES)[number]): { label: string; datetime
   }
   return { label: String(site.year), datetime: String(site.year) };
 }
+
+/** Tiles are a third of the page from 48rem (max 76rem), the full page below. */
+const SIZES = "auto, (width >= 48rem) min(24rem, calc((100vw - 5rem) / 3)), calc(100vw - 2rem)";
 ---
 
-<section class="page" aria-labelledby="related-title">
-  <div class="related">
-    <h2 id="related-title" class="heading">
-      <span class="dot" aria-hidden="true"></span>
-      {ui.relatedSites}
+<section id="related" class="band" aria-labelledby="related-title">
+  <div class="page inner">
+    <h2 id="related-title" class="display-heading">
+      {ui.relatedVertical && <span class="vertical">{ui.relatedVertical}</span>}
+      <span class="word" lang={lang === "en" ? undefined : "en"}>
+        {ui.relatedWord}
+      </span>
     </h2>
-    <ul class="list" role="list">
+
+    <ul class="tiles" role="list">
       {RELATED_SITES.map((site) => {
         const when = whenOf(site);
         const linked = !("blockedBy" in site);
+        const image = relatedCaptureOf(site.id);
+        const content = (
+          <>
+            {image ? (
+              <Image
+                src={image}
+                alt=""
+                {...CAPTURE_IMAGE_PROPS}
+                width={1280}
+                height={800}
+                widths={[400, 640, 960, 1080, 1280]}
+                sizes={SIZES}
+                loading="lazy"
+                class="photo"
+              />
+            ) : (
+              <span class="photo plate" />
+            )}
+            <span class="caption">
+              <time class="when" datetime={when.datetime}>
+                {when.label}
+              </time>
+              <span class="name">{site.name[lang]}</span>
+              {!linked && <span class="tag">{ui.comingSoon}</span>}
+            </span>
+          </>
+        );
         return (
-          <li class="item">
-            <time class="when" datetime={when.datetime}>
-              {when.label}
-            </time>
+          <li>
             {linked ? (
-              <a class="site" href={site.path} hreflang={lang === "ja" ? undefined : "ja"}>
-                {site.name[lang]}
+              <a class="tile" href={site.path} hreflang={lang === "ja" ? undefined : "ja"}>
+                {content}
               </a>
             ) : (
-              <span class="site">
-                {site.name[lang]}
-                <span class="tag">{ui.comingSoon}</span>
-              </span>
+              <div class="tile">{content}</div>
             )}
           </li>
         );
@@ -55,67 +87,87 @@ function whenOf(site: (typeof RELATED_SITES)[number]): { label: string; datetime
 </section>
 
 <style>
-  .related {
+  .band {
+    background-color: var(--color-wash);
+  }
+
+  .inner {
+    display: grid;
+    gap: 2rem;
+    padding-block: 3.5rem 4.5rem;
+  }
+
+  .tiles {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    align-items: start;
-    gap: 1.25rem;
-    border-block-start: 1px solid var(--color-line);
-    padding-block: 2.5rem 3.5rem;
+    gap: 1rem;
 
     @media (width >= 48rem) {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 
-  .heading {
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    font-size: 0.9375rem;
-    font-weight: 600;
-  }
-
-  .item {
+  .tile {
+    position: relative;
     display: grid;
-    gap: 0.25rem 1.5rem;
-    border-block-end: 1px solid var(--color-wash);
-    padding-block: 1rem;
+    overflow: hidden;
+    border-radius: 0.375rem;
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+    text-decoration: none;
 
-    &:first-child {
-      padding-block-start: 0;
+    & > * {
+      grid-area: 1 / 1;
     }
+  }
 
-    @media (width >= 40rem) {
-      grid-template-columns: 9rem minmax(0, 1fr);
-      align-items: baseline;
-    }
+  /* :global: the class is on astro:assets' <img>, outside this component's scope. */
+  .tile :global(.photo) {
+    display: block;
+    inline-size: 100%;
+    block-size: auto;
+    aspect-ratio: 5 / 4;
+    object-fit: cover;
+    object-position: top;
+  }
+
+  .plate {
+    background-color: var(--color-muted);
+  }
+
+  /*
+   * White text on a dark fade at the bottom.
+   * The fade stays dark behind the text on every photo: at least 6:1 measured
+   * on the rendered tiles at 320px and 1280px (Issue #30 review).
+   */
+  .caption {
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    justify-content: end;
+    gap: 0.25rem;
+    padding: 1.25rem;
+    background-image: linear-gradient(
+      to top,
+      rgb(0 0 0 / 0.85),
+      rgb(0 0 0 / 0.65) 40%,
+      rgb(0 0 0 / 0) 80%
+    );
   }
 
   .when {
     font-size: 0.75rem;
-    color: var(--color-muted);
   }
 
-  .site {
-    display: inline-flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.25rem 0.75rem;
-    font-size: 1.0625rem;
+  .name {
+    word-break: auto-phrase;
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.4;
   }
 
-  a.site {
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 0.2em;
-
-    &:hover {
-      text-decoration-thickness: 2px;
-    }
-  }
-
-  span.site {
-    color: var(--color-muted);
+  a.tile:focus-visible {
+    outline-offset: 4px;
   }
 </style>
