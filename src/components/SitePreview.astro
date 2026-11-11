@@ -52,7 +52,17 @@ const hreflang = lang === "ja" ? undefined : "ja";
 </div>
 
 <style>
+  /*
+   * While a preview is open, the page behind it does not scroll: the wheel
+   * and touch scrolling go to the site in the iframe only. CSS only (:has()).
+   */
+  :global(html:has(.preview:popover-open)) {
+    overflow: hidden;
+  }
+
   .preview {
+    /* Scrolling that reaches the end of the site stays in the panel. */
+    overscroll-behavior: contain;
     /* Reset the centered UA popover to a large panel with a margin all round. */
     position: fixed;
     inset: 0.5rem;

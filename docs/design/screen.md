@@ -59,6 +59,10 @@
   - 代わりに、Cookie や localStorage を使う仕掛けは、プレビューの中では動かないことがある。「サイトを見る」で開けば当時のとおりに動く
 - CSP に `frame-src 'self'` を足した。過去回のサイトは、同じホストからの iframe を許している（第97回は `X-Frame-Options: SAMEORIGIN`、他の回はヘッダ無し。2026-11-11 に確かめた）
 - 外部にある回（第87回、Wayback Machine）は `frame-src 'self'` の外なので、プレビューを出さない（`src/lib/preview.ts` の `hasPreview()`）
+- 開いている間は、後ろのページをスクロールさせない（2026-11-11 のオーナーの指示）。`html:has(.preview:popover-open) { overflow: hidden }` で止める。JS は使わない
+  - ホイールとタッチのスクロールは、iframe の中のサイトにだけ効く。サイトの端まで行っても後ろへ伝わらない（`overscroll-behavior: contain`）
+  - スクロールバーが消えて横にずれないよう、`html` に `scrollbar-gutter: stable` を付けた
+  - e2e は、パネルの帯の上でホイールを回してもページが動かず、閉じれば動くことを見る
 - 写真の上の膜は、膜そのものはクリックを通し（`pointer-events: none`）、ボタンだけが受ける。膜の外はカード全体のリンク（見出しのリンクを `::after` で伸ばしたもの）のまま
 - 膜は `position: relative`・`z-index: 1` で写真の上に置く。写真の箱（`Capture.astro`）が位置指定されているので、指定しないと写真の下に描かれる
 

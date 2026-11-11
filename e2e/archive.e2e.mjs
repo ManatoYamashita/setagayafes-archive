@@ -588,6 +588,32 @@ for (const lang of LANGS) {
       await close();
     });
 
+    test("keeps the page still while a preview is open", async () => {
+      const { page, close } = await open(t.path);
+      const hero = page.locator("#latest");
+      await hero.locator(".frame").hover();
+      const before = await page.evaluate(() => window.scrollY);
+      await hero.getByRole("button", { name: t.preview(latest.round), exact: true }).click();
+      const dialog = page.locator(`#preview-${latest.round}`);
+      await dialog.waitFor({ state: "visible" });
+      // Wheel over the dialog's bar, where the iframe cannot take the scroll.
+      const bar = await dialog.locator(".bar").boundingBox();
+      assert.ok(bar);
+      await page.mouse.move(bar.x + bar.width / 2, bar.y + bar.height / 2);
+      await page.mouse.wheel(0, 800);
+      await page.waitForTimeout(300);
+      assert.equal(await page.evaluate(() => window.scrollY), before, "the page does not scroll");
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden" });
+      await page.mouse.wheel(0, 800);
+      await page.waitForTimeout(300);
+      assert.ok(
+        (await page.evaluate(() => window.scrollY)) > before,
+        "it scrolls again after closing",
+      );
+      await close();
+    });
+
     test("is offered for every festival whose site is on this host", async () => {
       const { page, close } = await open(t.path);
       for (const festival of listed) {
