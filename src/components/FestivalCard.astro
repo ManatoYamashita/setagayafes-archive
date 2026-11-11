@@ -79,6 +79,14 @@ const notes = [festival.statusReason?.[lang], external?.label[lang]].filter(Bool
     box-shadow:
       0 1px 2px rgb(0 0 0 / 0.04),
       0 6px 20px rgb(0 0 0 / 0.05);
+    transition:
+      translate 0.25s ease-out,
+      box-shadow 0.25s ease-out;
+  }
+
+  /* :global: the picture is rendered by Capture.astro, outside this scope. */
+  article :global(.capture img) {
+    transition: scale 0.4s ease-out;
   }
 
   .body {
@@ -150,11 +158,47 @@ const notes = [festival.statusReason?.[lang], external?.label[lang]].filter(Bool
     border-radius: 0.375rem;
   }
 
+  /*
+   * Pointing at a card (or tabbing to it) lifts it a little, deepens its
+   * shadow, zooms the picture slightly and underlines the theme.
+   */
   @media (hover: hover) {
+    .card:hover article {
+      translate: 0 -4px;
+      box-shadow:
+        0 2px 4px rgb(0 0 0 / 0.06),
+        0 16px 36px rgb(0 0 0 / 0.12);
+    }
+
+    .card:hover :global(.capture img) {
+      scale: 1.04;
+    }
+
     .card:hover .title a {
       text-decoration: underline;
       text-decoration-thickness: 1px;
       text-underline-offset: 0.2em;
+    }
+  }
+
+  .card:has(a:focus-visible) article {
+    translate: 0 -4px;
+  }
+
+  /* Without motion: keep the deeper shadow and the underline, drop the movement. */
+  @media (prefers-reduced-motion: reduce) {
+    article,
+    article :global(.capture img) {
+      transition: none;
+    }
+
+    .card:hover article,
+    .card:has(a:focus-visible) article {
+      translate: none;
+    }
+
+    .card:hover :global(.capture img) {
+      scale: none;
     }
   }
 </style>

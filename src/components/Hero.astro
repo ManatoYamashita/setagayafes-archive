@@ -1,11 +1,10 @@
 ---
-// The top of the page, after a centered product-hero layout: a small badge
-// with the archive's span, the site's name in very large type over two lines
-// (the second muted), a lead, two buttons, and a large rounded frame with the
-// latest festival's screenshot.
+// The top of the page, after a centered product-hero layout: the site's name
+// in large type over two lines (the second muted), a lead, two buttons, and a
+// large rounded frame with the latest festival's screenshot.
 //
 // The rounds, years and count come from the data, so next year's entry
-// updates the badge, the lead and the picture without touching this file.
+// updates the lead and the picture without touching this file.
 import { FESTIVALS, latestFestival, linkOf, yearOf, type Lang } from "../data/festivals.ts";
 import { UI, roundLabel } from "../i18n/ui.ts";
 import Capture from "./Capture.astro";
@@ -31,8 +30,6 @@ const hreflang = lang === "ja" ? undefined : "ja";
 ---
 
 <section id="latest" class="page hero" aria-labelledby="hero-title">
-  <p class="badge">{ui.heroBadge(span)}</p>
-
   <h1 id="hero-title" class="title">
     <span class="line">
       {titleLead.map((phrase, index) => (
@@ -68,7 +65,6 @@ const hreflang = lang === "ja" ? undefined : "ja";
       widths={[640, 960, 1280, 1600, 2000]}
       sizes="(width >= 68rem) 64rem, calc(100vw - 2rem)"
     />
-    <span class="frame-badge">{ui.latestBadge(label)}</span>
   </a>
 </section>
 
@@ -84,25 +80,8 @@ const hreflang = lang === "ja" ? undefined : "ja";
     }
   }
 
-  /* The small pills: above the title, and on the frame. */
-  .badge,
-  .frame-badge {
-    display: inline-flex;
-    align-items: center;
-    border-radius: 999px;
-    padding: 0.25rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 700;
-    line-height: 1.4;
-  }
-
-  .badge {
-    border: 1px solid var(--color-ink);
-  }
-
   .title {
-    margin-block-start: 1.5rem;
-    font-size: clamp(2rem, 1rem + 4.5vw, 4.5rem);
+    font-size: clamp(1.75rem, 1rem + 3vw, 3.5rem);
     font-weight: 800;
     line-height: 1.08;
     letter-spacing: -0.03em;
@@ -179,7 +158,6 @@ const hreflang = lang === "ja" ? undefined : "ja";
   }
 
   .frame {
-    position: relative;
     display: block;
     inline-size: 100%;
     max-inline-size: 64rem;
@@ -187,14 +165,5 @@ const hreflang = lang === "ja" ? undefined : "ja";
     overflow: hidden;
     border: 1px solid rgb(0 0 0 / 0.12);
     border-radius: 1.25rem;
-  }
-
-  .frame-badge {
-    position: absolute;
-    inset-block-start: 1rem;
-    inset-inline-start: 1rem;
-    background-color: var(--color-paper);
-    color: var(--color-ink);
-    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.12);
   }
 </style>

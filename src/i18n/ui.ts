@@ -20,7 +20,7 @@ export function otherLang(lang: Lang): Lang {
   return lang === "ja" ? "en" : "ja";
 }
 
-/** The festivals the archive covers, for the hero's badge and lead. */
+/** The festivals the archive covers, for the hero's lead. */
 export interface ArchiveSpan {
   readonly first: { readonly round: number; readonly year: number };
   readonly last: { readonly round: number; readonly year: number };
@@ -58,11 +58,8 @@ interface Words {
    * given in phrases: on narrow screens it breaks between them only.
    */
   readonly heroTitle: readonly [readonly string[], string];
-  /** The hero's badge and lead: the oldest and newest festival and how many there are. */
-  readonly heroBadge: (span: ArchiveSpan) => string;
+  /** The hero's lead: the oldest and newest festival and how many there are. */
   readonly heroLead: (span: ArchiveSpan) => string;
-  /** The badge on the hero's picture of the newest festival. */
-  readonly latestBadge: (round: string) => string;
   /** The hero's button to the newest festival's site. */
   readonly visit: (round: string) => string;
   /** The hero's button to the list of every festival on this page. */
@@ -98,10 +95,8 @@ export const UI = {
     relatedWord: "Related",
     relatedVertical: "関連サイト",
     heroTitle: [["東京都市大学", "世田谷祭"], "アーカイブ"],
-    heroBadge: ({ first, last, count }) => `${first.year}–${last.year} / ${count}回`,
     heroLead: ({ first, last, count }) =>
       `東京都市大学（旧 武蔵工業大学）の学園祭、世田谷祭の公式サイトを、第${first.round}回（${first.year}年）から第${last.round}回（${last.year}年）までの${count}回分、公開当時のまま保存しています。各回のテーマ・日程・企画の案内を、当時のデザインのまま見られます。中止やオンライン開催になった回のサイトも含みます。`,
-    latestBadge: (round) => `最新の回 ${round}`,
     visit: (round) => `${round}のサイトを見る`,
     seeArchive: "過去の回を見る",
     filterLegend: "時代で絞り込む",
@@ -133,10 +128,8 @@ export const UI = {
     relatedWord: "Related",
     relatedVertical: "",
     heroTitle: [["Setagaya Festival"], "Archive"],
-    heroBadge: ({ first, last, count }) => `${first.year}–${last.year} / ${count} festivals`,
     heroLead: ({ first, last, count }) =>
       `The official sites of the Setagaya Festival, the school festival of Tokyo City University (formerly Musashi Institute of Technology), kept as they were published: ${count} festivals, from the ${ordinalOf(first.round)} (${first.year}) to the ${ordinalOf(last.round)} (${last.year}). Each site shows that year’s theme, dates and events in its original design, including the festivals that were cancelled or held online. The sites are in Japanese.`,
-    latestBadge: (round) => `Latest: ${round}`,
     visit: (round) => `Visit the ${round} festival’s site`,
     seeArchive: "See past festivals",
     filterLegend: "Filter by era",

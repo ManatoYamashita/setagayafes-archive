@@ -218,12 +218,10 @@ for (const lang of LANGS) {
       const hero = page.locator("#latest");
       const rounds = FESTIVALS.map((festival) => festival.round);
       const first = Math.min(...rounds);
-      const badge = await hero.locator(".badge").innerText();
-      assert.match(
-        badge,
-        new RegExp(`^${yearOf(first)}–${yearOf(latest.round)} / ${FESTIVALS.length}`),
-      );
-      assert.match(await hero.locator(".lead").innerText(), new RegExp(t.round(first)));
+      const lead = await hero.locator(".lead").innerText();
+      assert.match(lead, new RegExp(String(yearOf(first))));
+      assert.match(lead, new RegExp(String(yearOf(latest.round))));
+      assert.match(lead, new RegExp(t.round(first)));
       const cta = hero.getByRole("link", { name: t.visit(latest.round), exact: true });
       assert.equal(await cta.getAttribute("href"), linkOf(latest));
       const list = hero.getByRole("link", { name: t.seeArchive, exact: true });
