@@ -234,9 +234,61 @@ const hreflang = lang === "ja" ? undefined : "ja";
     }
   }
 
+  /*
+   * Entrance on first load. The text rises in reading order: the two title
+   * lines, the lead, the buttons, 50ms apart. The frame starts at once and
+   * takes longer instead of waiting: its screenshot is the LCP element, and an
+   * element with opacity 0 is not counted until its first visible frame.
+   * CSS animations on transform and opacity run on the compositor, so they
+   * stay smooth while the rest of the page is still loading. No JavaScript.
+   */
+  .line,
+  .lead,
+  .actions,
+  .frame {
+    animation: hero-rise 600ms var(--ease-out) both;
+  }
+
+  .rest {
+    animation-delay: 50ms;
+  }
+
+  .lead {
+    animation-delay: 100ms;
+  }
+
+  .actions {
+    animation-delay: 150ms;
+  }
+
+  .frame {
+    animation-duration: 800ms;
+  }
+
+  @keyframes hero-rise {
+    from {
+      opacity: 0;
+      transform: translateY(0.75rem);
+    }
+  }
+
+  @keyframes hero-fade {
+    from {
+      opacity: 0;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .frame > :global(.preview-actions) {
       transition: none;
+    }
+
+    /* Keep the fade (same timing), drop the movement. */
+    .line,
+    .lead,
+    .actions,
+    .frame {
+      animation-name: hero-fade;
     }
   }
 </style>

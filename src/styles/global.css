@@ -25,6 +25,12 @@
   --font-display:
     Futura, "Futura PT", "Century Gothic", "Avenir Next", "Avenir", system-ui, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /*
+   * A strong ease-out for things entering the screen. Tailwind's default
+   * ease-out is too weak: the motion lingers instead of settling.
+   */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 @layer base {
