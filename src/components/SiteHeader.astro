@@ -94,7 +94,7 @@ const sections = [
     position: relative;
   }
 
-  /* Out of sight until it has focus; then over the top left of the header. */
+  /* Out of sight until the keyboard reaches it (:focus-visible: a pointer click does not show it); then over the top left of the header. */
   .skip {
     position: absolute;
     inset-block-start: 0.75rem;
@@ -107,7 +107,7 @@ const sections = [
     font-size: 0.8125rem;
     font-weight: 700;
 
-    &:not(:focus) {
+    &:not(:focus-visible) {
       clip-path: inset(50%);
       inline-size: 1px;
       block-size: 1px;
