@@ -35,6 +35,8 @@
   - `/en/` は同じ部品に `lang` を渡す。文言は `src/i18n/ui.ts`。テーマは原文を題名に残し、英訳を添える
 - **[htaccess.md](./design/htaccess.md)**: archive 直下の `.htaccess`（ビルドで生成）。ヘッダを新トップの範囲にだけ付ける書き方、noindex の除外、CSP、HSTS
   - http→https はコントロールパネルの 302 のまま、HSTS で補う（パネルは 302 しか返せない。`.htaccess` の 301 はループの危険があり、見送った）
+  - さくらの Apache には `Accept-Encoding` が届かず、`REDIRECT_STATUS` は最初から `200`。そのため、前もって圧縮したページは返せない（#49・#51）
+  - `mod_rewrite` に頼る規則は、試しのフォルダで変数の値を確かめてから本番に置く
 - **[seo.md](./design/seo.md)**: canonical・hreflang・OGP・sitemap・robots.txt。インデックスさせるのは `/` と `/en/` だけ
   - 各回のフォルダを robots.txt で Disallow しない（noindex のヘッダを読ませるため）。今のホストの `Disallow: /errorpage/` は引き継ぐ
   - OGP の画像は固定のデザイン。原画像はメタデータを抜いてからコミットする
@@ -43,6 +45,7 @@
 
 - **[deploy.md](./ops/deploy.md)**: さくらへの配置。`pnpm package` で zip を作って手元の Apache で確かめ、サーバーのスクリプトで控えを取ってから展開する
   - 配置の後は `pnpm check:production`（ヘッダ）と `pnpm check:production:browser`（ブラウザで MENU・絞り込み・エラー）を流す。壊れたら `remote-rollback.sh` で戻す
+  - zip から無くなった直下のファイルは、次の配置でも残る。控えへ移して 404 を確かめる
   - クラウドから流して「http:// redirect」だけ落ちたときは、戻さずに手元の端末で確かめ直し、#1 に補足として書く
   - 初回だけ、エラーページの PHP と旧トップの部品（`css/`・`js/`・`img/`）を公開フォルダの外へ移す
   - 数分かかる処理は、SSH の接続を保つか、サーバー上で `nohup` で流す（途中で切れることがある）

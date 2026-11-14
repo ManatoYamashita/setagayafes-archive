@@ -81,6 +81,9 @@ ssh setagayafes-archive "sh -s -- $ZIP" < scripts/ops/deploy/remote-deploy.sh
 - 出力の最後に、控えの場所（`~/archive-docs/deploy/<日時>`）と戻し方が出る。`<日時>` を控えておく
 - 同じ `<日時>` の控えが既にあれば、何もせずに止まる。元の控えを上書きしないため
 - サーバーに既にあるフォルダは、過去の配置が作ったもの（控えの `entries.txt` にあるもの）でなければ入れ替えずに止まる（`.well-known` など、このリポジトリの外のフォルダを守るため）
+- zip に入っていない直下のファイルには触らない。前の配置だけが置いたファイル（zip から無くなったもの）は、次の配置でも残る。フォルダ（`en/` など）は丸ごと入れ替わるので、その中のものは消える
+  - 残ったファイルは、控えのフォルダ（例: `~/archive-docs/deploy/<名前>-<日付>/`、700）へ移し、その URL が 404 になることを確かめる。参照している `.htaccess` の規則が先に消えていることを確かめてから移す
+  - 2026-11-14、未マージの #51 で置いた `index.html.gz` は、main から配置し直しても残った。`~/archive-docs/deploy/precompressed-20261114/` へ移した（#49）
 - **展開の途中で落ちたら、流し直す前に、その `<日時>` の控えで先に戻す**（下の「戻し方」）。そのまま流し直すと、中途半端な状態が新しい控えとして記録され、元のトップに戻れなくなる
   - 落ちたかどうかは、`FAIL` の行と終了コードで判断する。`then: then/endif not found.` の行は落ちたしるしではない（下の「注意」）
 
@@ -187,6 +190,8 @@ curl -sI https://archive.setagayafes.org/img/97th.png | head -1   # 404
 Issue #1 に次を書く。
 
 - 配置した zip の名前・コミット・sha256、控えの場所（`~/archive-docs/deploy/<日時>`）
+  - 未マージの PR のコミットを置いたときは、そのことを書く。次に配置する人が、本番と main の差に気付けるようにする
+  - サーバーの出力の絶対パス（`/home/<アカウント名>/…`）は、`~/…` に直してから写す。アカウント名をリポジトリと Issue に書かない（規約8節）
 - `pnpm check:production` と `pnpm check:production:browser` の結果
   - 「http:// redirect」を手元で確かめ直したとき（5 を参照）は、配置の記録へのリンクを付けて、補足のコメントとして書く。流した環境と、プロキシ・VPN の有無も書く
 - Lighthouse（モバイル。性能・アクセシビリティ・おすすめの方法・SEO）を、手元（`pnpm preview`）と本番の両方で、Chrome の DevTools で測った値（[post-build-checks.md](./post-build-checks.md)）
@@ -209,6 +214,7 @@ pnpm check:production   # 戻した後は、旧トップに戻っているので
   - この行だけを理由に、控えで戻さない
   - 初期化ファイルは直さない。サーバーへの書き込みで、`~/www/archive` の外にあり、同じアカウントの他のホストにも効くため。直すなら、別の Issue でオーナーの指示を取ってから行う
 - さくらは圧縮が効かない。`pnpm test:e2e` で測った転送量が、そのまま本番の値になる
+  - `mod_deflate` が無く、前段の nginx は `Accept-Encoding` を Apache へ渡さない。前もって圧縮した `.gz` を返す方法も使えない（[htaccess.md](../design/htaccess.md) の「入れていないもの」。#49）
 - 同じアカウントに、他のホスト（about・blog・apply など）が同居している。`~/www/archive` の外には書き込まない
 - 数分かかる処理（公開フォルダ全体の `grep`・`find` など）は、接続が切れても止まらない形で流す
   - 読み取りだけの処理: `ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=20 setagayafes-archive …` で接続を保つ
