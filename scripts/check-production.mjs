@@ -16,14 +16,18 @@ const INITIAL_DOMAIN = "setagayafes.sakura.ne.jp";
 
 /**
  * @param {string} url
- * @returns {Promise<{ status: number, headers: import("node:http").IncomingHttpHeaders, body: string }>}
+ * @param {Record<string, string>} [requestHeaders]
+ * @returns {Promise<import("./lib/header-checks.mjs").Response>}
  */
-function fetchRaw(url) {
+function fetchRaw(url, requestHeaders = {}) {
   const request = url.startsWith("https:") ? httpsRequest : httpRequest;
   return new Promise((done, fail) => {
     const req = request(
       url,
-      { headers: { "user-agent": "setagayafes-archive deploy check" }, timeout: 15_000 },
+      {
+        headers: { ...requestHeaders, "user-agent": "setagayafes-archive deploy check" },
+        timeout: 15_000,
+      },
       (response) => {
         /** @type {Buffer[]} */
         const chunks = [];
@@ -33,6 +37,7 @@ function fetchRaw(url) {
             status: response.statusCode ?? 0,
             headers: response.headers,
             body: Buffer.concat(chunks).toString("utf8"),
+            raw: Buffer.concat(chunks),
           }),
         );
       },
@@ -44,7 +49,8 @@ function fetchRaw(url) {
 }
 
 /** @type {import("./lib/header-checks.mjs").Get} */
-const get = (path, host = ARCHIVE_HOST) => fetchRaw(`https://${host}${path}`);
+const get = (path, host = ARCHIVE_HOST, requestHeaders = {}) =>
+  fetchRaw(`https://${host}${path}`, requestHeaders);
 
 // The asset names change with every build, so read them from the live page.
 const top = await get("/");

@@ -92,19 +92,26 @@ function escapeRegExp(text) {
  * Regular expressions (PCRE, also valid in JavaScript) for the request paths
  * that belong to this repository, made from the published files.
  *
- * - `pages`: the HTML pages, with and without "index.html" ("/" and "/index.html")
+ * - `pages`: the HTML pages, with and without "index.html" ("/" and "/index.html"),
+ *   and their pre-compressed copies ("/index.html.gz")
  * - `own`: every published file, and every folder only this repository uses
  *   (the past festival folders never collide with them: guard-source.mjs)
  * - `immutable`: files whose names carry a content hash (/_astro/)
  *
  * @param {readonly string[]} files Paths relative to dist/, with "/" separators.
- * @returns {{ pages: string, own: string, immutable: string }}
+ * - `precompressed`: the HTML pages that have a .gz copy, by their "index.html" path
+ *
+ * @returns {{ pages: string, own: string, immutable: string, precompressed: string }}
  */
 export function pathPatterns(files) {
   const published = files.filter((file) => file !== ".htaccess");
   const pages = published
     .filter((file) => file === "index.html" || file.endsWith("/index.html"))
-    .map((file) => `${escapeRegExp(file.slice(0, -"index.html".length))}(?:index\\.html)?`)
+    // index.html.gz: the pre-compressed page that the rewrite below serves
+    // for "/" and "/index.html" (an internal redirect, so <If> sees this path).
+    .map(
+      (file) => `${escapeRegExp(file.slice(0, -"index.html".length))}(?:index\\.html(?:\\.gz)?)?`,
+    )
     .toSorted();
   const folders = [
     ...new Set(published.filter((file) => file.includes("/")).map((file) => file.split("/")[0])),
@@ -114,8 +121,14 @@ export function pathPatterns(files) {
     ...rootFiles.map(escapeRegExp),
     ...folders.map((folder) => `${escapeRegExp(folder ?? "")}/.*`),
   ].toSorted();
+  const precompressed = published
+    .filter((file) => file.endsWith("index.html") && published.includes(`${file}.gz`))
+    .map(escapeRegExp)
+    .toSorted();
   return {
     pages: `^/(?:${pages.join("|")})$`,
+    // An empty list must match nothing, not every path.
+    precompressed: precompressed.length > 0 ? `^/(?:${precompressed.join("|")})$` : "^(?!)",
     // "/" itself is the top page; the empty alternative matches it.
     own: `^/(?:|${own.join("|")})$`,
     immutable: "^/_astro/[^/]+$",
@@ -130,7 +143,7 @@ export function pathPatterns(files) {
  * @returns {string}
  */
 export function buildHtaccess({ files, styleHashes }) {
-  const { pages, own, immutable } = pathPatterns(files);
+  const { pages, own, immutable, precompressed } = pathPatterns(files);
   const common = Object.entries(COMMON_HEADERS).map(
     ([name, value]) => `  Header always set ${name} "${value}"`,
   );
@@ -163,6 +176,12 @@ export function buildHtaccess({ files, styleHashes }) {
     `<If "%{REQUEST_URI} =~ m#${pages}#">`,
     `  Header always set Content-Security-Policy "${pageCsp(styleHashes)}"`,
     '  Header set Cache-Control "no-cache"',
+    // The same URL answers gzip or plain HTML (the rewrite below).
+    "  Header merge Vary Accept-Encoding",
+    "</If>",
+    `<If "%{REQUEST_URI} =~ m#${precompressed.replace(/\$$/, "\\.gz$")}#">`,
+    "  ForceType text/html",
+    "  Header set Content-Encoding gzip",
     "</If>",
     `<If "%{REQUEST_URI} =~ m#${immutable}#">`,
     `  Header set Cache-Control "public, max-age=${ONE_YEAR}, immutable"`,
@@ -176,9 +195,28 @@ export function buildHtaccess({ files, styleHashes }) {
     "",
     "</IfModule>",
     "",
+    "# Pre-compressed top pages: the server has no mod_deflate, so the build writes",
+    "# index.html.gz next to each page. A client that accepts gzip gets it (an",
+    "# internal redirect: the URL stays the same); others get index.html.",
+    '# "/" reaches the rules as /index.html, through DirectoryIndex. The paths are',
+    "# matched on REQUEST_URI because past festival folders without rewrite rules",
+    "# of their own inherit these. The .gz files are not served by their own URL.",
+    "<IfModule mod_rewrite.c>",
+    "<IfModule mod_headers.c>",
+    "RewriteEngine On",
+    "RewriteCond %{ENV:REDIRECT_STATUS} ^$",
+    `RewriteCond %{REQUEST_URI} ${precompressed.replace(/\$$/, "\\.gz$")}`,
+    "RewriteRule ^ - [R=404,L]",
+    "RewriteCond %{HTTP:Accept-Encoding} \\bgzip\\b",
+    `RewriteCond %{REQUEST_URI} ${precompressed}`,
+    "RewriteCond %{REQUEST_FILENAME}.gz -f",
+    "RewriteRule ^ %{REQUEST_URI}.gz [L]",
+    "</IfModule>",
+    "</IfModule>",
+    "",
     "# Compression, where the server has mod_deflate (it had none when measured).",
     "<IfModule mod_deflate.c>",
-    `<If "%{REQUEST_URI} =~ m#${own}#">`,
+    `<If "%{REQUEST_URI} =~ m#${own}# && ! %{REQUEST_URI} =~ m#\\.gz$#">`,
     "  AddOutputFilterByType DEFLATE text/html text/plain application/xml image/svg+xml",
     "</If>",
     "</IfModule>",

@@ -137,7 +137,7 @@
 | Lighthouse（モバイル、手元）           | 4カテゴリとも 100                        |
 | LCP／CLS（同上）                       | 1.4 秒／0                                |
 
-残りの指摘（キャッシュ・テキスト圧縮）はサーバー側の設定。キャッシュは `.htaccess` で `/_astro/` を1年の `immutable` にした。圧縮は、さくらに `mod_deflate` が無いため効かない（[htaccess.md](./htaccess.md)）。
+残りの指摘（キャッシュ・テキスト圧縮）はサーバー側の設定。キャッシュは `.htaccess` で `/_astro/` を1年の `immutable` にした。圧縮は、さくらに `mod_deflate` が無いため、トップの HTML だけをビルドで前もって圧縮して返す（[htaccess.md](./htaccess.md)）。
 
 ### レビュー指摘対応後の再計測（2026-11-07）
 

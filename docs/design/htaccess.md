@@ -33,7 +33,8 @@ archive ホストの公開フォルダ（さくらの `~/www/archive`）の直�
 | キャッシュ         | `/_astro/`                                                     | `public, max-age=31536000, immutable`（ファイル名に中身のハッシュが入るため）                                                                                                                                                                                  |
 |                    | トップのページ                                                 | `no-cache`（毎回確かめる。中身が変われば取り直す）                                                                                                                                                                                                             |
 | HSTS               | Host が `archive.setagayafes.org` のとき                       | `max-age=31536000`。`includeSubDomains` は付けない                                                                                                                                                                                                             |
-| 圧縮               | このリポジトリが出力したパス                                   | `mod_deflate` があるときだけ。さくらでは効かないことを実測済みなので、無くても困らない                                                                                                                                                                         |
+| 圧縮               | トップのページ                                                 | ビルドで作った `index.html.gz` を、gzip を受け付けるクライアントに返す（下の「前もって圧縮したページ」）                                                                                                                                                       |
+|                    | このリポジトリが出力した、それ以外のパス                       | `mod_deflate` があるときだけ。さくらでは効かないことを実測済み                                                                                                                                                                                                 |
 
 ### 範囲を `<If>` で限る理由
 
@@ -70,6 +71,28 @@ archive ホストの公開フォルダ（さくらの `~/www/archive`）の直�
   - HSTS（この `.htaccess` で付ける）により、一度 https で来たブラウザは、次から http を使わない
   - インデックスさせるのは `/` と `/en/` だけで、canonical・sitemap・hreflang はどれも https の URL を指す
 - 見直すのは、さくらが 301 を選べるようになったとき、またはホストを移すとき
+
+### 前もって圧縮したページ
+
+さくらには `mod_deflate` が無く、HTML が圧縮されずに配られていた（`/` が約 99,000 バイト。Issue #38）。そこで、ビルドで圧縮したファイルを置き、`mod_rewrite` で振り替える。
+
+- `pnpm build` の中で `scripts/build-precompressed.mjs` が、`index.html` と `en/index.html` の隣に `.gz`（gzip -9 相当）を書く。約 100KB が約 15KB になる
+  - 対象は HTML だけ。`robots.txt`・`sitemap.xml`・`favicon.svg` は小さく、`/_astro/` の画像は圧縮済みの形式
+  - `scripts/guard-dist.mjs` が、`.gz` を展開すると隣のファイルと一致することを確かめる。`forbiddenFileReason()` は、`index.html.gz` だけを圧縮ファイルの禁止から外す
+- 要求の `Accept-Encoding` に `gzip` があり、`.gz` があるときだけ、`/index.html` を `/index.html.gz` へ内部で振り替える。URL は変わらない
+  - `/` は `DirectoryIndex` で `/index.html` になってから、この規則に届く
+  - 振り替えた先には `ForceType text/html` と `Content-Encoding: gzip` を付ける。トップのページには、どちらの応答にも `Vary: Accept-Encoding` を付ける
+  - 内部の振り替えなので、`<If>` が見る `%{REQUEST_URI}` は `/index.html.gz` になる。トップのページの正規表現（`pages`）は `.gz` も含める。含めないと、CSP が外れ、noindex が付く
+  - `.gz` をその URL で直接開くと 404（`%{ENV:REDIRECT_STATUS}` が空の要求だけ）
+- 対象のパスは `%{REQUEST_URI}` の絶対パスで限る。自分の `RewriteEngine on` を持たない過去回のフォルダは、この規則を継承する。規則の中の相対パスは、継承した先のフォルダを基準に読まれる
+- 手元の検査（`pnpm check:htaccess`）は `mod_deflate` を読み込むので、gzip の応答だけでは振り替えが効いた証拠にならない。返ったバイト列が `dist/` の `.gz` と一致することを見る
+- `Accept-Encoding: gzip;q=0`（gzip を拒む指定）は区別しない。実際のブラウザは送らない
+
+確かめていないこと（配置のときに `pnpm check:production` で確かめる）:
+
+- 前段の nginx が、Apache の `Content-Encoding: gzip` をそのまま通すか（外す・二重に圧縮する・展開し直すことが無いか）
+- 前段の nginx が `Vary: Accept-Encoding` を見てキャッシュを分けるか。今も `Vary: Accept-Encoding` は付いているが、圧縮はしていない
+- さくらの Apache で `mod_rewrite` の `-f`（ファイルの有無）と `REDIRECT_STATUS` が手元と同じに動くか
 
 ### 入れていないもの
 

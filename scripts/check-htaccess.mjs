@@ -59,6 +59,7 @@ const MODULES = [
   "dir",
   "setenvif",
   "headers",
+  "rewrite",
   "filter",
   "deflate",
 ];
@@ -87,11 +88,13 @@ async function freePort() {
  * @param {number} port
  * @param {string} path
  * @param {string} host
- * @returns {Promise<{ status: number, headers: import("node:http").IncomingHttpHeaders, body: string }>}
+ * @param {Record<string, string>} [requestHeaders]
+ * @returns {Promise<import("./lib/header-checks.mjs").Response>}
  */
-function get(port, path, host = ARCHIVE_HOST) {
+function get(port, path, host = ARCHIVE_HOST, requestHeaders = {}) {
   return new Promise((done, fail) => {
-    const req = request({ host: "127.0.0.1", port, path, headers: { host } }, (response) => {
+    const headers = { ...requestHeaders, host };
+    const req = request({ host: "127.0.0.1", port, path, headers }, (response) => {
       /** @type {Buffer[]} */
       const chunks = [];
       response.on("data", (chunk) => chunks.push(chunk));
@@ -100,6 +103,7 @@ function get(port, path, host = ARCHIVE_HOST) {
           status: response.statusCode ?? 0,
           headers: response.headers,
           body: Buffer.concat(chunks).toString("utf8"),
+          raw: Buffer.concat(chunks),
         }),
       );
     });
@@ -180,11 +184,17 @@ try {
   if (!avif || !jpeg) throw new Error("dist/_astro/ has no .avif or no .jpeg");
 
   failed = await runHeaderChecks({
-    get: (path, host) => get(port, path, host),
+    get: (path, host, requestHeaders) => get(port, path, host, requestHeaders),
     assets: { avif: `/_astro/${avif}`, jpeg: `/_astro/${jpeg}` },
     pastSite: "/78th/",
     initialDomain: { host: INITIAL_DOMAIN, path: "/archive/" },
     notFoundBody: /<title>404<\/title>/,
+    // mod_deflate is loaded here, so a gzip response alone does not prove the
+    // rewrite: the bytes must be the build's own .gz files.
+    precompressed: {
+      "/": await readFile(join(dist, "index.html.gz")),
+      "/en/": await readFile(join(dist, "en", "index.html.gz")),
+    },
   });
 } finally {
   httpd.kill("SIGTERM");

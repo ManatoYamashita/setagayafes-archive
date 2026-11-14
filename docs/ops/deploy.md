@@ -11,6 +11,7 @@
 | パス                                                 | 初回の配置（2026-11）  | 2回目から          |
 | ---------------------------------------------------- | ---------------------- | ------------------ |
 | `index.html`・`robots.txt`・`.htaccess`              | 旧トップのものを上書き | 前回のものを上書き |
+| `index.html.gz`                                      | 新しく作る             | 上書き             |
 | `en/`・`_astro/`                                     | 新しく作る             | 丸ごと入れ替える   |
 | `favicon.svg`・`apple-touch-icon.png`・`sitemap.xml` | 新しく作る             | 上書き             |
 
@@ -94,7 +95,7 @@ pnpm check:production
 pnpm check:production:browser
 ```
 
-- `check:production`: トップのページ（noindex が無い・CSP などが付く）、`/_astro/` のキャッシュ、OGP の画像の Content-Type、過去回（`/78th/`）に余計なヘッダが付かないこと、404 ページ、初期ドメイン経由、http→https の 302 を確かめる
+- `check:production`: トップのページ（noindex が無い・CSP などが付く・gzip を受け付けると `.gz` を返し、展開すると同じページになる・`.gz` を直接開くと 404）、`/_astro/` のキャッシュ、OGP の画像の Content-Type、過去回（`/78th/`）に余計なヘッダが付かないこと、404 ページ、初期ドメイン経由、http→https の 302 を確かめる
 - `check:production:browser`: Playwright の Chromium で、1ページずつ順に開いて確かめる（ページを開くだけ）
   - `/`・`/en/`・`/78th/`・`/96th/` が 200 を返す
   - `/`・`/en/` で、最後までスクロールしても、コンソールのエラー・4xx/5xx の応答・失敗したリクエストが0件
@@ -208,7 +209,7 @@ pnpm check:production   # 戻した後は、旧トップに戻っているので
   - 成否は、各スクリプトの最後の `ok` の行（展開は `ok   extracted …`、戻しは `ok   rolled back …`）と終了コード（直後の `echo $?` が `0`）で判断する。`FAIL` の行が出るか、終了コードが `0` でなければ失敗
   - この行だけを理由に、控えで戻さない
   - 初期化ファイルは直さない。サーバーへの書き込みで、`~/www/archive` の外にあり、同じアカウントの他のホストにも効くため。直すなら、別の Issue でオーナーの指示を取ってから行う
-- さくらは圧縮が効かない。`pnpm test:e2e` で測った転送量が、そのまま本番の値になる
+- さくらは `mod_deflate` が効かない。トップの HTML だけは、ビルドで作った `.gz` を返す（[htaccess.md](../design/htaccess.md)）。`pnpm test:e2e` は非圧縮のバイト数で測るので、本番の転送量はそれ以下になる
 - 同じアカウントに、他のホスト（about・blog・apply など）が同居している。`~/www/archive` の外には書き込まない
 - 数分かかる処理（公開フォルダ全体の `grep`・`find` など）は、接続が切れても止まらない形で流す
   - 読み取りだけの処理: `ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=20 setagayafes-archive …` で接続を保つ

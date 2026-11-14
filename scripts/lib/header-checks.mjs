@@ -4,12 +4,15 @@
 // so both are held to one set of expectations.
 
 import assert from "node:assert/strict";
+import { gunzipSync } from "node:zlib";
 import { styleHashesOf } from "./htaccess.mjs";
 
 /**
- * @typedef {{ status: number, headers: Record<string, string | string[] | undefined>, body: string }} Response
- * @typedef {(path: string, host?: string) => Promise<Response>} Get
- *   Requests a path on the archive host (or on `host` when given).
+ * @typedef {{ status: number, headers: Record<string, string | string[] | undefined>, body: string, raw: Buffer }} Response
+ *   `body` is `raw` read as UTF-8; the response is not decompressed.
+ * @typedef {(path: string, host?: string, requestHeaders?: Record<string, string>) => Promise<Response>} Get
+ *   Requests a path on the archive host (or on `host` when given). Sends no
+ *   Accept-Encoding unless `requestHeaders` has one.
  */
 
 /** The headers that only the top pages and their files may carry. */
@@ -30,14 +33,24 @@ const OWN_ONLY_HEADERS = [
  *   pastSite: string,
  *   initialDomain: { host: string, path: string },
  *   notFoundBody?: RegExp,
+ *   precompressed?: Record<string, Buffer>,
  * }} options
  *   `assets`: paths of one card picture and the Open Graph image (/_astro/…);
  *   `pastSite`: a past festival folder, e.g. "/78th/";
  *   `initialDomain`: the archive's top page through the server's initial domain;
- *   `notFoundBody`: what the static 404 page contains.
+ *   `notFoundBody`: what the static 404 page contains;
+ *   `precompressed`: the build's .gz file for a page path ("/", "/en/"), to
+ *   check that the gzip response is that file and not compressed on the fly.
  * @returns {Promise<number>} The number of failed checks.
  */
-export async function runHeaderChecks({ get, assets, pastSite, initialDomain, notFoundBody }) {
+export async function runHeaderChecks({
+  get,
+  assets,
+  pastSite,
+  initialDomain,
+  notFoundBody,
+  precompressed,
+}) {
   let failed = 0;
   /**
    * @param {string} name
@@ -70,6 +83,37 @@ export async function runHeaderChecks({ get, assets, pastSite, initialDomain, no
       assert.equal(headers["cache-control"], "no-cache");
     });
   }
+
+  for (const path of ["/", "/index.html", "/en/", "/en/index.html"]) {
+    await check(`${path}: gzip for clients that accept it, the same page as plain`, async () => {
+      const plain = await get(path);
+      const gzipped = await get(path, undefined, { "accept-encoding": "gzip, deflate, br" });
+      assert.equal(plain.headers["content-encoding"], undefined, "plain without Accept-Encoding");
+      assert.equal(gzipped.status, 200);
+      assert.equal(gzipped.headers["content-encoding"], "gzip");
+      assert.match(String(gzipped.headers["content-type"]), /^text\/html/);
+      assert.match(String(gzipped.headers.vary), /accept-encoding/i);
+      assert.match(String(plain.headers.vary), /accept-encoding/i);
+      assert.ok(gzipped.raw.length < plain.raw.length / 3, "compressed");
+      assert.equal(gunzipSync(gzipped.raw).toString("utf8"), plain.body, "inflates to the page");
+      const file = precompressed?.[path.replace(/index\.html$/, "")];
+      if (file) assert.ok(gzipped.raw.equals(file), "the build's .gz file");
+      // Served by an internal redirect: the page's headers must still apply.
+      assert.equal(gzipped.headers["x-robots-tag"], undefined, "no noindex");
+      assert.equal(
+        gzipped.headers["content-security-policy"],
+        plain.headers["content-security-policy"],
+      );
+      assert.equal(gzipped.headers["cache-control"], "no-cache");
+    });
+  }
+
+  await check("the .gz copies are not served by their own URL", async () => {
+    for (const path of ["/index.html.gz", "/en/index.html.gz"]) {
+      const { status } = await get(path, undefined, { "accept-encoding": "gzip" });
+      assert.equal(status, 404, path);
+    }
+  });
 
   await check("the inline style hash matches the page", async () => {
     const { body, headers } = await get("/");
@@ -113,7 +157,8 @@ export async function runHeaderChecks({ get, assets, pastSite, initialDomain, no
   }
 
   await check(`${pastSite} (a past festival site): untouched except noindex and HSTS`, async () => {
-    const { status, headers } = await get(pastSite);
+    const { status, headers } = await get(pastSite, undefined, { "accept-encoding": "gzip" });
+    assert.equal(headers["content-encoding"], undefined, "not rewritten to a .gz");
     assert.equal(status, 200);
     assert.equal(headers["x-robots-tag"], "noindex, noimageindex");
     assert.equal(headers["strict-transport-security"], "max-age=31536000");

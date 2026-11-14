@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build && node scripts/build-htaccess.mjs && node scripts/guard-dist.mjs",
+    "build": "astro build && node scripts/build-precompressed.mjs && node scripts/build-htaccess.mjs && node scripts/guard-dist.mjs",
     "preview": "astro preview",
     "check": "astro check",
     "lint": "eslint .",

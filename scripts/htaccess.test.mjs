@@ -15,7 +15,9 @@ import {
 
 const FILES = [
   "index.html",
+  "index.html.gz",
   "en/index.html",
+  "en/index.html.gz",
   "_astro/97th.abc_123.avif",
   "_astro/97th.abc_456.jpeg",
   "favicon.svg",
@@ -63,6 +65,7 @@ describe("pathPatterns", () => {
   const pages = new RegExp(patterns.pages);
   const own = new RegExp(patterns.own);
   const immutable = new RegExp(patterns.immutable);
+  const precompressed = new RegExp(patterns.precompressed);
 
   test("the top pages are /, /en/ and their index.html", () => {
     for (const path of ["/", "/index.html", "/en/", "/en/index.html"]) {
@@ -112,6 +115,17 @@ describe("pathPatterns", () => {
     ]) {
       assert.ok(!own.test(path), path);
     }
+  });
+
+  test("the pre-compressed pages are the index.html files that have a .gz", () => {
+    assert.ok(precompressed.test("/index.html"));
+    assert.ok(precompressed.test("/en/index.html"));
+    for (const path of ["/", "/en/", "/index.html.gz", "/78th/index.html", "/robots.txt"]) {
+      assert.ok(!precompressed.test(path), path);
+    }
+    const none = new RegExp(pathPatterns(["index.html"]).precompressed);
+    assert.ok(!none.test("/index.html"), "no .gz, no rewrite");
+    assert.ok(!none.test(""), "an empty list matches nothing");
   });
 
   test("only /_astro/ files are cached as immutable", () => {

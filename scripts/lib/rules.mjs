@@ -50,6 +50,9 @@ const UI_RUNTIME_PACKAGES = [
  * @returns {string | null} The reason the file is forbidden, or null.
  */
 export function forbiddenFileReason(path) {
+  // The pre-compressed top pages (scripts/lib/precompress.mjs). guard-dist.mjs
+  // checks that each one inflates to the page next to it.
+  if (/(^|\/)index\.html\.gz$/.test(path)) return null;
   for (const { pattern, reason } of FORBIDDEN_FILE_PATTERNS) {
     if (pattern.test(path)) return reason;
   }

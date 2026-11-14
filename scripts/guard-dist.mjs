@@ -5,14 +5,17 @@
 // 2. No file the browser would parse as markup (.html, .htm, .xhtml, .svg, ...)
 //    contains <script> (JSON-LD excepted), inline event handlers, script URLs
 //    or an srcdoc that does.
-// 3. dist/ contains no files that must never be published.
+// 3. dist/ contains no files that must never be published, and each .gz
+//    (the pre-compressed top pages) inflates to the file next to it.
 // 4. Every link to this site points to a file in dist/ (or to an archived
 //    festival site on the server). Links that need the network are checked by
 //    `pnpm check:links`; the page-weight budgets by the e2e tests, in a browser.
 //
 // Usage: node scripts/guard-dist.mjs [distDir]
 
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { precompressedProblem } from "./lib/precompress.mjs";
 import { checkDistLinks } from "./lib/site.mjs";
 import {
   MARKUP_EXTENSIONS,
@@ -52,6 +55,17 @@ for (const file of files) {
   if (reason) forbiddenFiles.push(`dist/${file}: ${reason}`);
 }
 report("dist/ contains no dumps, backups, logs or server-side code", forbiddenFiles);
+
+/** @type {string[]} */
+const badPrecompressed = [];
+for (const file of files.filter((name) => name.endsWith(".gz"))) {
+  const original = files.includes(file.slice(0, -".gz".length))
+    ? await readFile(join(dist, file.slice(0, -".gz".length)))
+    : undefined;
+  const problem = precompressedProblem(await readFile(join(dist, file)), original);
+  if (problem) badPrecompressed.push(`dist/${file}: ${problem}`);
+}
+report("each .gz in dist/ inflates to the file next to it", badPrecompressed);
 
 const links = await checkDistLinks(dist, files);
 report("links to this site point to files in dist/ or to archived sites", links.broken);
