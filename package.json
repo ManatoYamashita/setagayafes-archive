@@ -23,6 +23,7 @@
     "check:htaccess": "node scripts/check-htaccess.mjs",
     "check:links": "node scripts/check-links.mjs",
     "check:production": "node scripts/check-production.mjs",
+    "check:production:browser": "node scripts/check-production-browser.mjs",
     "package": "node scripts/package.mjs"
   },
   "dependencies": {

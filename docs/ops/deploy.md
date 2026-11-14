@@ -25,6 +25,7 @@
 | `scripts/ops/deploy/remote-deploy.sh`   | サーバー | チェックサムを確かめ、zip が書き込む先の控えを取ってから展開する                                                              |
 | `scripts/ops/deploy/remote-rollback.sh` | サーバー | 控えから元に戻す                                                                                                              |
 | `pnpm check:production`                 | 手元     | 本番のヘッダを、手元の Apache と同じ項目で確かめる（GET だけ）                                                                |
+| `pnpm check:production:browser`         | 手元     | 本番のトップをブラウザで開き、エラーが無いこと・MENU と絞り込みが動くことを確かめる（ページを開くだけ）                       |
 
 - サーバーの2つのスクリプトは、zip の中に、過去回のフォルダ名・`errorpage`・`todoroki`・`tfa`・`img`・`css`・`js` や、`/` を含む変な名前があれば、何もせずに止まる
 - 控えは `~/archive-docs/deploy/<日時>/`（公開フォルダの外。700）に残る。消さない
@@ -89,8 +90,16 @@ ssh setagayafes-archive "sh -s -- $ZIP" < scripts/ops/deploy/remote-deploy.sh
 pnpm check:production
 ```
 
-- トップのページ（noindex が無い・CSP などが付く）、`/_astro/` のキャッシュ、OGP の画像の Content-Type、過去回（`/78th/`）に余計なヘッダが付かないこと、404 ページ、初期ドメイン経由、http→https の 302 を確かめる
-- ブラウザで `/`・`/en/`・`/78th/`・`/96th/` を開き、表示が崩れていないこと、MENU と絞り込みが動くことを見る
+```sh
+pnpm check:production:browser
+```
+
+- `check:production`: トップのページ（noindex が無い・CSP などが付く）、`/_astro/` のキャッシュ、OGP の画像の Content-Type、過去回（`/78th/`）に余計なヘッダが付かないこと、404 ページ、初期ドメイン経由、http→https の 302 を確かめる
+- `check:production:browser`: Playwright の Chromium で、1ページずつ順に開いて確かめる（ページを開くだけ）
+  - `/`・`/en/`・`/78th/`・`/96th/` が 200 を返す
+  - `/`・`/en/` で、最後までスクロールしても、コンソールのエラー・4xx/5xx の応答・失敗したリクエストが0件
+  - `/` で MENU（`#site-menu`）が開き、閉じる。時代の絞り込みを切り替えると、表示されるカードの数が変わる
+- 2つとも `ok` なら、ブラウザで目で見る確認は要らない。見た目の崩れ（重なり・はみ出し）は検査していないので、気になる変更を配置したときは開いて見る
 - **1つでも落ちて、表示が壊れていたら、すぐ戻す**（下の「戻し方」）。原因はその後で調べる
 - クラウド環境から流したときは、「http:// redirect」の項目だけは必ず落ちる。暗号化しない `http://` の通信が外へ出られないため（[cloud-environment.md](./cloud-environment.md)）
   - この項目が落ちたことだけを理由に戻さない。他の項目がすべて ok なら、手元の端末で確かめ直す
@@ -178,7 +187,7 @@ curl -sI https://archive.setagayafes.org/img/97th.png | head -1   # 404
 Issue #1 に次を書く。
 
 - 配置した zip の名前・コミット・sha256、控えの場所（`~/archive-docs/deploy/<日時>`）
-- `pnpm check:production` の結果
+- `pnpm check:production` と `pnpm check:production:browser` の結果
   - 「http:// redirect」を手元で確かめ直したとき（5 を参照）は、配置の記録へのリンクを付けて、補足のコメントとして書く。流した環境と、プロキシ・VPN の有無も書く
 - Lighthouse（モバイル。性能・アクセシビリティ・おすすめの方法・SEO）を、手元（`pnpm preview`）と本番の両方で、Chrome の DevTools で測った値（[post-build-checks.md](./post-build-checks.md)）
 

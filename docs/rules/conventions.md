@@ -136,7 +136,7 @@ HTML は文字列の一致ではなく、`scripts/lib/html.mjs` の tokenizer �
 
 - 外部ライブラリを足すときは、目的・代替案・影響（サイズ）を示して、オーナーの承認を取る
 - 版は完全に固定する（`pnpm add -E`）
-- Playwright（devDependencies）は、サムネイルの撮影（`pnpm capture`）と e2e テスト（`pnpm test:e2e`）にだけ使う。撮影は Issue #1 の決定、e2e は PR #7 による
+- Playwright（devDependencies）は、サムネイルの撮影（`pnpm capture`）・e2e テスト（`pnpm test:e2e`）・配置の後の本番の確認（`pnpm check:production:browser`）にだけ使う。撮影は Issue #1 の決定、e2e は PR #7、本番の確認は Issue #44 による
   - ブラウザは `pnpm exec playwright install --only-shell chromium` で別に入れる
   - CI は e2e のためにだけ入れる。撮影は CI では行わない
 - 画像の変換は Astro が同梱する sharp で、`astro:assets` を通して行う。sharp を直接 import しない

@@ -33,4 +33,5 @@
 | `pnpm check:links`                  | 過去回のフォルダと外部リンクが応答するかをネットワークで確かめる。配置の前に、`pnpm build` の後で流す（CI では流さない） |
 | `pnpm package`                      | 配置用の zip（`release/`）を作り、展開した中身を手元の Apache で確かめる（[配置の手順](./docs/ops/deploy.md)）           |
 | `pnpm check:production`             | 配置の後に、本番のヘッダを手元の Apache と同じ項目で確かめる（GET だけ）                                                 |
+| `pnpm check:production:browser`     | 配置の後に、本番のトップをブラウザで開き、エラーが無いこと・MENU と絞り込みが動くことを確かめる（ページを開くだけ）      |
 | `pnpm verify`                       | 上記をまとめて流す（CI と同じ）                                                                                          |

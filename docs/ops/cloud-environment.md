@@ -66,3 +66,9 @@ NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt pnpm check:pro
 - `NODE_USE_ENV_PROXY` はプロキシに関わる予約された変数で、セッションからは環境に保存できない。保存するなら、claude.ai の環境設定で手で足す
 - 「http:// redirect」の確認は、`http://` の通信が外へ出られないため、クラウドでは必ず落ちる。手元の Mac で確かめる
   - 確かめ直し方と記録の仕方は、[deploy.md](./deploy.md) の手順5と手順8
+
+## `pnpm check:production:browser` を動かすとき
+
+変数は要らない。Chromium はコンテナのプロキシと証明書をそのまま使う。
+
+- 過去回（`/78th/`・`/96th/`）は外部のホスト（`s.w.org`・`stats.wp.com` など）を読み、プロキシに拒否される。過去回で見るのは 200 だけなので、結果には響かない

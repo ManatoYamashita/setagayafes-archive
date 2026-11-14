@@ -23,6 +23,14 @@ import {
 } from "../src/data/festivals.ts";
 import { RELATED_SITES } from "../src/data/related-sites.ts";
 import { headingOf } from "../src/i18n/ui.ts";
+import {
+  eraLabel,
+  eraRadio,
+  menuButton,
+  siteMenu,
+  visibleCards,
+  watchProblems,
+} from "../scripts/lib/page-parts.mjs";
 import { serve } from "./lib/server.mjs";
 
 /** @typedef {"ja" | "en"} Lang */
@@ -105,21 +113,10 @@ after(async () => {
 async function open(path, { width = 1280, height = 900, deviceScaleFactor = 1 } = {}) {
   const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor });
   const page = await context.newPage();
-  /** @type {string[]} */
-  const problems = [];
-  page.on("console", (message) => {
-    if (message.type() === "error") problems.push(`console: ${message.text()}`);
-  });
-  page.on("pageerror", (error) => problems.push(`page error: ${error.message}`));
-  page.on("response", (response) => {
-    if (response.status() >= 400) problems.push(`${response.status()} ${response.url()}`);
-  });
+  const problems = watchProblems(page);
   await page.goto(`${server.url}${path}`, { waitUntil: "load" });
   return { page, problems, close: () => context.close() };
 }
-
-/** @param {import("playwright").Page} page */
-const visibleCards = (page) => page.locator(".grid > li:visible");
 
 for (const lang of LANGS) {
   const t = PAGES[lang];
@@ -150,8 +147,8 @@ for (const lang of LANGS) {
   describe(`${lang}: header menu`, () => {
     test("opens with MENU, closes with Escape and returns focus", async () => {
       const { page, close } = await open(t.path);
-      const button = page.getByRole("button", { name: "MENU" });
-      const menu = page.locator("#site-menu");
+      const button = menuButton(page);
+      const menu = siteMenu(page);
 
       assert.equal(await menu.isVisible(), false);
       await button.click();
@@ -171,8 +168,8 @@ for (const lang of LANGS) {
 
     test("closes with its close button", async () => {
       const { page, close } = await open(t.path);
-      await page.getByRole("button", { name: "MENU" }).click();
-      const menu = page.locator("#site-menu");
+      await menuButton(page).click();
+      const menu = siteMenu(page);
       await menu.waitFor({ state: "visible" });
       await menu.getByRole("button", { name: t.close }).click();
       await menu.waitFor({ state: "hidden" });
@@ -184,8 +181,8 @@ for (const lang of LANGS) {
       const { page, close } = await open(t.path, { width: 320, height });
       context.after(close);
 
-      await page.getByRole("button", { name: "MENU" }).click();
-      const menu = page.locator("#site-menu");
+      await menuButton(page).click();
+      const menu = siteMenu(page);
       const panel = await menu.boundingBox();
       assert.ok(panel);
       assert.ok(panel.y + panel.height <= height, "the menu fits within the viewport");
@@ -213,7 +210,7 @@ for (const lang of LANGS) {
       // MENU is the first stop.
       await page.keyboard.press("Tab");
       await page.keyboard.press("Enter");
-      await page.locator("#site-menu").waitFor({ state: "visible" });
+      await siteMenu(page).waitFor({ state: "visible" });
       await close();
     });
   });
@@ -390,7 +387,7 @@ for (const lang of LANGS) {
   describe(`${lang}: era filter`, () => {
     test("shows all festivals by default", async () => {
       const { page, close } = await open(t.path);
-      assert.equal(await page.locator("#era-all").isChecked(), true);
+      assert.equal(await eraRadio(page, "all").isChecked(), true);
       assert.equal(await visibleCards(page).count(), listed.length);
       assert.equal(
         await page.locator(".result-text:visible").innerText(),
@@ -403,7 +400,7 @@ for (const lang of LANGS) {
       test(`narrows the grid to ${era}`, async () => {
         const { page, close } = await open(t.path);
         await page.locator("label", { hasText: ERA_NAMES[era][lang] }).click();
-        assert.equal(await page.locator(`#era-${era}`).isChecked(), true);
+        assert.equal(await eraRadio(page, era).isChecked(), true);
         const cards = visibleCards(page);
         assert.equal(await cards.count(), countOf(era));
         const eras = await cards.evaluateAll((items) =>
@@ -420,12 +417,12 @@ for (const lang of LANGS) {
 
     test("is a radio group operable with arrow keys", async () => {
       const { page, close } = await open(t.path);
-      await page.locator("#era-all").focus();
+      await eraRadio(page, "all").focus();
       await page.keyboard.press("ArrowRight");
-      assert.equal(await page.locator("#era-musashi").isChecked(), true);
+      assert.equal(await eraRadio(page, "musashi").isChecked(), true);
       assert.equal(await visibleCards(page).count(), countOf("musashi"));
       await page.keyboard.press("ArrowRight");
-      assert.equal(await page.locator("#era-tcu").isChecked(), true);
+      assert.equal(await eraRadio(page, "tcu").isChecked(), true);
       assert.equal(await visibleCards(page).count(), countOf("tcu"));
       await close();
     });
@@ -437,12 +434,10 @@ for (const lang of LANGS) {
       });
       const page = await context.newPage();
       await page.goto(`${server.url}${t.path}`, { waitUntil: "load" });
-      const backgroundOf = (/** @type {string} */ id) =>
-        page
-          .locator(`label:has(#era-${id})`)
-          .evaluate(
-            (label) => label.ownerDocument.defaultView?.getComputedStyle(label).backgroundColor,
-          );
+      const backgroundOf = (/** @type {import("../scripts/lib/page-parts.mjs").EraFilter} */ id) =>
+        eraLabel(page, id).evaluate(
+          (label) => label.ownerDocument.defaultView?.getComputedStyle(label).backgroundColor,
+        );
       assert.notEqual(await backgroundOf("all"), await backgroundOf("musashi"));
       await context.close();
     });
@@ -461,7 +456,7 @@ for (const lang of LANGS) {
       const boxesOf = async () =>
         Promise.all([0, 1, 2, 3].map(async (n) => visibleCards(page).nth(n).boundingBox()));
       for (const era of ["all", "musashi"]) {
-        await page.locator(`label:has(#era-${era})`).click();
+        await eraLabel(page, era).click();
         const [a, b, c, d] = await boxesOf();
         assert.ok(a && b && c && d);
         assert.equal(Math.round(a.width), Math.round(b.width), `${era}: same width`);
@@ -476,7 +471,7 @@ for (const lang of LANGS) {
       test(`keeps the tab order in the reading order with three columns (${era})`, async (context) => {
         const { page, close } = await open(t.path, { width: 1280 });
         context.after(close);
-        await page.locator(`label:has(#era-${era})`).click();
+        await eraLabel(page, era).click();
         const boxes = await visibleCards(page).evaluateAll((items) =>
           items.map((item) => {
             const { x, y } = item.getBoundingClientRect();
@@ -683,8 +678,8 @@ for (const lang of LANGS) {
   describe(`${lang}: footer`, () => {
     test("repeats the menu links", async () => {
       const { page, close } = await open(t.path);
-      const menuLinks = await page
-        .locator("#site-menu a")
+      const menuLinks = await siteMenu(page)
+        .locator("a")
         .evaluateAll((links) => links.map((link) => link.getAttribute("href")));
       const footerLinks = await page
         .locator("footer a")
@@ -719,8 +714,8 @@ describe("languages", () => {
 
     test(`${lang}: the menu switches to the other language`, async () => {
       const { page, close } = await open(t.path);
-      await page.getByRole("button", { name: "MENU" }).click();
-      const link = page.locator("#site-menu").getByRole("link", { name: t.menuLinks.at(-1) });
+      await menuButton(page).click();
+      const link = siteMenu(page).getByRole("link", { name: t.menuLinks.at(-1) });
       assert.equal(await link.getAttribute("hreflang"), other);
       assert.equal(await link.getAttribute("lang"), other);
       await link.click();
