@@ -1,7 +1,7 @@
 ---
 // The two buttons over a festival's picture: "Visit the site" and "Preview".
-// "Preview" opens the festival's preview dialog (SitePreview.astro) with
-// popovertarget: no JavaScript. A festival whose site is not on this host
+// "Preview" opens the festival's preview dialog (SitePreview.astro) as a
+// modal with Invoker Commands: no JavaScript. A festival whose site is not on this host
 // (the 87th) gets only "Visit the site".
 //
 // Where the buttons sit and when they show is up to the parent (the card or
@@ -36,7 +36,8 @@ const hreflang = lang === "ja" ? undefined : "ja";
     <button
       type="button"
       class="action"
-      popovertarget={previewIdOf(festival.round)}
+      command="show-modal"
+      commandfor={previewIdOf(festival.round)}
       aria-label={ui.previewName(label)}
     >
       {ui.previewButton}

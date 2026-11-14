@@ -627,6 +627,42 @@ for (const lang of LANGS) {
       await close();
     });
 
+    test("keeps focus in the panel and the page behind inert", async () => {
+      const { page, close } = await open(t.path);
+      const hero = page.locator("#latest");
+      await hero.locator(".frame").hover();
+      await hero.getByRole("button", { name: t.preview(latest.round), exact: true }).click();
+      const dialog = page.locator(`#preview-${latest.round}`);
+      await dialog.waitFor({ state: "visible" });
+      assert.equal(await dialog.evaluate((element) => element.matches(":modal")), true);
+      for (let step = 0; step < 12; step += 1) {
+        await page.keyboard.press("Tab");
+        // body: focus has gone to the browser's own controls, not to the page behind.
+        const where = await page.evaluate(() => {
+          const active = document.activeElement;
+          if (!active || active === document.body) return "browser";
+          return active.closest("dialog") ? "panel" : `behind: ${active.outerHTML.slice(0, 80)}`;
+        });
+        assert.notEqual(where.startsWith("behind"), true, `Tab ${step + 1}: ${where}`);
+      }
+      await close();
+    });
+
+    test("closes with a click outside", async () => {
+      const { page, close } = await open(t.path);
+      const hero = page.locator("#latest");
+      await hero.locator(".frame").hover();
+      const button = hero.getByRole("button", { name: t.preview(latest.round), exact: true });
+      await button.click();
+      const dialog = page.locator(`#preview-${latest.round}`);
+      await dialog.waitFor({ state: "visible" });
+      // The panel leaves a margin all round: the top left corner is the backdrop.
+      await page.mouse.click(2, 2);
+      await dialog.waitFor({ state: "hidden" });
+      assert.equal(await button.evaluate((element) => element === document.activeElement), true);
+      await close();
+    });
+
     test("closes with the close button", async () => {
       const { page, close } = await open(t.path);
       const card = page.locator(".grid > li").first();
@@ -671,7 +707,7 @@ for (const lang of LANGS) {
         const card = page.locator(".grid > li", {
           has: page.locator(`h3 a[href="${linkOf(festival)}"]`),
         });
-        const buttons = card.locator("button[popovertarget]");
+        const buttons = card.locator('button[command="show-modal"]');
         assert.equal(
           await buttons.count(),
           festival.externalLink ? 0 : 1,

@@ -16,6 +16,7 @@
 - UI ランタイム（React・Preact・Vue・Svelte・Solid・Alpine・Lit）とその Astro 統合を入れない
 - 動きのある UI は HTML と CSS の標準機能で作る
   - MENU: `popover` または `<details>`
+  - モーダル: `<dialog>` を Invoker Commands（`command="show-modal"` / `commandfor`）で開く。polyfill は入れない
   - 絞り込み: radio ＋ `:has()`
 
 - 過去回のサイトを iframe で埋めるときは、`sandbox` に `allow-same-origin` を付けない（プレビュー。[screen.md](../design/screen.md)）

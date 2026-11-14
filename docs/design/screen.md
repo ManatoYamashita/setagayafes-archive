@@ -15,7 +15,7 @@
 | 絞り込み・一覧   | `src/components/Archive.astro`        | 「Archive」の見出し、時代の絞り込み、全回の均等な3列（新しい順）。後ろに洗いの帯を敷く                                                                                                                                                         |
 | カード           | `src/components/FestivalCard.astro`   | 写真 → 黒いピル（回）と日付 → テーマ（太字）→ 灰色の「#」タグ（時代・通常開催以外の状態）。ポインタを乗せる（またはキーボードで移る）と、写真に黒い膜と「サイトを見る」「プレビュー」が出る。タッチ端末では、この2つをカードの下端に常に並べる |
 | 写真の上のボタン | `src/components/PreviewActions.astro` | 「サイトを見る」と「プレビュー」。置き場所と出し方は、使う側（カード・ヒーロー）が決める                                                                                                                                                       |
-| プレビュー       | `src/components/SitePreview.astro`    | その回のサイトを iframe で開く popover。`Home.astro` が回ごとに1つずつ置く                                                                                                                                                                     |
+| プレビュー       | `src/components/SitePreview.astro`    | その回のサイトを iframe で開くモーダルの `<dialog>`。`Home.astro` が回ごとに1つずつ置く                                                                                                                                                        |
 | 写真             | `src/components/Capture.astro`        | サムネイル。無い回は回の数字を大きく組んだ代替表示                                                                                                                                                                                             |
 | 関連サイト       | `src/components/RelatedSites.astro`   | 洗いの帯に写真のタイルを並べる。`blockedBy` のある項目はリンクを張らない                                                                                                                                                                       |
 | フッター         | `src/components/SiteFooter.astro`     | サイト名、SNS のアイコン、©、公式ブログ・言語・「公式サイト」。MENU と同じリンクを、並べ方を変えて持つ                                                                                                                                         |
@@ -38,7 +38,7 @@
 - `<button popovertarget="site-menu">` と `<nav id="site-menu" popover>` だけで開閉する
 - Escape・外側のクリックで閉じ、閉じるとフォーカスはボタンへ戻る（ブラウザが行う）
 - パネルは画面内に収まる高さに制限し、内容が長いときはパネル内を縦にスクロールする。E2E では幅320px・高さ256pxで、Tab で「閉じる」まで移動して操作できることを確かめる
-- `command` / `commandfor`（Invoker Commands）は使わない。古いブラウザ向けの polyfill が JS になるため
+- MENU は Invoker Commands（`command` / `commandfor`）にしない。`popovertarget` で足り、Invoker Commands の無いブラウザでも開ける
 
 ### ヒーロー
 
@@ -62,23 +62,22 @@
 - `prefers-reduced-motion: reduce` では移動をやめ、同じ時間の不透明度だけにする
 - 動きの確かめ方: DevTools の Animations パネルで再生速度を 10% にする（CDP なら `Animation.setPlaybackRate`）
 
-### プレビュー: `popover` と、sandbox を付けた iframe
+### プレビュー: モーダルの `<dialog>` と、sandbox を付けた iframe
 
 - 2026-11-11 にオーナーと決めた（Issue #30）。カードとヒーローの写真の「プレビュー」で、その回のサイトを、このページの上の大きなパネルで開く
-- `<button popovertarget="preview-97">` と `<dialog id="preview-97" popover>` で開閉する。JS は使わない。Esc・外側のクリック・「閉じる」で閉じる
-  - `<dialog>` をモーダルで開くには JS か `commandfor` が要る。どちらも使えない（規約 §1）。popover は背景を操作不可にしないが、`::backdrop` で暗くする
-  - 「閉じる」に `autofocus` を付ける。開いた直後に焦点がパネルの中（「閉じる」）へ入り、閉じると開いたボタンへ戻る（Chromium で確認。e2e で検査する）
-    - 付ける前は、焦点が裏のボタンに残り、パネルに覆われて見えなくなった（WCAG 2.4.11）
-  - 裏は `inert` にならないので、iframe の後で Tab を押すと、焦点はパネルの外へ出る。モーダル（`command="show-modal"`）にするかは、オーナーが決める（Issue #38）
+- `<button command="show-modal" commandfor="preview-97">` と `<dialog id="preview-97" closedby="any">` で、モーダルとして開く（Invoker Commands）。JS は使わない。Esc・外側のクリック・「閉じる」（`command="close"`）で閉じる
+  - 2026-11-14 にオーナーが採用を決めた（Issue #49）。モーダルなので裏が `inert` になり、Tab で焦点がパネルの外（裏のページ）へ出ない。e2e で検査する
+  - Invoker Commands は 2025-12-12 から Baseline（Chrome 135・Firefox 144・Safari 26.2）。polyfill は入れない（JS になるため）。対応していないブラウザでは「プレビュー」を押しても何も起きず、「サイトを見る」は使える
+  - 外側のクリックで閉じるのは `closedby="any"` による。対応していないブラウザでは、Esc と「閉じる」だけで閉じる
+  - 「閉じる」に `autofocus` を付ける。開いた直後に焦点が「閉じる」に入り、閉じると開いたボタンへ戻る（WCAG 2.4.11）
   - `<dialog>` の UA スタイルの `max-inline-size`・`max-block-size` を外す。外さないと、`inset` で決めた大きさにならない
-  - `:popover-open` の `display: flex` は消さない。popover で開いた `<dialog>` には `open` 属性が付かないので、UA スタイルの `dialog:not([open]) { display: none }` が当たるブラウザでは、これが無いと開いても見えない
-- iframe は `loading="lazy"`。閉じている popover は `display: none` なので、開くまで取得されない（Chromium で実測。転送量の予算は変わらない）。Firefox・Safari では確かめていない
+- iframe は `loading="lazy"`。閉じている `<dialog>` は `display: none` なので、開くまで取得されない（Chromium で実測。転送量の予算は変わらない）。Firefox・Safari では確かめていない
 - iframe には `sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"` を付ける。`allow-same-origin` は付けない
   - 過去回のサイトは同じホストにあり、古い JS が動く。同じオリジンのまま埋めると、その JS が新トップを書き換えられる。sandbox で別のオリジンとして扱わせ、`script-src 'none'` の守りを保つ
   - 代わりに、Cookie や localStorage を使う仕掛けは、プレビューの中では動かないことがある。「サイトを見る」で開けば当時のとおりに動く
 - CSP に `frame-src 'self'` を足した。過去回のサイトは、同じホストからの iframe を許している（第97回は `X-Frame-Options: SAMEORIGIN`、他の回はヘッダ無し。2026-11-11 に確かめた）
 - 外部にある回（第87回、Wayback Machine）は `frame-src 'self'` の外なので、プレビューを出さない（`src/lib/preview.ts` の `hasPreview()`）
-- 開いている間は、後ろのページをスクロールさせない（2026-11-11 のオーナーの指示）。`html:has(.preview:popover-open) { overflow: hidden }` で止める。JS は使わない
+- 開いている間は、後ろのページをスクロールさせない（2026-11-11 のオーナーの指示）。`html:has(.preview:modal) { overflow: hidden }` で止める（`inert` は操作を止めるが、スクロールは止めない）。JS は使わない
   - ホイールとタッチのスクロールは、iframe の中のサイトにだけ効く。サイトの端まで行っても後ろへ伝わらない（`overscroll-behavior: contain`）
   - スクロールバーが消えて横にずれないよう、開いている間だけ `html` に `scrollbar-gutter: stable` を付ける
     - 常に付けると、スクロールバーが常に出る環境（CI の Linux）で、`scrollWidth - clientWidth` が -15 になった。スクロールバーの幅を二重に取っている恐れがあるので、開いている間に限った
