@@ -28,11 +28,13 @@ claude.ai/code のクラウドセッションで、このリポジトリの `pnp
 
 ```bash
 set -e
-if [ ! -x /opt/node24/bin/node ]; then
-  curl -fsSL https://nodejs.org/dist/v24.13.0/node-v24.13.0-linux-x64.tar.xz -o /tmp/node24.tar.xz
-  mkdir -p /opt/node24 && tar -xJf /tmp/node24.tar.xz -C /opt/node24 --strip-components=1
+NODE_VER=v24.13.0
+NODE_DIR=/opt/node-$NODE_VER
+if [ "$("$NODE_DIR/bin/node" -v 2>/dev/null)" != "$NODE_VER" ]; then
+  curl -fsSL https://nodejs.org/dist/$NODE_VER/node-$NODE_VER-linux-x64.tar.xz -o /tmp/node.tar.xz
+  mkdir -p "$NODE_DIR" && tar -xJf /tmp/node.tar.xz -C "$NODE_DIR" --strip-components=1
 fi
-for b in node npm npx corepack; do ln -sf /opt/node24/bin/$b /opt/node22/bin/$b; done
+for b in node npm npx corepack; do ln -sf "$NODE_DIR/bin/$b" /opt/node22/bin/$b; done
 corepack enable
 apt-get update -qq && apt-get install -y -qq --no-install-recommends apache2
 if [ -d setagayafes-archive ]; then
@@ -40,8 +42,10 @@ if [ -d setagayafes-archive ]; then
 fi
 ```
 
-- コンテナに入っている Node は v22 で、`/opt/node22/bin` が PATH の先頭にある。Node 24 を別の場所に入れても v22 が使われるため、`/opt/node22/bin` にリンクを張って差し替える
-- Node の版は `.nvmrc` に合わせる。`.nvmrc` を上げたら、スクリプトの版も上げる
+- コンテナには `/opt/node22/bin` が PATH の先頭にあり、Node を別の場所に入れても v22 が使われる。そのため、版名入りのディレクトリ（`/opt/node-v24.13.0`）に入れ、`/opt/node22/bin` にリンクを張って差し替える
+- コンテナに最初から入っている `/opt/node24` は使わない。中身の版が `.nvmrc` と一致するとは限らない
+- 取得するかどうかは、ディレクトリの有無ではなく `node -v` の一致で決める
+- Node の版は `.nvmrc` に合わせる。`.nvmrc` を上げたら、スクリプトの `NODE_VER` も上げる
 - apache2 は `pnpm check:htaccess` が使う
 - Playwright のブラウザは、`package.json` で固定した版に合うものを取る。コンテナに最初から入っている Chromium は版が合わない
 
@@ -61,6 +65,7 @@ NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt pnpm check:pro
 
 - `NODE_USE_ENV_PROXY` はプロキシに関わる予約された変数で、セッションからは環境に保存できない。保存するなら、claude.ai の環境設定で手で足す
 - 「http:// redirect」の確認は、`http://` の通信が外へ出られないため、クラウドでは必ず落ちる。手元の Mac で確かめる
+  - 確かめ直し方と記録の仕方は、[deploy.md](./deploy.md) の手順5と手順8
 
 ## `pnpm check:production:browser` を動かすとき
 
