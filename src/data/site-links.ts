@@ -26,3 +26,9 @@ export const ORGANIZER = {
   ja: "東京都市大学 世田谷祭実行委員会",
   en: "Tokyo City University Setagaya Festival Executive Committee",
 } as const satisfies Localized;
+
+/** Who built this archive top page, credited at the bottom of the footer. */
+export const SITE_CREDIT = {
+  name: "yamashitamana.to",
+  url: "https://www.yamashitamana.to/",
+} as const;

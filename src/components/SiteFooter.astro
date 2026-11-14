@@ -2,9 +2,9 @@
 // The footer after the reference layout: the site name in the middle, then a
 // row with the social media icons, the copyright and the other links.
 // Together they repeat the MENU links, so they stay reachable in browsers
-// without the Popover API.
+// without the Popover API. A small credit for the builder closes the footer.
 import type { Lang } from "../data/festivals.ts";
-import { ORGANIZER, SITE_LINKS } from "../data/site-links.ts";
+import { ORGANIZER, SITE_CREDIT, SITE_LINKS } from "../data/site-links.ts";
 import { HOME_PATHS, LANG_NAMES, UI, otherLang } from "../i18n/ui.ts";
 
 interface Props {
@@ -82,6 +82,13 @@ const [official, ...others] = SITE_LINKS.filter((link) => !("icon" in link));
         </ul>
       </nav>
     </div>
+
+    <p class="credit">
+      {ui.creditLabel}
+      <a href={SITE_CREDIT.url} rel="author">
+        {SITE_CREDIT.name}
+      </a>
+    </p>
   </div>
 </footer>
 
@@ -161,6 +168,21 @@ const [official, ...others] = SITE_LINKS.filter((link) => !("icon" in link));
   .copyright {
     font-size: 0.75rem;
     font-weight: 700;
+  }
+
+  .credit {
+    font-size: 0.6875rem;
+    color: var(--color-muted);
+
+    & a {
+      display: inline-flex;
+      align-items: center;
+      min-block-size: 2.75rem;
+      margin-inline-start: 0.5em;
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 0.25em;
+    }
   }
 
   .text-link {

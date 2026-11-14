@@ -18,7 +18,7 @@
 | プレビュー       | `src/components/SitePreview.astro`    | その回のサイトを iframe で開くモーダルの `<dialog>`。`Home.astro` が回ごとに1つずつ置く                                                                                                                                                        |
 | 写真             | `src/components/Capture.astro`        | サムネイル。無い回は回の数字を大きく組んだ代替表示                                                                                                                                                                                             |
 | 関連サイト       | `src/components/RelatedSites.astro`   | 洗いの帯に写真のタイルを並べる。`blockedBy` のある項目はリンクを張らない                                                                                                                                                                       |
-| フッター         | `src/components/SiteFooter.astro`     | サイト名、SNS のアイコン、©、公式ブログ・言語・「公式サイト」。MENU と同じリンクを、並べ方を変えて持つ                                                                                                                                         |
+| フッター         | `src/components/SiteFooter.astro`     | サイト名、SNS のアイコン、©、公式ブログ・言語・「公式サイト」、最下段に制作者のクレジット（`SITE_CREDIT`）。MENU と同じリンクを、並べ方を変えて持つ                                                                                            |
 
 ### 参考画像からの置き換え（2026-11-09 にオーナーと決めた）
 

@@ -87,6 +87,8 @@ interface Words {
   /** Shown instead of a link while a related site is being prepared. */
   readonly comingSoon: string;
   readonly footerNote: string;
+  /** Precedes the builder's name at the bottom of the footer. */
+  readonly creditLabel: string;
 }
 
 export const UI = {
@@ -129,6 +131,7 @@ export const UI = {
     comingSoon: "公開準備中",
     footerNote:
       "各回のサイトは公開当時のまま保存しています。掲載している日程・連絡先・リンク先は、当時のものです。",
+    creditLabel: "サイト制作",
   },
   en: {
     siteName: "Setagaya Festival Archive",
@@ -169,6 +172,7 @@ export const UI = {
     comingSoon: "Coming soon",
     footerNote:
       "Each festival’s site is kept as it was published. The dates, contacts and links on those sites are from that time.",
+    creditLabel: "Site by",
   },
 } as const satisfies Record<Lang, Words>;
 

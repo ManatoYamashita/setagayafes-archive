@@ -773,11 +773,20 @@ for (const lang of LANGS) {
       const menuLinks = await siteMenu(page)
         .locator("a")
         .evaluateAll((links) => links.map((link) => link.getAttribute("href")));
+      // The builder's credit sits outside the footer's navigation, so compare the navs only.
       const footerLinks = await page
-        .locator("footer a")
+        .locator("footer nav a")
         .evaluateAll((links) => links.map((link) => link.getAttribute("href")));
       // The footer groups them differently (icons, text links, button): compare as sets.
       assert.deepEqual(footerLinks.toSorted(), menuLinks.toSorted());
+      await close();
+    });
+
+    test("credits the builder", async () => {
+      const { page, close } = await open(t.path);
+      const credit = page.locator("footer .credit a");
+      assert.equal(await credit.getAttribute("href"), "https://www.yamashitamana.to/");
+      assert.equal(await credit.innerText(), "yamashitamana.to");
       await close();
     });
   });
