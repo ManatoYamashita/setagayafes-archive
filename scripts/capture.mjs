@@ -17,12 +17,17 @@
 // The 87th has no surviving site, so its photo is downloaded instead and its
 // metadata (EXIF and the like) is removed. In a full run the photo is fetched
 // only when it is missing; name the festival to fetch it again.
+//
+// The 97th shows its site's OGP image instead of a screenshot. The image is
+// wider than the 16:10 box, so it is letterboxed to 16:10 and saved as PNG
+// (scripts/lib/letterbox.mjs).
 
 import { mkdir, rename, writeFile, access } from "node:fs/promises";
 import { join } from "node:path";
 import { chromium } from "playwright";
 import { CAPTURE_CONDITIONS, parseCaptureArgs } from "./lib/capture-targets.mjs";
 import { stripJpegMetadata } from "./lib/jpeg.mjs";
+import { letterboxInBrowser } from "./lib/letterbox.mjs";
 
 const NAVIGATION_TIMEOUT_MS = 60_000;
 const NETWORK_IDLE_TIMEOUT_MS = 15_000;
@@ -77,6 +82,19 @@ async function fetchPhoto(target) {
 
 /**
  * @param {import("playwright").Browser} browser
+ * @param {import("./lib/capture-targets.mjs").OgpTarget} target
+ */
+async function fetchOgp(browser, target) {
+  const response = await fetch(target.url);
+  if (!response.ok) throw new Error(`HTTP ${response.status} for ${target.url}`);
+  const type = response.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
+  if (!type.startsWith("image/")) throw new Error(`not an image (${type}): ${target.url}`);
+  const data = new Uint8Array(await response.arrayBuffer());
+  await writeAtomically(target, await letterboxInBrowser(browser, data, type));
+}
+
+/**
+ * @param {import("playwright").Browser} browser
  * @param {import("./lib/capture-targets.mjs").SiteTarget} target
  */
 async function captureSite(browser, target) {
@@ -123,6 +141,8 @@ try {
           continue;
         }
         await fetchPhoto(target);
+      } else if (target.kind === "ogp") {
+        await fetchOgp(browser, target);
       } else {
         await captureSite(browser, target);
       }

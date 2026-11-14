@@ -39,13 +39,19 @@ const DEFAULT_SETTLE_MS = 3000;
  * Festivals that need something other than the defaults. Every key must be a
  * round in the festivals data (checked by scripts/capture.test.mjs).
  *
- * @type {Readonly<Record<number, { settleMs?: number, photo?: string }>>}
+ * `photo`: a JPEG shown as it is, for a festival with no site.
+ * `ogp`: the site's OGP image, shown instead of a screenshot. It is wider than
+ * the 16:10 box, so it is letterboxed rather than cropped (scripts/lib/letterbox.mjs).
+ *
+ * @type {Readonly<Record<number, { settleMs?: number, photo?: string, ogp?: string }>>}
  */
 export const OVERRIDES = {
   // No site survives; the archive top has always shown this photo instead.
   87: { photo: `${ARCHIVE_ORIGIN}/img/87th.JPG` },
   // An opening loader covers the page for about 10 seconds.
   94: { settleMs: 13000 },
+  // The owner chose the key visual over the screenshot (Issue #56).
+  97: { ogp: `${ARCHIVE_ORIGIN}/97th/ogp-v3.webp` },
 };
 
 /**
@@ -54,7 +60,8 @@ export const OVERRIDES = {
  *
  * @typedef {{ kind: "site", number?: number, slug: string, url: string, dir: string, file: string, settleMs: number }} SiteTarget
  * @typedef {{ kind: "photo", number: number, slug: string, url: string, dir: string, file: string }} PhotoTarget
- * @typedef {SiteTarget | PhotoTarget} CaptureTarget
+ * @typedef {{ kind: "ogp", number: number, slug: string, url: string, dir: string, file: string }} OgpTarget
+ * @typedef {SiteTarget | PhotoTarget | OgpTarget} CaptureTarget
  */
 
 /** @param {number} round */
@@ -85,6 +92,16 @@ export function captureTarget(number) {
       url: override.photo,
       dir: CAPTURE_DIR,
       file: `${slug}.jpg`,
+    };
+  }
+  if (override.ogp) {
+    return {
+      kind: "ogp",
+      number,
+      slug,
+      url: override.ogp,
+      dir: CAPTURE_DIR,
+      file: `${slug}.png`,
     };
   }
   if ("externalLink" in festival) {

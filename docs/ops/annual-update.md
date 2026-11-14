@@ -57,6 +57,7 @@ pnpm capture 98
 - 原画像が `src/assets/captures/98th.png` に保存される。同じ PR に入れる
 - 撮影の条件と回ごとの例外は [capture.md](./capture.md)。オープニングの演出が長いサイトは、`scripts/lib/capture-targets.mjs` の `OVERRIDES` に待ち時間を足す
 - 撮影した画像を開いて、ローダーや空白で撮れていないかを目で見る
+- 撮影よりサイトの OGP 画像のほうが見栄えが良ければ、`OVERRIDES` に `ogp` で画像の URL を書く。16:10 に収めて保存する（[capture.md](./capture.md) の「OGP 画像を使う回」。第97回がこの形）
 
 ### 4. 確かめる
 

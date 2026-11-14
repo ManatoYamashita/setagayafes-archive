@@ -58,6 +58,7 @@
 - **[capture.md](./ops/capture.md)**: サムネイルの撮影（`pnpm capture`。関連サイトは `pnpm capture related`）と、AVIF の生成
   - 原画像だけをコミットし、AVIF はビルド時に作る
   - 撮影の条件、回ごとの例外、写真のメタデータの除去、撮影時点のサイト側の壊れ
+  - 第97回は撮影の代わりにサイトの OGP 画像を使い、上下の端を引き延ばして 16:10 にする（#56）
 
 - **[static-archive-checks.md](./ops/static-archive-checks.md)**: 静的化後に、終了した操作と旧ドメインの画像参照を点検する
 
