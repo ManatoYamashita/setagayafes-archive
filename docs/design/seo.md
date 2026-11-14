@@ -31,9 +31,7 @@
   - 一覧の見出しの縦書きのラベル（「過去の回」）は変えない。7文字にすると、隣の「Archive」の字より高くなり、見出しの形が崩れる
   - 見えない文字（`sr-only` など）で語を足さない。検索エンジンには、隠したテキストとして扱われる
   - `scripts/i18n.test.mjs` が、3か所にこの語があることを検査する
-- 文言を変えただけでは、検索結果の順位は決まらない。リポジトリの外で、次のことが効く（オーナーの作業）
-  - Search Console にプロパティを登録し、`/sitemap.xml` を送る。`/` のインデックス登録をリクエストする
-  - 公式サイト（setagayafes.org）から archive へリンクを張る。2026-11-14 の時点で、公式サイトのトップに archive へのリンクは無い
+- 文言を変えただけでは、検索結果の順位は決まらない。リポジトリの外の作業は、2026-11-14 に済ませた（下の「Search Console」と、公式サイトの /about からのリンク。ManatoYamashita/tcu-setagayafes97-web#551）
 - JSON-LD の `url` は日英とも `/`。Google はサイト名を、ドメインのトップページの `WebSite` から取るため
   - JSON-LD は、ソースに `<script type="application/ld+json" set:html={変数} />` の形でだけ書ける（[conventions.md](../rules/conventions.md) §1）。中身は `jsonLdText()` を通して作る。`<` を `\u003c` に替えるので、値で要素を閉じられない
   - `pnpm build`（`scripts/guard-dist.mjs`）は、`dist/` の JSON-LD に `<` があるか、JSON として読めないと落とす。ESLint と `pnpm guard` は書き方を、`dist/` の検査はエスケープを見る
@@ -42,6 +40,19 @@
   - 原画像は 16:9 で、上下を均等に切って 1.91:1 にする。ロゴ・題字・URL は切れない。差し替えるときも、上下の端に要る文字を置かない
   - 原画像は、メタデータ（EXIF・XMP）を抜いてからコミットする。Canva などの書き出しには、作者名や作成元の ID が XMP で入る。出力の JPEG はビルドで作り直すので残らないが、原画像はリポジトリに公開される
   - 抜くときは `scripts/lib/jpeg.mjs` の `stripJpegMetadata` を使う（画素はそのまま。`node -e` で1回呼べば足りる）。`pnpm test` が、`src/assets/og/` の JPEG にメタデータが残っていないことを検査する
+
+## Search Console
+
+- プロパティは、ドメインプロパティの `sc-domain:setagayafes.org`。archive 専用のプロパティは作らない。公式サイト（第97回）と共用で、所有者はオーナーのアカウント
+  - URL の `/u/N/` の番号は、ブラウザのログイン順で変わる。「このプロパティへのアクセス権がありません」と出たら、番号を替えて開き直す
+- 2026-11-14 にしたこと（#67）
+  - 削除ツールのリクエスト「`https://archive.setagayafes.org/` で始まる URL をすべて非表示」（2026-09-05 申請）を、キャンセルした
+  - `https://archive.setagayafes.org/sitemap.xml` を送った
+  - URL 検査で `/` と `/en/` のインデックス登録をリクエストした。そのときの `/` の判定は「noindex タグによって除外」（新トップを置く前のクロールの結果）。`/en/` は「検出 - インデックス未登録」
+- **ドメインプロパティの削除リクエストは、archive にも効く。** トップを検索に出したいのに出ないときは、先に「非表示」の一覧を見る
+  - 削除リクエストの台帳は、公式サイトのリポジトリ（`tcu-setagayafes97-web`）の `docs/dev/legacy-site-deindex.md` にある。このリポジトリからは辿れなかったため、ここに書く
+  - 各回のサイトは noindex のヘッダで除外している（[htaccess.md](./htaccess.md)）。プレフィックスの削除リクエストは要らない。足すと、トップまで隠れる
+- 効き目は、Search Console の検索パフォーマンスで、クエリ「過去の世田谷祭」とページ `https://archive.setagayafes.org/` に絞って見る
 
 ## 配置で注意すること
 
