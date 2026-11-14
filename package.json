@@ -20,6 +20,7 @@
     "test:e2e": "node --test \"e2e/**/*.e2e.mjs\"",
     "verify": "pnpm format:check && pnpm lint && pnpm check && pnpm test && pnpm guard && pnpm build && pnpm check:htaccess && pnpm test:e2e",
     "capture": "node scripts/capture.mjs",
+    "capture:import": "node scripts/import-capture.mjs",
     "check:htaccess": "node scripts/check-htaccess.mjs",
     "check:links": "node scripts/check-links.mjs",
     "check:production": "node scripts/check-production.mjs",
