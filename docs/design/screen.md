@@ -18,7 +18,7 @@
 | プレビュー       | `src/components/SitePreview.astro`    | その回のサイトを iframe で開くモーダルの `<dialog>`。`Home.astro` が回ごとに1つずつ置く                                                                                                                                                        |
 | 写真             | `src/components/Capture.astro`        | サムネイル。無い回は回の数字を大きく組んだ代替表示                                                                                                                                                                                             |
 | 関連サイト       | `src/components/RelatedSites.astro`   | 洗いの帯に写真のタイルを並べる。`blockedBy` のある項目はリンクを張らない                                                                                                                                                                       |
-| フッター         | `src/components/SiteFooter.astro`     | サイト名、SNS のアイコン、©、公式ブログ・言語・「公式サイト」。MENU と同じリンクを、並べ方を変えて持つ                                                                                                                                         |
+| フッター         | `src/components/SiteFooter.astro`     | サイト名、SNS のアイコン、©、公式ブログ・言語・「公式サイト」、最下段に制作者のクレジット（`SITE_CREDIT`。ロゴの画像と、不具合・要望を受けるお問い合わせフォームへのリンク）。MENU と同じリンクを、並べ方を変えて持つ                          |
 
 ### 参考画像からの置き換え（2026-11-09 にオーナーと決めた）
 
@@ -68,6 +68,12 @@
 - `<button command="show-modal" commandfor="preview-97">` と `<dialog id="preview-97" closedby="any">` で、モーダルとして開く（Invoker Commands）。JS は使わない。Esc・外側のクリック・「閉じる」（`command="close"`）で閉じる
   - 2026-11-14 にオーナーが採用を決めた（Issue #49）。モーダルなので裏が `inert` になり、Tab で焦点がパネルの外（裏のページ）へ出ない。e2e で検査する
   - Invoker Commands は 2025-12-12 から Baseline（Chrome 135・Firefox 144・Safari 26.2）。polyfill は入れない（JS になるため）。対応していないブラウザでは「プレビュー」を押しても何も起きず、「サイトを見る」は使える
+    - macOS 15 の Safari 18 など、26.2 より前の Safari では「プレビュー」が反応しない。Safari を上げれば使える
+  - 2026-11-14、本番の `/`・`/en/` を、Playwright の WebKit 27.2（Safari のエンジン）と Firefox 157 で確かめた（Issue #49）。どちらも次がすべて期待どおりだった
+    - Enter で開き、`:modal` になる。焦点は「閉じる」から始まる
+    - Tab を12回・Shift+Tab を6回押しても、焦点は裏のページへ出ない
+    - Esc で閉じ、焦点は開いたボタンへ戻る。「閉じる」と外側のクリックでも閉じる
+    - 実機の Safari・Firefox では操作していない。確かめ方の注意は [post-build-checks.md](../ops/post-build-checks.md) の「Chromium 以外のブラウザで確かめるとき」
   - 外側のクリックで閉じるのは `closedby="any"` による。対応していないブラウザでは、Esc と「閉じる」だけで閉じる
   - 「閉じる」に `autofocus` を付ける。開いた直後に焦点が「閉じる」に入り、閉じると開いたボタンへ戻る（WCAG 2.4.11）
   - `<dialog>` の UA スタイルの `max-inline-size`・`max-block-size` を外す。外さないと、`inset` で決めた大きさにならない
@@ -176,3 +182,5 @@ PR #7 のマージ時点（`a5c0590`）も、同じ1280×900・DPR 2で404,131 B
   - `public/apple-touch-icon.png`（180×180 の PNG）。favicon と同じ図形を、白地の中央に 124px で描いた。iOS は透明な部分を黒く塗るので、背景を白で埋める
   - favicon を替えたら、作り直す。Playwright で `favicon.svg` を 180×180 の白いページに置き、スクリーンショットを撮る
 - **「本文へ移動」をヘッダーの先頭に置く。** 幅 64rem 以上では、`<main>` の前に Tab の止まる所が6つある。普段は隠し、キーボードで焦点が来たとき（`:focus-visible`）だけ黒いピルで出す。ポインタで触ったときは出さない
+  - macOS の Safari は、既定では Tab でリンクに止まらない。「本文へ移動」（`<a>`）に入るには、Option+Tab を押すか、Safari の設定の「Tab キーを押したときに Web ページ上の各項目を強調表示」を入れる。どのサイトのスキップリンクでも同じ Safari の既定の動きなので、こちらでは直さない
+  - 2026-11-14、本番の `/`・`/en/` で、WebKit 27.2（Option+Tab）と Firefox 157（Tab）で確かめた（Issue #49）。どちらでも、最初に止まり、焦点で現れ、Enter で `#latest` へ移り、次の Tab がヒーローから始まった。マウスのクリックでは現れなかった

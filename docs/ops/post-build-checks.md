@@ -92,6 +92,16 @@
 - 共用サーバーなので、ページは1つずつ順に開く
 - `check:production` と分けたのは、ブラウザが入っていない環境でも、ヘッダの確認は流せるようにするため
 
+### Chromium 以外のブラウザで確かめるとき
+
+`pnpm test:e2e` と `check:production:browser` は Chromium だけで動く。Safari・Firefox での動きは、必要なときに手で確かめる（2026-11-14 に、Issue #49 で行った）。
+
+- Playwright の WebKit（Safari のエンジン）と Firefox を使う。ブラウザは `pnpm exec playwright install webkit firefox` で取る。リポジトリの devDependency の Playwright が使う版が入り、依存は増えない
+- 確かめるスクリプトは、e2e の検査を書き写して、使い捨てにする。リポジトリには入れない
+- **macOS の WebKit は、Tab でリンクに止まらない**（Safari の既定と同じ）。リンクへ焦点を移すときは `page.keyboard.press("Alt+Tab")`（Option+Tab）を使う。ボタンには Tab で止まる
+- **WebKit でスクリーンショットを撮ると、CSP の違反がコンソールに1件出る。** 撮影の前に Playwright が差し込むスタイルが、トップの `style-src`（ハッシュ）に止められるため。撮らなければ0件。コンソールのエラーを数える検査では、スクリーンショットを撮らない（撮るなら別のページで撮る）。Chromium と Firefox では出ない
+- 「プレビュー」のボタンは、写真に hover してから押す（e2e と同じ）。hover しないと、写真の上の膜（`.preview-actions`）がクリックを受けて、押せない。キーボードで確かめるときは、ボタンに `focus()` してから Enter を押す
+
 ## Lighthouse（手動）
 
 - 依存（`lighthouse` パッケージ）は足さない（2026-11-07 のオーナーの決定）。Chrome の DevTools で測る

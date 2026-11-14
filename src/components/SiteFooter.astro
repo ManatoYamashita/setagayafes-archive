@@ -2,9 +2,12 @@
 // The footer after the reference layout: the site name in the middle, then a
 // row with the social media icons, the copyright and the other links.
 // Together they repeat the MENU links, so they stay reachable in browsers
-// without the Popover API.
+// without the Popover API. A small credit for the builder, with a way to report
+// bugs and requests, closes the footer.
+import { Image } from "astro:assets";
+import creditLogo from "../assets/credit/yamashitamana-to.png";
 import type { Lang } from "../data/festivals.ts";
-import { ORGANIZER, SITE_LINKS } from "../data/site-links.ts";
+import { ORGANIZER, SITE_CREDIT, SITE_LINKS } from "../data/site-links.ts";
 import { HOME_PATHS, LANG_NAMES, UI, otherLang } from "../i18n/ui.ts";
 
 interface Props {
@@ -81,6 +84,32 @@ const [official, ...others] = SITE_LINKS.filter((link) => !("icon" in link));
           )}
         </ul>
       </nav>
+    </div>
+
+    <div class="credit">
+      <p>
+        {ui.credit.before}
+        <span class="nowrap">
+          <a class="credit-logo" href={SITE_CREDIT.url} rel="author">
+            <Image
+              src={creditLogo}
+              alt={SITE_CREDIT.name}
+              format="avif"
+              height={16}
+              densities={[1, 2]}
+              loading="lazy"
+            />
+          </a>
+          {ui.credit.after}
+        </span>
+      </p>
+      <p>
+        {ui.credit.contactBefore}
+        <a class="credit-contact" href={SITE_CREDIT.contactUrl}>
+          {ui.credit.contactLabel}
+        </a>
+        {ui.credit.contactAfter}
+      </p>
     </div>
   </div>
 </footer>
@@ -161,6 +190,45 @@ const [official, ...others] = SITE_LINKS.filter((link) => !("icon" in link));
   .copyright {
     font-size: 0.75rem;
     font-weight: 700;
+  }
+
+  .credit {
+    word-break: auto-phrase;
+    max-inline-size: 36rem;
+    margin-block-start: 1rem;
+    font-size: 0.75rem;
+    line-height: 1.8;
+    color: var(--color-muted);
+
+    & .credit-contact {
+      white-space: nowrap;
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 0.25em;
+    }
+  }
+
+  /* The logo sits in the sentence like a word, with a 44px tall target. */
+  .credit-logo {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 2.75rem;
+    margin-inline: 0.375em;
+    vertical-align: middle;
+
+    & img {
+      block-size: 1rem;
+      inline-size: auto;
+    }
+  }
+
+  /* English has a space before the logo in the text, and a full stop right after it. */
+  :global(:lang(en)) .credit-logo {
+    margin-inline: 0 0.0625em;
+  }
+
+  .nowrap {
+    white-space: nowrap;
   }
 
   .text-link {

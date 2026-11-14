@@ -59,6 +59,7 @@ describe("UI", () => {
       previewName: en.previewName("97th"),
       previewFrameTitle: en.previewFrameTitle("97th"),
       showing: en.showing(22),
+      credit: Object.values(en.credit).join(""),
     };
     assert.deepEqual(Object.keys(texts).toSorted(), Object.keys(en).toSorted());
     for (const [key, text] of Object.entries(texts)) assert.doesNotMatch(text, JAPANESE, key);
