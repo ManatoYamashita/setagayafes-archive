@@ -42,7 +42,7 @@
 ### 運用（ops/）
 
 - **[deploy.md](./ops/deploy.md)**: さくらへの配置。`pnpm package` で zip を作って手元の Apache で確かめ、サーバーのスクリプトで控えを取ってから展開する
-  - 配置の後は `pnpm check:production` で本番のヘッダを確かめる。壊れたら `remote-rollback.sh` で戻す
+  - 配置の後は `pnpm check:production`（ヘッダ）と `pnpm check:production:browser`（ブラウザで MENU・絞り込み・エラー）を流す。壊れたら `remote-rollback.sh` で戻す
   - 初回だけ、エラーページの PHP と旧トップの部品（`css/`・`js/`・`img/`）を公開フォルダの外へ移す
   - 数分かかる処理は、SSH の接続を保つか、サーバー上で `nohup` で流す（途中で切れることがある）
 - **[annual-update.md](./ops/annual-update.md)**: 年次の追加。データに1件足し、`pnpm capture <回>` を1回流し、配置する
@@ -65,6 +65,7 @@
 - **[post-build-checks.md](./ops/post-build-checks.md)**: ビルド後の検査（JS 0・公開禁止ファイル・リンク・転送量の予算）と `pnpm check:links`、Lighthouse の手動測定
   - どの要素が LCP になるかの結論は、手元の速い回線ではなく Lighthouse で確かめてから書く
   - 予算はブラウザで測る。初回は最初の画面に写る分だけ（先読みは除く）、全体は絞り込みに触れずに最後までスクロールした分
+  - 本番のブラウザ確認（`pnpm check:production:browser`）の項目。部品の探し方は e2e と共通の `scripts/lib/page-parts.mjs`
 
 - **[cloud-environment.md](./ops/cloud-environment.md)**: Claude Code のクラウドセッション用の環境（`setagayafes-archive`）の、許可ホスト・セットアップスクリプト・シークレットと変数
   - コンテナの Node v22 を、`.nvmrc` の版へ差し替える。apache2 と Playwright のブラウザも入れる

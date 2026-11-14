@@ -88,8 +88,16 @@ ssh setagayafes-archive "sh -s -- $ZIP" < scripts/ops/deploy/remote-deploy.sh
 pnpm check:production
 ```
 
-- トップのページ（noindex が無い・CSP などが付く）、`/_astro/` のキャッシュ、OGP の画像の Content-Type、過去回（`/78th/`）に余計なヘッダが付かないこと、404 ページ、初期ドメイン経由、http→https の 302 を確かめる
-- ブラウザで `/`・`/en/`・`/78th/`・`/96th/` を開き、表示が崩れていないこと、MENU と絞り込みが動くことを見る
+```sh
+pnpm check:production:browser
+```
+
+- `check:production`: トップのページ（noindex が無い・CSP などが付く）、`/_astro/` のキャッシュ、OGP の画像の Content-Type、過去回（`/78th/`）に余計なヘッダが付かないこと、404 ページ、初期ドメイン経由、http→https の 302 を確かめる
+- `check:production:browser`: Playwright の Chromium で、1ページずつ順に開いて確かめる（ページを開くだけ）
+  - `/`・`/en/`・`/78th/`・`/96th/` が 200 を返す
+  - `/`・`/en/` で、最後までスクロールしても、コンソールのエラー・4xx/5xx の応答・失敗したリクエストが0件
+  - `/` で MENU（`#site-menu`）が開き、閉じる。時代の絞り込みを切り替えると、表示されるカードの数が変わる
+- 2つとも `ok` なら、ブラウザで目で見る確認は要らない。見た目の崩れ（重なり・はみ出し）は検査していないので、気になる変更を配置したときは開いて見る
 - **1つでも落ちて、表示が壊れていたら、すぐ戻す**（下の「戻し方」）。原因はその後で調べる
 
 ### 6. 初回だけ: エラーページの PHP を片付ける（#2）
