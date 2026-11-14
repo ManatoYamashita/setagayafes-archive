@@ -21,6 +21,7 @@ import {
   relatedTarget,
 } from "./lib/capture-targets.mjs";
 import { exifOrientation, metadataSegments, stripJpegMetadata } from "./lib/jpeg.mjs";
+import { letterboxLayout } from "./lib/letterbox.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -89,6 +90,42 @@ describe("captureTarget", () => {
     const target = captureTarget(87);
     assert.equal(target.kind, "photo");
     assert.equal(target.file, "87th.jpg");
+  });
+
+  test("the 97th uses its site's OGP image, saved as PNG", () => {
+    assert.deepEqual(captureTarget(97), {
+      kind: "ogp",
+      number: 97,
+      slug: "97th",
+      url: `${ARCHIVE_ORIGIN}/97th/ogp-v3.webp`,
+      dir: CAPTURE_DIR,
+      file: "97th.png",
+    });
+  });
+});
+
+describe("letterboxLayout", () => {
+  test("puts rows above and below a wide picture", () => {
+    // The OGP size: 1200x630 becomes 1200x750, with 60 rows on each side.
+    assert.deepEqual(letterboxLayout(1200, 630), { width: 1200, height: 750, x: 0, y: 60 });
+  });
+
+  test("puts columns on both sides of a tall picture", () => {
+    assert.deepEqual(letterboxLayout(1200, 900), { width: 1440, height: 900, x: 120, y: 0 });
+  });
+
+  test("leaves a 16:10 picture as it is", () => {
+    assert.deepEqual(letterboxLayout(2560, 1600), { width: 2560, height: 1600, x: 0, y: 0 });
+  });
+
+  test("gives an odd remainder to the bottom", () => {
+    assert.deepEqual(letterboxLayout(1600, 999), { width: 1600, height: 1000, x: 0, y: 0 });
+    assert.deepEqual(letterboxLayout(1600, 997), { width: 1600, height: 1000, x: 0, y: 1 });
+  });
+
+  test("refuses a size that is not a picture", () => {
+    assert.throws(() => letterboxLayout(0, 630), /not a picture size/);
+    assert.throws(() => letterboxLayout(1200.5, 630), /not a picture size/);
   });
 });
 

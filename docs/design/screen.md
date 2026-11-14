@@ -119,6 +119,7 @@
 ## 写真
 
 - サムネイルは 2560x1600（16:10）の画面写真。枠もすべて 16:10 にして、写真を切らずに見せる
+  - 第97回だけは、サイトの OGP 画像を上下に延ばして 16:10 にしたもの（[capture.md](../ops/capture.md) の「OGP 画像を使う回」）
   - 縦長（4:5）に切ると、横長の画面写真の中央の帯しか残らない（ロゴもナビも消える）
 - 原画像は `src/lib/captures.ts` の `captureOf()` で引き、`CAPTURE_IMAGE_PROPS`（AVIF・上端基準で切り出し）で `<Image>` に渡す。撮影の手順は [capture.md](../ops/capture.md)
 - `widths` と `sizes` はグリッドでの実際の幅から決める（`Archive.astro` の `SIZES`）
