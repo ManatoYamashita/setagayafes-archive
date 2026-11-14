@@ -1,16 +1,15 @@
 # サムネイルの撮影
 
-各回のサイトのトップを撮影し、一覧のサムネイルと OGP 画像の元にする。決定の経緯は Issue #1 の ToDo 3。
+各回のサイトのトップを撮影し、一覧のサムネイルの元にする（OGP の画像は撮影から作らない。[seo.md](../design/seo.md)）。決定の経緯は Issue #1 の ToDo 3。
 
 ## 流れ
 
 1. `pnpm capture` で各回のトップを撮影する。原画像は `src/assets/captures/` に保存され、コミットする
 2. `pnpm build` のときに、Astro の画像処理（`astro:assets`）が原画像から次を作る
    - 表示寸法の AVIF（カード・ヒーロー）
-   - OGP 用の JPEG（1200×630）
-3. AVIF と JPEG はコミットしない。`dist/_astro/` に出力される
+3. AVIF はコミットしない。`dist/_astro/` に出力される
 
-AVIF と JPEG をビルド時に作るのは、次の理由による。
+AVIF をビルド時に作るのは、次の理由による。
 
 - 表示寸法は画面の設計で変わる。寸法を変えても撮り直さずに済む
 - 画像処理は Astro が同梱する sharp で行う。依存を足さずに済む
@@ -46,7 +45,6 @@ pnpm capture todoroki-2011  # 関連サイトを1件。id で指定する
 | ---------------------- | ---------------------------------------------------------------------- |
 | `captureOf(回数)`      | 原画像（`ImageMetadata`）。`<Image>`・`<Picture>` の `src` に渡す      |
 | `CAPTURE_IMAGE_PROPS`  | 全サムネイルで共通の指定（AVIF、`fit: "cover"`、上端を基準に切り出す） |
-| `ogImageOf(回数)`      | OGP 用の JPEG（1200×630）                                              |
 | `hasCapture(回数)`     | 原画像の有無                                                           |
 | `relatedCaptureOf(id)` | 関連サイトの原画像。撮影前は `undefined`（帯は無地の面を出す）         |
 

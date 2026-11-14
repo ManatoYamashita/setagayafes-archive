@@ -37,6 +37,7 @@
   - http→https はコントロールパネルの 302 のまま、HSTS で補う（パネルは 302 しか返せない。`.htaccess` の 301 はループの危険があり、見送った）
 - **[seo.md](./design/seo.md)**: canonical・hreflang・OGP・sitemap・robots.txt。インデックスさせるのは `/` と `/en/` だけ
   - 各回のフォルダを robots.txt で Disallow しない（noindex のヘッダを読ませるため）。今のホストの `Disallow: /errorpage/` は引き継ぐ
+  - OGP の画像は固定のデザイン。原画像はメタデータを抜いてからコミットする
 
 ### 運用（ops/）
 
@@ -48,8 +49,8 @@
   - 新しい回のフォルダがサーバーに置かれてから始める（先に流すと撮影とリンクの検査が 404 で落ちる）
   - 始める前に、新しい回のフォルダに `*.bak`・`Thumbs.db`・`.DS_Store`・`desktop.ini`・`_vti_*` などが無いことを確かめる
 
-- **[capture.md](./ops/capture.md)**: サムネイルの撮影（`pnpm capture`。関連サイトは `pnpm capture related`）と、AVIF・OGP 画像の生成
-  - 原画像だけをコミットし、AVIF と OGP の JPEG はビルド時に作る
+- **[capture.md](./ops/capture.md)**: サムネイルの撮影（`pnpm capture`。関連サイトは `pnpm capture related`）と、AVIF の生成
+  - 原画像だけをコミットし、AVIF はビルド時に作る
   - 撮影の条件、回ごとの例外、写真のメタデータの除去、撮影時点のサイト側の壊れ
 
 - **[static-archive-checks.md](./ops/static-archive-checks.md)**: 静的化後に、終了した操作と旧ドメインの画像参照を点検する

@@ -48,7 +48,6 @@ describe("UI", () => {
     const texts = {
       ...Object.fromEntries(Object.entries(en).filter(([, value]) => typeof value === "string")),
       description: en.description({ round: 75, year: 2004 }),
-      ogImageAlt: en.ogImageAlt("97th", "Setagaya Festival"),
       heroTitle: [...en.heroTitle[0], en.heroTitle[1]].join(" "),
       heroLead: en.heroLead({
         first: { round: 75, year: 2004 },

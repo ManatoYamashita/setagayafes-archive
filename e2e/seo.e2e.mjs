@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { after, before, describe, test } from "node:test";
 import { chromium } from "playwright";
 import { metadataSegments } from "../scripts/lib/jpeg.mjs";
+import { UI } from "../src/i18n/ui.ts";
 import { serve } from "./lib/server.mjs";
 
 const SITE = "https://archive.setagayafes.org";
@@ -16,14 +17,14 @@ const PAGES = {
     title: "世田谷祭アーカイブ",
     locale: "ja_JP",
     otherLocale: "en_US",
-    imageAlt: "第97回世田谷祭の公式サイトのトップページ",
+    imageAlt: UI.ja.ogImageAlt,
   },
   en: {
     path: "/en/",
     title: "Setagaya Festival Archive",
     locale: "en_US",
     otherLocale: "ja_JP",
-    imageAlt: "The top page of the official site of the 97th Setagaya Festival",
+    imageAlt: UI.en.ogImageAlt,
   },
 };
 
