@@ -39,6 +39,7 @@
   - さくらの Apache には `Accept-Encoding` が届かず、`REDIRECT_STATUS` は最初から `200`。そのため、前もって圧縮したページは返せない（#49・#51）
   - `mod_rewrite` に頼る規則は、試しのフォルダで変数の値を確かめてから本番に置く
 - **[seo.md](./design/seo.md)**: canonical・hreflang・OGP・sitemap・robots.txt。インデックスさせるのは `/` と `/en/` だけ
+  - 「過去の世田谷祭」を、語順を崩さずに `<title>` の先頭・description・ヒーローの説明文に入れる（#67）
   - 各回のフォルダを robots.txt で Disallow しない（noindex のヘッダを読ませるため）。今のホストの `Disallow: /errorpage/` は引き継ぐ
   - OGP の画像は固定のデザイン。原画像はメタデータを抜いてからコミットする
 

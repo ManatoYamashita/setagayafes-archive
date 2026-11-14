@@ -10,22 +10,30 @@
 
 ## 出すもの
 
-| 出すもの              | 中身                                                                                                                                                                    | 作る場所                                                          |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| canonical・`og:url`   | その言語のトップの絶対 URL                                                                                                                                              | `src/layouts/Base.astro`                                          |
-| hreflang の alternate | `ja`→`/`、`en`→`/en/`、`x-default`→`/`                                                                                                                                  | `src/lib/seo.ts` の `alternatesOf()`                              |
-| `<title>`             | 日本語「世田谷祭アーカイブ｜東京都市大学（旧 武蔵工業大学）の学園祭 歴代公式サイト」、英語「Setagaya Festival Archive \| Tokyo City University」（`UI` の `pageTitle`） | `src/components/Home.astro`                                       |
-| OGP                   | `og:type`（website）・`og:site_name`（短い `siteName`）・`og:title`（`<title>` と同じ）・`og:description`・`og:locale`（`ja_JP`／`en_US`）と `og:locale:alternate`      | `Base.astro`                                                      |
-| OGP の画像            | 固定のデザイン（`src/assets/og/ogp.jpg`、1920×1080）から作る JPEG（1200×630）。日英で同じファイル。代替テキストは言語ごと                                               | `src/components/Home.astro`、`src/lib/og-image.ts` の `ogImage()` |
-| JSON-LD               | `WebSite`（`name`・`alternateName`・`url`・`inLanguage`）。`name` はその言語の `siteName`、`alternateName` はもう一方の言語の `siteName`。`url` は日英とも `/`          | `src/lib/seo.ts` の `websiteJsonLd()`、`Base.astro`               |
-| `apple-touch-icon`    | `/apple-touch-icon.png`（180×180）                                                                                                                                      | `public/`、`Base.astro`                                           |
-| `twitter:card`        | 画像があれば `summary_large_image`                                                                                                                                      | `Base.astro`                                                      |
-| `/sitemap.xml`        | `/` と `/en/`。それぞれに `xhtml:link` で言語版を書く                                                                                                                   | `src/pages/sitemap.xml.ts`                                        |
-| `/robots.txt`         | `Disallow: /errorpage/` と、sitemap の絶対 URL                                                                                                                          | `src/pages/robots.txt.ts`                                         |
+| 出すもの              | 中身                                                                                                                                                                                    | 作る場所                                                          |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| canonical・`og:url`   | その言語のトップの絶対 URL                                                                                                                                                              | `src/layouts/Base.astro`                                          |
+| hreflang の alternate | `ja`→`/`、`en`→`/en/`、`x-default`→`/`                                                                                                                                                  | `src/lib/seo.ts` の `alternatesOf()`                              |
+| `<title>`             | 日本語「過去の世田谷祭｜東京都市大学（旧 武蔵工業大学）の学園祭 歴代公式サイト｜世田谷祭アーカイブ」、英語「Setagaya Festival Archive \| Tokyo City University」（`UI` の `pageTitle`） | `src/components/Home.astro`                                       |
+| OGP                   | `og:type`（website）・`og:site_name`（短い `siteName`）・`og:title`（`<title>` と同じ）・`og:description`・`og:locale`（`ja_JP`／`en_US`）と `og:locale:alternate`                      | `Base.astro`                                                      |
+| OGP の画像            | 固定のデザイン（`src/assets/og/ogp.jpg`、1920×1080）から作る JPEG（1200×630）。日英で同じファイル。代替テキストは言語ごと                                                               | `src/components/Home.astro`、`src/lib/og-image.ts` の `ogImage()` |
+| JSON-LD               | `WebSite`（`name`・`alternateName`・`url`・`inLanguage`）。`name` はその言語の `siteName`、`alternateName` はもう一方の言語の `siteName`。`url` は日英とも `/`                          | `src/lib/seo.ts` の `websiteJsonLd()`、`Base.astro`               |
+| `apple-touch-icon`    | `/apple-touch-icon.png`（180×180）                                                                                                                                                      | `public/`、`Base.astro`                                           |
+| `twitter:card`        | 画像があれば `summary_large_image`                                                                                                                                                      | `Base.astro`                                                      |
+| `/sitemap.xml`        | `/` と `/en/`。それぞれに `xhtml:link` で言語版を書く                                                                                                                                   | `src/pages/sitemap.xml.ts`                                        |
+| `/robots.txt`         | `Disallow: /errorpage/` と、sitemap の絶対 URL                                                                                                                                          | `src/pages/robots.txt.ts`                                         |
 
 - URL はすべて `astro.config.mjs` の `site` から作る
 - sitemap と robots.txt は外部ライブラリ（`@astrojs/sitemap`）を使わず、Astro のエンドポイントで書き出す。対象が2ページしか無いため
 - `<title>` には、検索する人が打つ「東京都市大学」「武蔵工業大学」を入れる。`og:site_name` と JSON-LD の `name` は、サイトの名前として短いまま残す
+- 「過去の世田谷祭」で検索されたときに当たるよう、この語を崩さない形で、`<title>` の先頭・description・ヒーローの説明文に入れる（#67）。OGP の画像の題字と同じ語
+  - 「世田谷祭の過去のWebサイト」のように語順を崩すと、語句の一致として扱われにくい
+  - 一覧の見出しの縦書きのラベル（「過去の回」）は変えない。7文字にすると、隣の「Archive」の字より高くなり、見出しの形が崩れる
+  - 見えない文字（`sr-only` など）で語を足さない。検索エンジンには、隠したテキストとして扱われる
+  - `scripts/i18n.test.mjs` が、3か所にこの語があることを検査する
+- 文言を変えただけでは、検索結果の順位は決まらない。リポジトリの外で、次のことが効く（オーナーの作業）
+  - Search Console にプロパティを登録し、`/sitemap.xml` を送る。`/` のインデックス登録をリクエストする
+  - 公式サイト（setagayafes.org）から archive へリンクを張る。2026-11-14 の時点で、公式サイトのトップに archive へのリンクは無い
 - JSON-LD の `url` は日英とも `/`。Google はサイト名を、ドメインのトップページの `WebSite` から取るため
   - JSON-LD は、ソースに `<script type="application/ld+json" set:html={変数} />` の形でだけ書ける（[conventions.md](../rules/conventions.md) §1）。中身は `jsonLdText()` を通して作る。`<` を `\u003c` に替えるので、値で要素を閉じられない
   - `pnpm build`（`scripts/guard-dist.mjs`）は、`dist/` の JSON-LD に `<` があるか、JSON として読めないと落とす。ESLint と `pnpm guard` は書き方を、`dist/` の検査はエスケープを見る

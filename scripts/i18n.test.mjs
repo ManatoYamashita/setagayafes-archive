@@ -70,6 +70,15 @@ describe("UI", () => {
     assert.match(UI.en.description({ round: 75, year: 2004 }), /since the 75th \(2004\)/);
   });
 
+  // People search for "過去の世田谷祭" (the title on the OGP image). Keep the
+  // phrase, in that exact order, where search engines weigh it (Issue #67).
+  test("the Japanese title, description and hero lead contain 過去の世田谷祭", () => {
+    const span = { first: { round: 75, year: 2004 }, last: { round: 97, year: 2026 }, count: 23 };
+    assert.match(UI.ja.pageTitle, /^過去の世田谷祭/);
+    assert.match(UI.ja.description(span.first), /過去の世田谷祭/);
+    assert.match(UI.ja.heroLead(span), /過去の世田谷祭/);
+  });
+
   test("the English count is singular for one festival", () => {
     assert.equal(UI.en.showing(1), "Showing 1 festival");
     assert.equal(UI.en.showing(22), "Showing 22 festivals");

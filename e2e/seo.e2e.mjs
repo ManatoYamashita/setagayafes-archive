@@ -14,7 +14,8 @@ const SITE = "https://archive.setagayafes.org";
 const PAGES = {
   ja: {
     path: "/",
-    title: "世田谷祭アーカイブ｜東京都市大学（旧 武蔵工業大学）の学園祭 歴代公式サイト",
+    title:
+      "過去の世田谷祭｜東京都市大学（旧 武蔵工業大学）の学園祭 歴代公式サイト｜世田谷祭アーカイブ",
     siteName: "世田谷祭アーカイブ",
     locale: "ja_JP",
     otherLocale: "en_US",
