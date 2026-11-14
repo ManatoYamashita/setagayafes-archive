@@ -39,7 +39,8 @@ import { serve } from "./lib/server.mjs";
 const PAGES = {
   ja: {
     path: "/",
-    pageTitle: "世田谷祭アーカイブ｜東京都市大学（旧 武蔵工業大学）の学園祭 歴代公式サイト",
+    pageTitle:
+      "過去の世田谷祭｜東京都市大学（旧 武蔵工業大学）の学園祭 歴代公式サイト｜世田谷祭アーカイブ",
     skip: "本文へ移動",
     heroTitle: "東京都市大学世田谷祭\nアーカイブ",
     seeArchive: "過去の回を見る",
