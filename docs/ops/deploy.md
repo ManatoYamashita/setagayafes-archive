@@ -51,12 +51,16 @@ Host setagayafes-archive
 
 ```sh
 git switch main && git pull --ff-only
+git log -1 --oneline        # 配置したいコミットと一致すること（pull が失敗していないか）。
 git status --short          # 何も出ないこと（未コミットの変更から作った zip は名前に -dirty が付く。配置しない）
 pnpm verify
 pnpm check:links            # 過去回と外部リンクが応答すること（docs/ops/post-build-checks.md）
 pnpm package                # release/archive-top-<コミット>.zip と .sha256
 ```
 
+- `git pull` が失敗していないことを、`git log -1 --oneline` で確かめる。配置したいコミット（Issue に書いた、マージしたコミット）と一致しなければ、`pnpm package` へ進まない
+  - zip の名前（`archive-top-<コミット>.zip`）にも、同じコミットが入る。送る前に、名前でも確かめる
+  - 理由: 2026-11-14、別のセッションが同時に `git fetch` を流していて、`git pull` が `cannot lock ref 'refs/remotes/origin/main'` で失敗した。そのまま `pnpm package` へ進み、#57 を含まない `39be134` から zip を作った。送る前に名前で気付き、作り直した
 - `pnpm package` は、zip を展開した中身を手元の Apache で配信し、`.htaccess` のヘッダを確かめる（Issue #1 の「手元の httpd で zip を展開して検証する」）。落ちたら zip を消して止まる
 - 手元で見た目も確かめる: `pnpm preview` で `/` と `/en/` を開く
 
