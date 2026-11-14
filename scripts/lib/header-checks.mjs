@@ -100,6 +100,7 @@ export async function runHeaderChecks({ get, assets, pastSite, initialDomain, no
     ["/robots.txt", /^text\/plain/],
     ["/sitemap.xml", /^(application|text)\/xml/],
     ["/favicon.svg", /^image\/svg\+xml/],
+    ["/apple-touch-icon.png", /^image\/png$/],
   ])) {
     await check(`${path}: own file, noindex, no CSP`, async () => {
       const { status, headers } = await get(path);

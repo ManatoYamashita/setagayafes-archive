@@ -7,7 +7,7 @@
 // a page never sees its noindex).
 
 import type { Lang } from "../data/festivals.ts";
-import { HOME_PATHS, LANGS } from "../i18n/ui.ts";
+import { HOME_PATHS, LANGS, UI, otherLang } from "../i18n/ui.ts";
 
 /** The absolute URL of a language's top page. */
 export function pageUrl(lang: Lang, site: URL): string {
@@ -27,6 +27,33 @@ export function alternatesOf(site: URL): { hreflang: string; href: string }[] {
 
 /** Open Graph locales (language_TERRITORY). */
 export const OG_LOCALES = { ja: "ja_JP", en: "en_US" } as const satisfies Record<Lang, string>;
+
+/**
+ * The text of a JSON-LD script element. Every JSON-LD value goes through
+ * this: "<" is written as \u003c, so no value can end the element early
+ * ("</script") or change how the browser finds its end ("<!--").
+ * scripts/guard-dist.mjs rejects a "<" in the built JSON-LD.
+ */
+export function jsonLdText(data: unknown): string {
+  return JSON.stringify(data).replaceAll("<", "\\u003c");
+}
+
+/**
+ * The WebSite structured data that search engines read for the site name.
+ * Both languages describe the same site, so `url` is the host's home page
+ * (Google takes the site name from the domain's home page); each names the
+ * other language's name as an alternate.
+ */
+export function websiteJsonLd(lang: Lang, site: URL): string {
+  return jsonLdText({
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: UI[lang].siteName,
+    alternateName: [UI[otherLang(lang)].siteName],
+    url: pageUrl("ja", site),
+    inLanguage: lang,
+  });
+}
 
 /** Paths that robots.txt keeps crawlers out of. Carried over from the host's previous robots.txt. */
 export const ROBOTS_DISALLOW = ["/errorpage/"] as const;

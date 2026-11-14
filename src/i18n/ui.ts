@@ -28,11 +28,16 @@ export interface ArchiveSpan {
 }
 
 interface Words {
+  /** The short name: og:site_name, the JSON-LD name and the footer. */
   readonly siteName: string;
+  /** The <title> and og:title: the short name with the university, for search results. */
+  readonly pageTitle: string;
   /** Meta description. `first` is the oldest festival in the archive. */
   readonly description: (first: { round: number; year: number }) => string;
   /** Alt text of the link-preview (Open Graph) image. */
   readonly ogImageAlt: string;
+  /** The first stop in the header, shown only while it has focus. */
+  readonly skipToContent: string;
   readonly menu: string;
   readonly menuLabel: string;
   readonly footerMenuLabel: string;
@@ -87,13 +92,15 @@ interface Words {
 export const UI = {
   ja: {
     siteName: "世田谷祭アーカイブ",
+    pageTitle: "世田谷祭アーカイブ｜東京都市大学（旧 武蔵工業大学）の学園祭 歴代公式サイト",
     description: ({ round, year }) =>
       `東京都市大学（旧 武蔵工業大学）の学園祭、世田谷祭の過去のWebサイトの一覧です。第${round}回（${year}年）からの各回のサイトを、公開当時のまま残しています。`,
     ogImageAlt:
       "東京都市大学のロゴの下に「過去の世田谷祭」の題字と archive.setagayafes.org の URL。その下に、過去の世田谷祭の公式サイトのトップページが3つ並ぶ",
+    skipToContent: "本文へ移動",
     menu: "MENU",
-    menuLabel: "世田谷祭の公式サイトとSNS",
-    footerMenuLabel: "世田谷祭の公式サイトと言語の切り替え（フッター）",
+    menuLabel: "世田谷祭の公式サイト・SNSと言語の切り替え",
+    footerMenuLabel: "世田谷祭の公式サイトと言語の切り替え",
     socialLabel: "世田谷祭のSNS",
     close: "閉じる",
     sectionsLabel: "ページ内の移動",
@@ -125,13 +132,15 @@ export const UI = {
   },
   en: {
     siteName: "Setagaya Festival Archive",
+    pageTitle: "Setagaya Festival Archive | Tokyo City University",
     description: ({ round, year }) =>
       `Past websites of the Setagaya Festival, the school festival of Tokyo City University (formerly Musashi Institute of Technology). Every festival's site since the ${ordinalOf(round)} (${year}) is kept as it was published.`,
     ogImageAlt:
       "The Tokyo City University logo above the title “Past Setagaya Festivals” and the URL archive.setagayafes.org, with the top pages of three past Setagaya Festival sites below",
+    skipToContent: "Skip to content",
     menu: "MENU",
-    menuLabel: "Setagaya Festival official site and social media",
-    footerMenuLabel: "Setagaya Festival official sites and language (footer)",
+    menuLabel: "Setagaya Festival official site, social media and language",
+    footerMenuLabel: "Setagaya Festival official sites and language",
     socialLabel: "Setagaya Festival on social media",
     close: "Close",
     sectionsLabel: "On this page",

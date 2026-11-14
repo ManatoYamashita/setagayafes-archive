@@ -10,7 +10,7 @@
 | 部品             | ファイル                              | 中身                                                                                                                                                                                                                                           |
 | ---------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ページ           | `src/components/Home.astro`           | 部品を並べる。`src/pages/index.astro`・`en/index.astro` から `lang` を渡す                                                                                                                                                                     |
-| ヘッダー         | `src/components/SiteHeader.astro`     | MENU のアイコン、ページ内リンク（`#latest`・`#archive`・`#related`・言語）、枠付きの「公式サイト」、運営者                                                                                                                                     |
+| ヘッダー         | `src/components/SiteHeader.astro`     | キーボードで焦点が来たときだけ見える「本文へ移動」（`#latest` へ）、MENU のアイコン、ページ内リンク（`#latest`・`#archive`・`#related`・言語）、枠付きの「公式サイト」、運営者                                                                 |
 | ヒーロー         | `src/components/Hero.astro`           | 中央寄せ。2行の `h1`（2行目は灰色）、説明文、ボタン2つ、最新回の写真の角丸の枠。枠にはカードと同じ「サイトを見る」「プレビュー」                                                                                                               |
 | 絞り込み・一覧   | `src/components/Archive.astro`        | 「Archive」の見出し、時代の絞り込み、全回の均等な3列（新しい順）。後ろに洗いの帯を敷く                                                                                                                                                         |
 | カード           | `src/components/FestivalCard.astro`   | 写真 → 黒いピル（回）と日付 → テーマ（太字）→ 灰色の「#」タグ（時代・通常開催以外の状態）。ポインタを乗せる（またはキーボードで移る）と、写真に黒い膜と「サイトを見る」「プレビュー」が出る。タッチ端末では、この2つをカードの下端に常に並べる |
@@ -43,7 +43,7 @@
 ### ヒーロー
 
 - 2026-11-10 にオーナーと決めた（Issue #30）。最新5回の切り替え（radio と `:has()`）は外し、最新回の写真1枚だけにした。全回は下の一覧にある
-- 見出しは `UI` の `heroTitle`（日本語「東京都市大学世田谷祭／アーカイブ」、英語「Setagaya Festival／Archive」）。`<title>` と OGP はこれまでどおり `siteName`
+- 見出しは `UI` の `heroTitle`（日本語「東京都市大学世田谷祭／アーカイブ」、英語「Setagaya Festival／Archive」）。`<title>`・`og:title` は `pageTitle`（大学名を足した長い名前）、`og:site_name`・JSON-LD・フッターは `siteName`（[seo.md](./seo.md)）
 - 説明文の回・年・回数は、データ（`FESTIVALS`）から導く。年次の追加で書き換える文言は無い
 - 参考にあったバッジ（見出しの上と枠の左上）は、2026-11-11 のオーナーの指示で外した
 - 「過去の回を見る」はページ内の `#archive` へ飛ぶ。英語版でも `hreflang` を付けない（e2e は `href^="#"` を除いて検査する）
@@ -65,8 +65,13 @@
 ### プレビュー: `popover` と、sandbox を付けた iframe
 
 - 2026-11-11 にオーナーと決めた（Issue #30）。カードとヒーローの写真の「プレビュー」で、その回のサイトを、このページの上の大きなパネルで開く
-- `<button popovertarget="preview-97">` と `<div id="preview-97" popover role="dialog">` で開閉する。JS は使わない。Esc・外側のクリック・「閉じる」で閉じる
+- `<button popovertarget="preview-97">` と `<dialog id="preview-97" popover>` で開閉する。JS は使わない。Esc・外側のクリック・「閉じる」で閉じる
   - `<dialog>` をモーダルで開くには JS か `commandfor` が要る。どちらも使えない（規約 §1）。popover は背景を操作不可にしないが、`::backdrop` で暗くする
+  - 「閉じる」に `autofocus` を付ける。開いた直後に焦点がパネルの中（「閉じる」）へ入り、閉じると開いたボタンへ戻る（Chromium で確認。e2e で検査する）
+    - 付ける前は、焦点が裏のボタンに残り、パネルに覆われて見えなくなった（WCAG 2.4.11）
+  - 裏は `inert` にならないので、iframe の後で Tab を押すと、焦点はパネルの外へ出る。モーダル（`command="show-modal"`）にするかは、オーナーが決める（Issue #38）
+  - `<dialog>` の UA スタイルの `max-inline-size`・`max-block-size` を外す。外さないと、`inset` で決めた大きさにならない
+  - `:popover-open` の `display: flex` は消さない。popover で開いた `<dialog>` には `open` 属性が付かないので、UA スタイルの `dialog:not([open]) { display: none }` が当たるブラウザでは、これが無いと開いても見えない
 - iframe は `loading="lazy"`。閉じている popover は `display: none` なので、開くまで取得されない（Chromium で実測。転送量の予算は変わらない）。Firefox・Safari では確かめていない
 - iframe には `sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"` を付ける。`allow-same-origin` は付けない
   - 過去回のサイトは同じホストにあり、古い JS が動く。同じオリジンのまま埋めると、その JS が新トップを書き換えられる。sandbox で別のオリジンとして扱わせ、`script-src 'none'` の守りを保つ
@@ -167,3 +172,7 @@ PR #7 のマージ時点（`a5c0590`）も、同じ1280×900・DPR 2で404,131 B
 - **`:hover` は `@media (hover: hover)` の中に書く。** タッチ端末では、戻ったときに hover の見た目が残る
 - **favicon を置く。** 無いと `/favicon.ico` が 404 になり、Lighthouse の Best Practices がコンソールのエラーで減点される
   - 今の favicon は、東京都市大学のシンボル（大小2つの角丸の四角）を灰色（`#808080`）で描いた SVG。背景は透明。明るいタブと暗いタブのどちらでも見える中間の灰色にした（2026-11-14、オーナーの指示）
+- **`apple-touch-icon` を置く。** iOS のホーム画面に追加したときの絵。無いと、iOS などが `/apple-touch-icon.png` を取りに来て 404 になる
+  - `public/apple-touch-icon.png`（180×180 の PNG）。favicon と同じ図形を、白地の中央に 124px で描いた。iOS は透明な部分を黒く塗るので、背景を白で埋める
+  - favicon を替えたら、作り直す。Playwright で `favicon.svg` を 180×180 の白いページに置き、スクリーンショットを撮る
+- **「本文へ移動」をヘッダーの先頭に置く。** 幅 64rem 以上では、`<main>` の前に Tab の止まる所が6つある。普段は隠し、キーボードで焦点が来たとき（`:focus-visible`）だけ黒いピルで出す。ポインタで触ったときは出さない
