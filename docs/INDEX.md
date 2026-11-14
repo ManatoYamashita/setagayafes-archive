@@ -45,6 +45,7 @@
   - 配置の後は `pnpm check:production` で本番のヘッダを確かめる。壊れたら `remote-rollback.sh` で戻す
   - 初回だけ、エラーページの PHP と旧トップの部品（`css/`・`js/`・`img/`）を公開フォルダの外へ移す
   - 数分かかる処理は、SSH の接続を保つか、サーバー上で `nohup` で流す（途中で切れることがある）
+  - SSH・scp のたびに出る `then: then/endif not found.` は csh の初期化から出る行で、無視してよい。成否は `ok` の行と終了コードで判断する
 - **[annual-update.md](./ops/annual-update.md)**: 年次の追加。データに1件足し、`pnpm capture <回>` を1回流し、配置する
   - 新しい回のフォルダがサーバーに置かれてから始める（先に流すと撮影とリンクの検査が 404 で落ちる）
   - 始める前に、新しい回のフォルダに `*.bak`・`Thumbs.db`・`.DS_Store`・`desktop.ini`・`_vti_*` などが無いことを確かめる
