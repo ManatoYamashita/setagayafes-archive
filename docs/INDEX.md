@@ -45,6 +45,7 @@
 ### 運用（ops/）
 
 - **[deploy.md](./ops/deploy.md)**: さくらへの配置。`pnpm package` で zip を作って手元の Apache で確かめ、サーバーのスクリプトで控えを取ってから展開する
+  - zip を作る前と後に、`HEAD` と zip の名前のコミットが、配置するコミット（マージのコミット）と同じことを確かめる。`git pull` は他のセッションの fetch と重なると失敗する
   - 配置の後は `pnpm check:production`（ヘッダ）と `pnpm check:production:browser`（ブラウザで MENU・絞り込み・エラー）を流す。壊れたら `remote-rollback.sh` で戻す
   - zip から無くなった直下のファイルは、次の配置でも残る。控えへ移して 404 を確かめる
   - クラウドから流して「http:// redirect」だけ落ちたときは、戻さずに手元の端末で確かめ直し、#1 に補足として書く
