@@ -31,6 +31,7 @@
   - 画面の高さが足りないときは MENU の内側をスクロールし、「閉じる」まで操作できるようにする
   - ヒーローは中央寄せ（2行の `h1`・説明文・ボタン2つ・最新回の写真の枠）。文言の回数と年はデータから導く
   - プレビューは、Invoker Commands で開くモーダルの `<dialog>`＋iframe。iframe は sandbox（`allow-same-origin` 無し）で封じ、CSP に `frame-src 'self'` を足した
+  - プレビューと「本文へ移動」は、WebKit 27.2・Firefox 157 で確かめた。Safari 26.2 より前ではプレビューが反応しない。Safari は既定で Tab がリンクに止まらない（Option+Tab）
   - 一覧は全回を均等な3列に並べ、時代の絞り込みは radio＋`:has()`
   - `/en/` は同じ部品に `lang` を渡す。文言は `src/i18n/ui.ts`。テーマは原文を題名に残し、英訳を添える
 - **[htaccess.md](./design/htaccess.md)**: archive 直下の `.htaccess`（ビルドで生成）。ヘッダを新トップの範囲にだけ付ける書き方、noindex の除外、CSP、HSTS
@@ -71,6 +72,7 @@
   - どの要素が LCP になるかの結論は、手元の速い回線ではなく Lighthouse で確かめてから書く
   - 予算はブラウザで測る。初回は最初の画面に写る分だけ（先読みは除く）、全体は絞り込みに触れずに最後までスクロールした分
   - 本番のブラウザ確認（`pnpm check:production:browser`）の項目。部品の探し方は e2e と共通の `scripts/lib/page-parts.mjs`
+  - Chromium 以外（Playwright の WebKit・Firefox）で確かめるときの注意。WebKit は Tab でリンクに止まらず、スクリーンショットで CSP の違反が出る
 
 - **[cloud-environment.md](./ops/cloud-environment.md)**: Claude Code のクラウドセッション用の環境（`setagayafes-archive`）の、許可ホスト・セットアップスクリプト・シークレットと変数
   - コンテナの Node v22 を、`.nvmrc` の版へ差し替える。apache2 と Playwright のブラウザも入れる
