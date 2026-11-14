@@ -87,6 +87,17 @@ interface Words {
   /** Shown instead of a link while a related site is being prepared. */
   readonly comingSoon: string;
   readonly footerNote: string;
+  /**
+   * The builder's credit at the bottom of the footer, around the logo and the
+   * contact link. English keeps the spaces next to the links in the strings.
+   */
+  readonly credit: {
+    readonly before: string;
+    readonly after: string;
+    readonly contactBefore: string;
+    readonly contactLabel: string;
+    readonly contactAfter: string;
+  };
 }
 
 export const UI = {
@@ -129,6 +140,13 @@ export const UI = {
     comingSoon: "公開準備中",
     footerNote:
       "各回のサイトは公開当時のまま保存しています。掲載している日程・連絡先・リンク先は、当時のものです。",
+    credit: {
+      before: "このアーカイブは",
+      after: "が開発しています。",
+      contactBefore: "不具合やご要望は、",
+      contactLabel: "お問い合わせフォーム",
+      contactAfter: "からお気軽にお知らせください。",
+    },
   },
   en: {
     siteName: "Setagaya Festival Archive",
@@ -169,6 +187,13 @@ export const UI = {
     comingSoon: "Coming soon",
     footerNote:
       "Each festival’s site is kept as it was published. The dates, contacts and links on those sites are from that time.",
+    credit: {
+      before: "This archive is developed by ",
+      after: ".",
+      contactBefore: "Found a bug or have a request? Let me know through the ",
+      contactLabel: "contact form",
+      contactAfter: ".",
+    },
   },
 } as const satisfies Record<Lang, Words>;
 
