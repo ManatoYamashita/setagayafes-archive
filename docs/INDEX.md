@@ -43,6 +43,7 @@
 
 - **[deploy.md](./ops/deploy.md)**: さくらへの配置。`pnpm package` で zip を作って手元の Apache で確かめ、サーバーのスクリプトで控えを取ってから展開する
   - 配置の後は `pnpm check:production` で本番のヘッダを確かめる。壊れたら `remote-rollback.sh` で戻す
+  - クラウドから流して「http:// redirect」だけ落ちたときは、戻さずに手元の端末で確かめ直し、#1 に補足として書く
   - 初回だけ、エラーページの PHP と旧トップの部品（`css/`・`js/`・`img/`）を公開フォルダの外へ移す
   - 数分かかる処理は、SSH の接続を保つか、サーバー上で `nohup` で流す（途中で切れることがある）
   - SSH・scp のたびに出る `then: then/endif not found.` は csh の初期化から出る行で、無視してよい。成否は `ok` の行と終了コードで判断する

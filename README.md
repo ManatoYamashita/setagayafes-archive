@@ -2,6 +2,8 @@
 
 [archive.setagayafes.org](https://archive.setagayafes.org/) のトップ（過去の世田谷祭の一覧）のソース。
 
+<img width="500" height="auto" alt="setagayafes-archive" src="https://github.com/user-attachments/assets/b7f11070-7e5b-4c60-90fe-d9189607ef14" />
+
 - Astro（`output: "static"`）＋ Tailwind CSS v4
 - ブラウザへ送る JavaScript は0
 - 規約は [docs/rules/conventions.md](./docs/rules/conventions.md)、文書の索引は [docs/INDEX.md](./docs/INDEX.md)
