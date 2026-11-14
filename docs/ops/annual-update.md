@@ -68,7 +68,7 @@ pnpm preview         # / と /en/ を開く
 
 - ヒーローが第98回になり、第97回が一覧の先頭のカードに移ること
 - `pnpm test:e2e` の予算の行（`ℹ initial … total …`）を見る。カードが1件増えると、全体が十数〜数十KB 増える。全体 1MB・初回 200KB を超えたら、画像の候補か配置を見直す（[post-build-checks.md](./post-build-checks.md)）
-- OGP の画像は、撮影済みの回のうち最新の回（第98回）に変わる
+- OGP の画像は固定のデザインなので変わらない（[seo.md](../design/seo.md)）
 
 ### 5. PR を出してマージする
 

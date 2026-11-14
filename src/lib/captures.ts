@@ -1,10 +1,9 @@
 // The captured top pages of the festival sites (src/assets/captures/), and
 // the images made from them at build time. The originals come from
-// `pnpm capture` (scripts/capture.mjs); the AVIF thumbnails and the OGP JPEG
-// are never committed, so the display sizes can change without capturing again.
+// `pnpm capture` (scripts/capture.mjs); the AVIF thumbnails are never
+// committed, so the display sizes can change without capturing again.
 
 import type { ImageMetadata } from "astro";
-import { getImage } from "astro:assets";
 
 const files = import.meta.glob<ImageMetadata>("../assets/captures/*.{png,jpg}", {
   eager: true,
@@ -29,9 +28,6 @@ export const CAPTURE_IMAGE_PROPS = {
   fit: "cover",
   position: "top",
 } as const;
-
-/** Size of the Open Graph image, as recommended by the major SNS. */
-export const OG_IMAGE_SIZE = { width: 1200, height: 630 } as const;
 
 export function hasCapture(number: number): boolean {
   return captures.has(number);
@@ -64,16 +60,4 @@ export function captureOf(number: number): ImageMetadata {
     throw new Error(`no capture for festival ${number}: run \`pnpm capture ${number}\``);
   }
   return image;
-}
-
-/** The Open Graph image (JPEG, 1200x630) made from a festival's capture. */
-export function ogImageOf(number: number) {
-  return getImage({
-    src: captureOf(number),
-    ...OG_IMAGE_SIZE,
-    fit: "cover",
-    position: "top",
-    format: "jpeg",
-    quality: 80,
-  });
 }
