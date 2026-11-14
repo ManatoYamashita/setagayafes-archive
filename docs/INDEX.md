@@ -27,7 +27,7 @@
 
 ### 画面（design/）
 
-- **[screen.md](./design/screen.md)**: トップの部品、参考画像からの置き換え、JS を使わない MENU・プレビュー・絞り込み、英語版、写真の扱い、実測
+- **[screen.md](./design/screen.md)**: トップの部品、参考画像からの置き換え、JS を使わない MENU・プレビュー・絞り込み・初期表示の動き、英語版、写真の扱い、実測
   - 画面の高さが足りないときは MENU の内側をスクロールし、「閉じる」まで操作できるようにする
   - ヒーローは中央寄せ（2行の `h1`・説明文・ボタン2つ・最新回の写真の枠）。文言の回数と年はデータから導く
   - プレビューは popover＋iframe。iframe は sandbox（`allow-same-origin` 無し）で封じ、CSP に `frame-src 'self'` を足した
