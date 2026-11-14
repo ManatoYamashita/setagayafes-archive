@@ -61,3 +61,4 @@ NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt pnpm check:pro
 
 - `NODE_USE_ENV_PROXY` はプロキシに関わる予約された変数で、セッションからは環境に保存できない。保存するなら、claude.ai の環境設定で手で足す
 - 「http:// redirect」の確認は、`http://` の通信が外へ出られないため、クラウドでは必ず落ちる。手元の Mac で確かめる
+  - 確かめ直し方と記録の仕方は、[deploy.md](./deploy.md) の手順5と手順8

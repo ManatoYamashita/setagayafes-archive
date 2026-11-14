@@ -91,6 +91,11 @@ pnpm check:production
 - トップのページ（noindex が無い・CSP などが付く）、`/_astro/` のキャッシュ、OGP の画像の Content-Type、過去回（`/78th/`）に余計なヘッダが付かないこと、404 ページ、初期ドメイン経由、http→https の 302 を確かめる
 - ブラウザで `/`・`/en/`・`/78th/`・`/96th/` を開き、表示が崩れていないこと、MENU と絞り込みが動くことを見る
 - **1つでも落ちて、表示が壊れていたら、すぐ戻す**（下の「戻し方」）。原因はその後で調べる
+- クラウド環境から流したときは、「http:// redirect」の項目だけは必ず落ちる。暗号化しない `http://` の通信が外へ出られないため（[cloud-environment.md](./cloud-environment.md)）
+  - この項目が落ちたことだけを理由に戻さない。他の項目がすべて ok なら、手元の端末で確かめ直す
+  - 手元では `pnpm check:production` を流し直す。補助に `curl -sSI http://archive.setagayafes.org/` で、302 と `Location: https://archive.setagayafes.org/` を見る
+  - 手元でも落ちたら、先にプロキシと VPN を外して流し直す。それでも落ちるなら、コントロールパネルの常時 SSL 化の設定を疑う
+  - 2026-11-14、#40 の配置をクラウド環境で確かめたとき、14 項目は ok でこの項目だけ確かめられなかった。手元の Mac（プロキシ・VPN 無し）から流し直し、15 項目すべて ok だった
 
 ### 6. 初回だけ: エラーページの PHP を片付ける（#2）
 
@@ -173,6 +178,7 @@ Issue #1 に次を書く。
 
 - 配置した zip の名前・コミット・sha256、控えの場所（`~/archive-docs/deploy/<日時>`）
 - `pnpm check:production` の結果
+  - 「http:// redirect」を手元で確かめ直したとき（5 を参照）は、配置の記録へのリンクを付けて、補足のコメントとして書く。流した環境と、プロキシ・VPN の有無も書く
 - Lighthouse（モバイル。性能・アクセシビリティ・おすすめの方法・SEO）を、手元（`pnpm preview`）と本番の両方で、Chrome の DevTools で測った値（[post-build-checks.md](./post-build-checks.md)）
 
 ## 戻し方
