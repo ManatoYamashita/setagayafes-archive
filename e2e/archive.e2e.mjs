@@ -784,9 +784,12 @@ for (const lang of LANGS) {
 
     test("credits the builder", async () => {
       const { page, close } = await open(t.path);
-      const credit = page.locator("footer .credit a");
-      assert.equal(await credit.getAttribute("href"), "https://www.yamashitamana.to/");
-      assert.equal(await credit.innerText(), "yamashitamana.to");
+      const logo = page.locator("footer .credit a.credit-logo");
+      assert.equal(await logo.getAttribute("href"), "https://www.yamashitamana.to/");
+      assert.equal(await logo.locator("img").getAttribute("alt"), "yamashitamana.to");
+      assert.match((await logo.locator("img").getAttribute("src")) ?? "", /\.avif$/);
+      const contact = page.locator("footer .credit a.credit-contact");
+      assert.equal(await contact.getAttribute("href"), "https://www.yamashitamana.to/contact");
       await close();
     });
   });

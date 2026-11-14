@@ -31,4 +31,6 @@ export const ORGANIZER = {
 export const SITE_CREDIT = {
   name: "yamashitamana.to",
   url: "https://www.yamashitamana.to/",
+  /** Where to report bugs and requests. The form has no English version. */
+  contactUrl: "https://www.yamashitamana.to/contact",
 } as const;
