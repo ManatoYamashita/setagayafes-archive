@@ -95,6 +95,9 @@ npx -y lighthouse@13.5.0 https://archive.setagayafes.org/ \
 ```
 
 - PageSpeed Insights の API は、鍵なしの共有の枠を使い切られていることがある（2026-11-08 は 429）
+- **どの要素が LCP になるかの結論は、Lighthouse（遅い回線を模した測定）で確かめてから書く。** 手元の速い回線での測定（Playwright の `PerformanceObserver` など）だけで決めない
+  - 理由: 画像が届く時刻で、LCP になる要素が変わる。不透明度 0 で描かれた要素は、LCP の候補にならない。#34 の入場アニメーションでは、手元の速い回線だと、写真がアニメーションの最初のコマ（不透明度 0）で描かれ、候補から外れた。本番の Lighthouse では、写真はアニメーションが始まった後に届き、そのまま LCP になった。手元の結果から「Lighthouse は写真を測らなくなる」と書いて、PR #36 で直した
+  - Lighthouse の JSON では、LCP の要素は `lcp-breakdown-insight` の `details` の中の `selector` にある（13.5.0。`largest-contentful-paint-element` の監査は無い）
 
 ### 2026-11-08 の本番の実測と、SEO 92 の原因
 
