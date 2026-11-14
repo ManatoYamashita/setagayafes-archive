@@ -1,16 +1,17 @@
 ---
-// The preview dialog of a festival's site: a popover (no JavaScript) that
-// nearly fills the screen, with the festival's name, a link to the site and a
-// close button above an iframe of the site. Esc and a click outside close it
-// too (the browser does this for popovers).
+// The preview dialog of a festival's site: a modal <dialog> that nearly fills
+// the screen, with the festival's name, a link to the site and a close button
+// above an iframe of the site.
 //
-// A <dialog> with `popover`, not a modal: opening a modal needs JavaScript or
-// Invoker Commands (docs/design/screen.md). `autofocus` on the close button
-// moves focus into the panel when it opens, and closing returns it to the
-// button that opened it. The page behind is not inert, so Tab past the iframe
-// still leaves the panel.
+// Opened and closed with Invoker Commands (`command="show-modal"` /
+// `command="close"`), so there is no JavaScript. As a modal, the page behind
+// is inert and focus stays in the panel. `autofocus` puts focus on the close
+// button when it opens; closing returns it to the button that opened it.
+// Esc closes it (every modal dialog), and `closedby="any"` adds a click
+// outside. Browsers without Invoker Commands do nothing on "Preview"; "Visit
+// the site" still works (docs/design/screen.md).
 //
-// The iframe is lazy: while the popover is closed (display: none) the browser
+// The iframe is lazy: while the dialog is closed (display: none) the browser
 // does not fetch it, so the page weight is the same as without previews.
 // It is sandboxed without allow-same-origin: the old sites' scripts still run,
 // but as another origin, so they cannot reach this page (Issue #30).
@@ -32,7 +33,7 @@ const href = linkOf(festival);
 const hreflang = lang === "ja" ? undefined : "ja";
 ---
 
-<dialog id={id} class="preview" popover aria-labelledby={`${id}-title`}>
+<dialog id={id} class="preview" closedby="any" aria-labelledby={`${id}-title`}>
   <div class="bar">
     <p id={`${id}-title`} class="name">
       {label}
@@ -44,7 +45,7 @@ const hreflang = lang === "ja" ? undefined : "ja";
         <path d="M6 3.5h6.5V10M12.5 3.5 4 12"></path>
       </svg>
     </a>
-    <button type="button" class="close" popovertarget={id} popovertargetaction="hide" autofocus>
+    <button type="button" class="close" command="close" commandfor={id} autofocus>
       {ui.close}
     </button>
   </div>
@@ -62,7 +63,7 @@ const hreflang = lang === "ja" ? undefined : "ja";
    * While a preview is open, the page behind it does not scroll: the wheel
    * and touch scrolling go to the site in the iframe only. CSS only (:has()).
    */
-  :global(html:has(.preview:popover-open)) {
+  :global(html:has(.preview:modal)) {
     overflow: hidden;
     /* Keep the scrollbar's room, so the page does not shift sideways. */
     scrollbar-gutter: stable;
@@ -71,7 +72,7 @@ const hreflang = lang === "ja" ? undefined : "ja";
   .preview {
     /* Scrolling that reaches the end of the site stays in the panel. */
     overscroll-behavior: contain;
-    /* Reset the centered UA popover to a large panel with a margin all round. */
+    /* Reset the centered UA dialog to a large panel with a margin all round. */
     position: fixed;
     inset: 0.5rem;
     inline-size: auto;
@@ -91,8 +92,7 @@ const hreflang = lang === "ja" ? undefined : "ja";
       inset: 2rem;
     }
 
-    /* Required, not only for layout: a UA style sheet with dialog:not([open]) { display: none } would hide the open panel, which has no open attribute. */
-    &:popover-open {
+    &[open] {
       display: flex;
       flex-direction: column;
     }
