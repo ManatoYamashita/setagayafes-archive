@@ -67,7 +67,7 @@ const jsonLd = websiteJsonLd(lang, site);
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
     {/* Data, not code: the one script element the guards allow (docs/rules/conventions.md §1). */}
-    {/* eslint-disable-next-line astro/no-set-html-directive -- websiteJsonLd() escapes "<", so the text cannot close the element. */}
+    {/* eslint-disable-next-line astro/no-set-html-directive -- jsonLdText() escapes "<", so the text cannot close the element. */}
     <script type="application/ld+json" set:html={jsonLd} />
   </head>
   <body class="min-h-dvh bg-paper text-ink antialiased">

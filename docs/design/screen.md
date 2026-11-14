@@ -71,6 +71,7 @@
     - 付ける前は、焦点が裏のボタンに残り、パネルに覆われて見えなくなった（WCAG 2.4.11）
   - 裏は `inert` にならないので、iframe の後で Tab を押すと、焦点はパネルの外へ出る。モーダル（`command="show-modal"`）にするかは、オーナーが決める（Issue #38）
   - `<dialog>` の UA スタイルの `max-inline-size`・`max-block-size` を外す。外さないと、`inset` で決めた大きさにならない
+  - `:popover-open` の `display: flex` は消さない。popover で開いた `<dialog>` には `open` 属性が付かないので、UA スタイルの `dialog:not([open]) { display: none }` が当たるブラウザでは、これが無いと開いても見えない
 - iframe は `loading="lazy"`。閉じている popover は `display: none` なので、開くまで取得されない（Chromium で実測。転送量の予算は変わらない）。Firefox・Safari では確かめていない
 - iframe には `sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"` を付ける。`allow-same-origin` は付けない
   - 過去回のサイトは同じホストにあり、古い JS が動く。同じオリジンのまま埋めると、その JS が新トップを書き換えられる。sandbox で別のオリジンとして扱わせ、`script-src 'none'` の守りを保つ

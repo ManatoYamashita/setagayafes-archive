@@ -143,14 +143,24 @@ describe("findClientCodeInHtml", () => {
       '<script data-x="type=application/ld+json>">alert(1)</script>',
       '<script type="application/ld+json ">alert(1)</script>',
       "<script>alert(1)</script>",
+      '<script type="application/ld+json">{"a":"<b>"}</script>',
+      '<script type="application/ld+json">{"a":"<!--"}</script>',
+      '<script type="application/ld+json">alert(1)</script>',
+      '<script type="application/ld+json"></script>',
     ]) {
       test(`rejects ${html}`, () => assert.equal(findClientCodeInHtml(html).length, 1));
     }
+    test("rejects JSON-LD that a value closed early", () => {
+      const html =
+        '<script type="application/ld+json">{"a":"</script><script>alert(1)</script>"}</script>';
+      assert.equal(findClientCodeInHtml(html).length, 2);
+    });
     for (const html of [
       '<script type="application/ld+json">{}</script>',
       "<script type=APPLICATION/LD+JSON>{}</script>",
       '<script data-x=">" type="application/ld+json">{}</script>',
       '<script type="application/ld+json" type="module">{}</script>',
+      '<script type="application/ld+json">{"a":"\\u003c/script>"}</script>',
     ]) {
       test(`allows ${html}`, () => assert.deepEqual(findClientCodeInHtml(html), []));
     }

@@ -47,9 +47,13 @@ export default defineConfig(
           message: "client:* directives are forbidden: this site ships no JavaScript.",
         },
         {
-          // JSON-LD is data, not code: the one script the guards allow.
+          // JSON-LD is data, not code: the one script the guards allow, in the
+          // one form scripts/lib/rules.mjs accepts (JSON_LD_SOURCE_TAG):
+          // self-closing, with exactly `type` and `set:html={variable}`.
+          // The set:html part is not written as `:has(> A > B > C)`: esquery
+          // does not match a chain of child combinators inside `:has(> ...)`.
           selector:
-            "JSXOpeningElement[name.name='script']:not(:has(JSXAttribute[name.name='type'][value.value='application/ld+json']))",
+            "JSXOpeningElement[name.name='script']:not([selfClosing=true][attributes.length=2]:has(> JSXAttribute[name.name='type'][value.value='application/ld+json']):has(JSXAttribute[name.namespace.name='set'][name.name.name='html'] > JSXExpressionContainer > Identifier))",
           message: "<script> is forbidden: this site ships no JavaScript.",
         },
       ],

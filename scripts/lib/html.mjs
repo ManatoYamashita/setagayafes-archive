@@ -29,7 +29,8 @@ const ASCII_ALPHA = /[A-Za-z]/;
 
 /**
  * @typedef {{ name: string, value: string }} Attribute
- * @typedef {{ name: string, attributes: Attribute[], source: string }} StartTag
+ * @typedef {{ name: string, attributes: Attribute[], source: string, text?: string }} StartTag
+ *   `text` is the contents of a raw-text or RCDATA element, up to its end tag.
  */
 
 /**
@@ -121,11 +122,15 @@ export function startTags(html) {
     }
     i += 1; // Past ">".
 
-    tags.push({ name, attributes, source: html.slice(start, Math.min(i, html.length)) });
+    /** @type {StartTag} */
+    const tag = { name, attributes, source: html.slice(start, Math.min(i, html.length)) };
+    tags.push(tag);
 
     if (RAW_TEXT_ELEMENTS.has(name)) {
       const close = html.toLowerCase().indexOf(`</${name}`, i);
-      i = close === -1 ? html.length : close;
+      const end = close === -1 ? html.length : close;
+      tag.text = html.slice(Math.min(i, html.length), end);
+      i = end;
     }
   }
 

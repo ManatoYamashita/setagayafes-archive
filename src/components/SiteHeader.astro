@@ -89,6 +89,11 @@ const sections = [
 </header>
 
 <style>
+  /* The skip link's containing block: without this it is the page, and the pill drifts left of the centered header on wide screens. */
+  header {
+    position: relative;
+  }
+
   /* Out of sight until it has focus; then over the top left of the header. */
   .skip {
     position: absolute;

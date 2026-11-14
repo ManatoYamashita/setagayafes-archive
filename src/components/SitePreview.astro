@@ -91,6 +91,7 @@ const hreflang = lang === "ja" ? undefined : "ja";
       inset: 2rem;
     }
 
+    /* Required, not only for layout: a UA style sheet with dialog:not([open]) { display: none } would hide the open panel, which has no open attribute. */
     &:popover-open {
       display: flex;
       flex-direction: column;

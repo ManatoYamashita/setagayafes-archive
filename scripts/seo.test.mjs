@@ -12,12 +12,34 @@ import {
   OG_LOCALES,
   ROBOTS_DISALLOW,
   alternatesOf,
+  jsonLdText,
   pageUrl,
   robotsTxt,
   sitemapXml,
+  websiteJsonLd,
 } from "../src/lib/seo.ts";
 
 const SITE = new URL("https://archive.setagayafes.org");
+
+describe("JSON-LD", () => {
+  test("no value can end the script element or open a comment in it", () => {
+    const data = { name: "</script><script>alert(1)</script>", note: "<!-- a < b -->" };
+    const text = jsonLdText(data);
+    assert.equal(text.includes("<"), false);
+    assert.deepEqual(JSON.parse(text), data);
+  });
+
+  test("names the site in each language, with the home page as its URL", () => {
+    assert.deepEqual(JSON.parse(websiteJsonLd("en", SITE)), {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "Setagaya Festival Archive",
+      alternateName: ["世田谷祭アーカイブ"],
+      url: "https://archive.setagayafes.org/",
+      inLanguage: "en",
+    });
+  });
+});
 
 describe("URLs", () => {
   test("each language has its own top page", () => {
