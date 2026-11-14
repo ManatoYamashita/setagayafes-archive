@@ -14,14 +14,16 @@ const SITE = "https://archive.setagayafes.org";
 const PAGES = {
   ja: {
     path: "/",
-    title: "世田谷祭アーカイブ",
+    title: "世田谷祭アーカイブ｜東京都市大学（旧 武蔵工業大学）の学園祭 歴代公式サイト",
+    siteName: "世田谷祭アーカイブ",
     locale: "ja_JP",
     otherLocale: "en_US",
     imageAlt: UI.ja.ogImageAlt,
   },
   en: {
     path: "/en/",
-    title: "Setagaya Festival Archive",
+    title: "Setagaya Festival Archive | Tokyo City University",
+    siteName: "Setagaya Festival Archive",
     locale: "en_US",
     otherLocale: "ja_JP",
     imageAlt: UI.en.ogImageAlt,
@@ -61,7 +63,13 @@ async function headOf(path) {
     const canonical = [...document.querySelectorAll('link[rel="canonical"]')].map((link) =>
       link.getAttribute("href"),
     );
-    return { meta, canonical, title: document.title };
+    const jsonLd = [...document.querySelectorAll('script[type="application/ld+json"]')].map(
+      (script) => JSON.parse(script.textContent ?? ""),
+    );
+    const touchIcons = [...document.querySelectorAll('link[rel="apple-touch-icon"]')].map((link) =>
+      link.getAttribute("href"),
+    );
+    return { meta, canonical, title: document.title, jsonLd, touchIcons };
   });
   await page.close();
   return head;
@@ -90,11 +98,38 @@ for (const [lang, expected] of Object.entries(PAGES)) {
       assert.equal(title, expected.title);
       assert.deepEqual(meta["og:type"], ["website"]);
       assert.deepEqual(meta["og:title"], [expected.title]);
-      assert.deepEqual(meta["og:site_name"], [expected.title]);
+      assert.deepEqual(meta["og:site_name"], [expected.siteName]);
       assert.deepEqual(meta["og:description"], meta["description"]);
       assert.deepEqual(meta["og:locale"], [expected.locale]);
       assert.deepEqual(meta["og:locale:alternate"], [expected.otherLocale]);
       assert.deepEqual(meta["twitter:card"], ["summary_large_image"]);
+    });
+
+    test("names the site in WebSite structured data", async () => {
+      const { jsonLd } = await headOf(expected.path);
+      const other = lang === "ja" ? PAGES.en : PAGES.ja;
+      assert.deepEqual(jsonLd, [
+        {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: expected.siteName,
+          alternateName: [other.siteName],
+          url: `${SITE}/`,
+          inLanguage: lang,
+        },
+      ]);
+    });
+
+    test("has a 180x180 PNG icon for the home screen", async () => {
+      const { touchIcons } = await headOf(expected.path);
+      assert.deepEqual(touchIcons, ["/apple-touch-icon.png"]);
+      const response = await fetch(`${server.url}/apple-touch-icon.png`);
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("content-type"), "image/png");
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      const view = new DataView(bytes.buffer);
+      // The IHDR chunk follows the 8-byte signature: width and height at 16 and 20.
+      assert.deepEqual([view.getUint32(16), view.getUint32(20)], [180, 180]);
     });
 
     test("has a 1200x630 JPEG preview image with no metadata", async () => {

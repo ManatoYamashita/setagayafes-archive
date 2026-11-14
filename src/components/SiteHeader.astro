@@ -29,6 +29,10 @@ const sections = [
 ---
 
 <header class="page">
+  {/* Past the six stops of the header on wide screens, to the page's first section. */}
+  <a class="skip" href="#latest">
+    {ui.skipToContent}
+  </a>
   <div class="bar">
     <button type="button" class="menu-button" popovertarget={MENU_ID} aria-label={ui.menu}>
       {/* Three lines of falling length, after the reference's menu glyph (without its magnifier: there is no search). */}
@@ -85,6 +89,29 @@ const sections = [
 </header>
 
 <style>
+  /* Out of sight until it has focus; then over the top left of the header. */
+  .skip {
+    position: absolute;
+    inset-block-start: 0.75rem;
+    inset-inline-start: 1rem;
+    z-index: 10;
+    border-radius: 999px;
+    padding: 0.625rem 1rem;
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+    font-size: 0.8125rem;
+    font-weight: 700;
+
+    &:not(:focus) {
+      clip-path: inset(50%);
+      inline-size: 1px;
+      block-size: 1px;
+      padding: 0;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+  }
+
   .bar {
     display: flex;
     align-items: center;

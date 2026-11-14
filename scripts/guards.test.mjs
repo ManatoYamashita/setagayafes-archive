@@ -95,6 +95,23 @@ describe("findClientCodeInSource", () => {
   test("accepts plain markup", () => {
     assert.deepEqual(findClientCodeInSource("<details><summary>MENU</summary></details>"), []);
   });
+  test("accepts JSON-LD set from a variable", () => {
+    assert.deepEqual(
+      findClientCodeInSource('<script type="application/ld+json" set:html={jsonLd} />'),
+      [],
+    );
+  });
+  test("finds JSON-LD written any other way", () => {
+    for (const source of [
+      '<script type="application/ld+json">{"@type":"WebSite"}</script>',
+      '<script type="application/ld+json" set:html={JSON.stringify(data)} />',
+      '<script type="application/ld+json" set:html={jsonLd} src="/a.js" />',
+      '<script type="module" set:html={jsonLd} />',
+      '<script type="APPLICATION/LD+JSON " set:html={jsonLd} />',
+    ]) {
+      assert.equal(findClientCodeInSource(source).length, 1, source);
+    }
+  });
 });
 
 describe("findClientCodeInHtml", () => {

@@ -57,6 +57,15 @@ export function forbiddenFileReason(path) {
 }
 
 /**
+ * The one script tag the source may hold: JSON-LD, written exactly as
+ * `<script type="application/ld+json" set:html={name} />`. The value must be a
+ * plain variable, so the data is built (and escaped) in TypeScript, not in
+ * the template. The built HTML is checked again by findClientCodeInHtml.
+ */
+const JSON_LD_SOURCE_TAG =
+  /^<script type="application\/ld\+json" set:html=\{[A-Za-z_$][\w$]*\} \/>$/;
+
+/**
  * Finds Astro hydration directives and script tags in a source file.
  * Comments are not stripped on purpose: a commented-out `client:load` is
  * still a sign that someone is about to ship JavaScript.
@@ -71,6 +80,7 @@ export function findClientCodeInSource(source) {
     findings.push(`hydration directive "${match[0]}"`);
   }
   for (const match of source.matchAll(/<script\b[^>]*>/gi)) {
+    if (JSON_LD_SOURCE_TAG.test(match[0])) continue;
     findings.push(`script tag "${match[0]}"`);
   }
   return findings;

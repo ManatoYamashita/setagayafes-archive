@@ -8,6 +8,7 @@
 - `client:*` ディレクティブ（`client:load`・`client:visible` など）を使わない
 - `<script>` を書かない（`is:inline` も含む）
   - 例外は JSON-LD（`<script type="application/ld+json">`）だけ。データであって、実行されるコードではないため
+  - ソースに書けるのは `<script type="application/ld+json" set:html={変数} />` の形だけ。値は TypeScript で作った変数に限り、テンプレートの中で式を組まない（`pnpm guard`・ESLint が、これ以外の `<script>` を落とす。`astro/no-set-html-directive` は、その1行だけ理由を付けて外す）
   - 例外になるのは、`type` 属性の値が `application/ld+json` と完全に一致するときだけ（大文字と小文字は区別しない。前後の空白も許さない）。
     `data-type` などの別の属性は数えない。`type` が2つあれば、ブラウザと同じく先の1つだけを見る
 - インラインのイベントハンドラ（`onclick=` など）と、スクリプトを実行する URL（`javascript:`・`vbscript:`・`data:text/html`）を使わない

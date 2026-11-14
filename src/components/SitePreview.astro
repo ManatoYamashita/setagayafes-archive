@@ -4,6 +4,12 @@
 // close button above an iframe of the site. Esc and a click outside close it
 // too (the browser does this for popovers).
 //
+// A <dialog> with `popover`, not a modal: opening a modal needs JavaScript or
+// Invoker Commands (docs/design/screen.md). `autofocus` on the close button
+// moves focus into the panel when it opens, and closing returns it to the
+// button that opened it. The page behind is not inert, so Tab past the iframe
+// still leaves the panel.
+//
 // The iframe is lazy: while the popover is closed (display: none) the browser
 // does not fetch it, so the page weight is the same as without previews.
 // It is sandboxed without allow-same-origin: the old sites' scripts still run,
@@ -26,7 +32,7 @@ const href = linkOf(festival);
 const hreflang = lang === "ja" ? undefined : "ja";
 ---
 
-<div id={id} class="preview" popover role="dialog" aria-labelledby={`${id}-title`}>
+<dialog id={id} class="preview" popover aria-labelledby={`${id}-title`}>
   <div class="bar">
     <p id={`${id}-title`} class="name">
       {label}
@@ -38,7 +44,7 @@ const hreflang = lang === "ja" ? undefined : "ja";
         <path d="M6 3.5h6.5V10M12.5 3.5 4 12"></path>
       </svg>
     </a>
-    <button type="button" class="close" popovertarget={id} popovertargetaction="hide">
+    <button type="button" class="close" popovertarget={id} popovertargetaction="hide" autofocus>
       {ui.close}
     </button>
   </div>
@@ -49,7 +55,7 @@ const hreflang = lang === "ja" ? undefined : "ja";
     sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
     referrerpolicy="same-origin"
   ></iframe>
-</div>
+</dialog>
 
 <style>
   /*
@@ -70,6 +76,9 @@ const hreflang = lang === "ja" ? undefined : "ja";
     inset: 0.5rem;
     inline-size: auto;
     block-size: auto;
+    /* The UA limits a <dialog>'s size; the panel takes it from inset instead. */
+    max-inline-size: none;
+    max-block-size: none;
     margin: 0;
     overflow: hidden;
     border: 0;

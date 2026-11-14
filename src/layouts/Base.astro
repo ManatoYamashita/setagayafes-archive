@@ -2,17 +2,20 @@
 import "../styles/global.css";
 import type { Lang } from "../data/festivals.ts";
 import { LANGS } from "../i18n/ui.ts";
-import { OG_LOCALES, alternatesOf, pageUrl } from "../lib/seo.ts";
+import { OG_LOCALES, alternatesOf, pageUrl, websiteJsonLd } from "../lib/seo.ts";
 
 interface Props {
+  /** The <title> and og:title. */
   title: string;
+  /** The short name for og:site_name and the JSON-LD. */
+  siteName: string;
   description: string;
   lang: Lang;
   /** The link-preview image (absolute URL). Omitted when there is none yet. */
   image?: { url: string; width: number; height: number; alt: string } | undefined;
 }
 
-const { title, description, lang, image } = Astro.props;
+const { title, siteName, description, lang, image } = Astro.props;
 const site = Astro.site;
 if (!site) throw new Error("`site` is not set in astro.config.mjs");
 
@@ -21,6 +24,7 @@ if (!site) throw new Error("`site` is not set in astro.config.mjs");
 const url = pageUrl(lang, site);
 const alternates = alternatesOf(site);
 const otherLocales = LANGS.filter((code) => code !== lang).map((code) => OG_LOCALES[code]);
+const jsonLd = websiteJsonLd(lang, site);
 
 // <meta name="text-scale"> lets the page follow the OS text size setting.
 // It is safe because every size is in rem and the root font size is not set.
@@ -40,7 +44,7 @@ const otherLocales = LANGS.filter((code) => code !== lang).map((code) => OG_LOCA
     ))}
 
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content={title} />
+    <meta property="og:site_name" content={siteName} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={url} />
@@ -60,6 +64,11 @@ const otherLocales = LANGS.filter((code) => code !== lang).map((code) => OG_LOCA
     <meta name="twitter:card" content={image ? "summary_large_image" : "summary"} />
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    {/* Data, not code: the one script element the guards allow (docs/rules/conventions.md §1). */}
+    {/* eslint-disable-next-line astro/no-set-html-directive -- websiteJsonLd() escapes "<", so the text cannot close the element. */}
+    <script type="application/ld+json" set:html={jsonLd} />
   </head>
   <body class="min-h-dvh bg-paper text-ink antialiased">
     <slot />

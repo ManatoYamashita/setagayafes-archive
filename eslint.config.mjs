@@ -47,7 +47,9 @@ export default defineConfig(
           message: "client:* directives are forbidden: this site ships no JavaScript.",
         },
         {
-          selector: "JSXElement[openingElement.name.name='script']",
+          // JSON-LD is data, not code: the one script the guards allow.
+          selector:
+            "JSXOpeningElement[name.name='script']:not(:has(JSXAttribute[name.name='type'][value.value='application/ld+json']))",
           message: "<script> is forbidden: this site ships no JavaScript.",
         },
       ],

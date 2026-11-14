@@ -31,7 +31,8 @@ import { serve } from "./lib/server.mjs";
 const PAGES = {
   ja: {
     path: "/",
-    siteName: "世田谷祭アーカイブ",
+    pageTitle: "世田谷祭アーカイブ｜東京都市大学（旧 武蔵工業大学）の学園祭 歴代公式サイト",
+    skip: "本文へ移動",
     heroTitle: "東京都市大学世田谷祭\nアーカイブ",
     seeArchive: "過去の回を見る",
     menuLinks: ["公式サイト", "公式ブログ", "X", "Instagram", "English"],
@@ -46,7 +47,8 @@ const PAGES = {
   },
   en: {
     path: "/en/",
-    siteName: "Setagaya Festival Archive",
+    pageTitle: "Setagaya Festival Archive | Tokyo City University",
+    skip: "Skip to content",
     heroTitle: "Setagaya Festival\nArchive",
     seeArchive: "See past festivals",
     menuLinks: ["Official site", "Official blog", "X", "Instagram", "日本語"],
@@ -127,7 +129,8 @@ for (const lang of LANGS) {
   describe(`${lang}: page`, () => {
     test("loads with no script, no console error and no failed request", async () => {
       const { page, problems, close } = await open(t.path);
-      assert.equal(await page.locator("script").count(), 0);
+      // JSON-LD is data, not code (docs/rules/conventions.md §1).
+      assert.equal(await page.locator('script:not([type="application/ld+json"])').count(), 0);
       // Let lazy images load too: scroll to the bottom.
       await page.locator("footer").scrollIntoViewIfNeeded();
       await page.waitForLoadState("networkidle");
@@ -139,10 +142,33 @@ for (const lang of LANGS) {
       const { page, close } = await open(t.path);
       assert.equal(await page.locator("h1").count(), 1);
       assert.equal(await page.locator("h1").innerText(), t.heroTitle);
-      assert.equal(await page.title(), t.siteName);
+      assert.equal(await page.title(), t.pageTitle);
       assert.equal(await page.locator("header").count(), 1);
       assert.equal(await page.locator("main").count(), 1);
       assert.equal(await page.locator("footer").count(), 1);
+      await close();
+    });
+  });
+
+  describe(`${lang}: skip link`, () => {
+    test("is the first stop, shows only with focus and moves to the hero", async () => {
+      const { page, close } = await open(t.path);
+      const skip = page.getByRole("link", { name: t.skip, exact: true });
+      const widthOf = async () => (await skip.boundingBox())?.width ?? 0;
+      assert.ok((await widthOf()) <= 1, "hidden before focus");
+
+      await page.keyboard.press("Tab");
+      assert.equal(await skip.evaluate((element) => element === document.activeElement), true);
+      assert.ok((await widthOf()) > 1, "visible with focus");
+
+      await page.keyboard.press("Enter");
+      await page.waitForURL(/#latest$/);
+      // The next Tab starts from the hero, not from the header.
+      await page.keyboard.press("Tab");
+      assert.equal(
+        await page.evaluate(() => document.activeElement?.closest("#latest") !== null),
+        true,
+      );
       await close();
     });
   });
@@ -210,7 +236,8 @@ for (const lang of LANGS) {
 
     test("can be operated from the keyboard", async () => {
       const { page, close } = await open(t.path);
-      // MENU is the first stop.
+      // MENU is the first stop after the skip link.
+      await page.keyboard.press("Tab");
       await page.keyboard.press("Tab");
       await page.keyboard.press("Enter");
       await page.locator("#site-menu").waitFor({ state: "visible" });
@@ -576,6 +603,35 @@ for (const lang of LANGS) {
       await close();
     });
 
+    test("moves focus into the panel when it opens and back when it closes", async () => {
+      const { page, close } = await open(t.path);
+      const hero = page.locator("#latest");
+      await hero.locator(".frame").hover();
+      const button = hero.getByRole("button", { name: t.preview(latest.round), exact: true });
+      await button.focus();
+      await page.keyboard.press("Enter");
+      const dialog = page.locator(`#preview-${latest.round}`);
+      await dialog.waitFor({ state: "visible" });
+      assert.equal(
+        await dialog.evaluate((element) => element.contains(document.activeElement)),
+        true,
+        "focus is inside the panel right after it opens",
+      );
+      assert.equal(
+        await page.evaluate(() => document.activeElement?.textContent?.trim()),
+        t.close,
+        "on the close button",
+      );
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden" });
+      assert.equal(
+        await button.evaluate((element) => element === document.activeElement),
+        true,
+        "focus returns to the button that opened it",
+      );
+      await close();
+    });
+
     test("closes with the close button", async () => {
       const { page, close } = await open(t.path);
       const card = page.locator(".grid > li").first();
@@ -738,6 +794,8 @@ describe("languages", () => {
       const found = [];
       const walker = document.createTreeWalker(document.documentElement, 4 /* SHOW_TEXT */);
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        // JSON-LD is data for search engines, not text on the page.
+        if (node.parentElement?.localName === "script") continue;
         const text = node.textContent ?? "";
         const lang = node.parentElement?.closest("[lang]")?.getAttribute("lang");
         if (japanese.test(text) && lang !== "ja") found.push(text.trim());
