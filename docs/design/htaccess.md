@@ -20,6 +20,24 @@ archive ホストの公開フォルダ（さくらの `~/www/archive`）の直�
 
 - 前段が nginx、`.htaccess` を読むのはその後ろの Apache 2.4
 - http→https の転送は、今は前段の nginx が **302** で返している（コントロールパネルの HTTPS 転送）。Apache まで届かない
+- 上位の `~/www/.htaccess` には、`RewriteEngine on` と、ホストの根元（`^$`）を別のホストへ送る `RewriteRule` もある（2026-11-14 に確認）。archive の要求には掛からない（`.htaccess` の置き場所からの相対パスが `archive/…` になり、`^$` に合わないため）
+  - archive 直下の `.htaccess` に `RewriteEngine On` を書くと、archive の配下では上位の規則が継承されなくなる。上の理由で、今は影響が無い
+
+### Apache から見える要求（2026-11-14 に確認）
+
+試しのフォルダの `.htaccess` で、`mod_rewrite` の変数を `RewriteRule ^ - [E=…]` で環境変数へ移し、`Header always set` で応答に出して確かめた（Issue #49）。手元の Apache（`pnpm check:htaccess`）との違いで、規則の書き方に響くのは `Accept-Encoding` と `REDIRECT_STATUS` の2つ。
+
+| 変数                                            | さくらでの値                                                                     | 手元の Apache          |
+| ----------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------- |
+| `%{HTTP:Accept-Encoding}`                       | **常に空**。前段の nginx が外す（`User-Agent`・`Accept`・独自のヘッダは届く）    | クライアントが送った値 |
+| `%{ENV:REDIRECT_STATUS}`                        | **最初の要求から `200`**。ホスト名から公開フォルダへの振り分けが内部の転送のため | 最初の要求では空       |
+| `%{SERVER_PROTOCOL}`                            | 外から HTTP/2 で来ても `HTTP/1.1`                                                | クライアントと同じ     |
+| `%{DOCUMENT_ROOT}`                              | `…/www/archive`                                                                  | 試験用のフォルダ       |
+| `%{REQUEST_URI}`                                | 手元と同じ形（`/` は `DirectoryIndex` で `/index.html` になる）                  | 同じ                   |
+| `RewriteRule`・`-f`・`<IfModule mod_rewrite.c>` | 手元と同じに動く                                                                 | 同じ                   |
+
+- 前段の nginx は、Apache が付けた `Content-Encoding` をそのまま通す（展開し直さず、二重に圧縮もしない）。ただし、nginx 自身は圧縮しない
+- `REDIRECT_STATUS` で「内部の振り替えの後か」を見分ける書き方は、さくらでは使えない。クライアントが送った要求そのものを見るなら `%{THE_REQUEST}` を使う
 
 ## 中身
 
@@ -74,6 +92,11 @@ archive ホストの公開フォルダ（さくらの `~/www/archive`）の直�
 ### 入れていないもの
 
 - **CSP 以外のヘッダを過去回へ付けること。** 範囲の外。HSTS だけはホスト単位の仕組みなので、過去回の応答にも付く
+- **前もって圧縮したページ（`index.html.gz`）を返すこと。** さくらでは返せない（2026-11-14。#49・#51）
+  - #51 は、ビルドで `index.html.gz` を作り、`RewriteCond %{HTTP:Accept-Encoding} \bgzip\b` で振り替えた。手元の Apache と CI では通ったが、本番に置くと振り替えが一度も起きなかった
+  - 原因は、上の「Apache から見える要求」の2つ。前段の nginx が `Accept-Encoding` を外すので、Apache はクライアントが gzip を受け付けるかを見分けられない。「`.gz` の直接は 404」の規則も、`REDIRECT_STATUS` が空にならないので効かなかった
+  - `Accept-Encoding` を見ずに、常に `.gz` を返すことはしない。gzip を受け付けると言っていないクライアントにも、圧縮して返すことになる（HTTP の決まりに反する）
+  - 見直すのは、さくらの前段が `Accept-Encoding` を渡すか、自分で圧縮するようになったとき、またはホストを移すとき
 
 ## 配置で注意すること
 
@@ -84,6 +107,32 @@ archive ホストの公開フォルダ（さくらの `~/www/archive`）の直�
 - 置いたらすぐ、`curl -sI` で `/`・`/en/`・`/78th/`・存在しないパスのヘッダを確かめる。崩れていたら控えに戻す
 - `ErrorDocument` を `.html` に切り替えた後で、`errorpage/` の PHP を撤去する（#2）
 - `/img/` の退避（Issue #1 の ToDo）より前に、`scripts/lib/capture-targets.mjs` の第87回の写真（`/img/87th.JPG`）の取り先を決める。退避すると `pnpm capture 87` が取れなくなる
+- `mod_rewrite` に頼る規則を足すときは、本番のトップに置く前に、試しのフォルダで、規則が使う変数の値を確かめる（下の「試しのフォルダで確かめる」）。手元の Apache で通っても、さくらでは動かないことがある（上の「Apache から見える要求」）
+
+### 試しのフォルダで確かめる
+
+サーバーへの書き込みなので、オーナーの指示を取ってから行う。
+
+1. `~/www/archive/` の下に、過去回と重ならない名前のフォルダ（例: `rwtest-<日付>/`）を作り、確かめたいファイルと、次のような `.htaccess` を置く
+2. `curl -sS -o /dev/null -D - -H 'Accept-Encoding: gzip' https://archive.setagayafes.org/<フォルダ>/index.html` で、`X-T-…` のヘッダを読む。値が無い変数は `(null)` と出る
+3. 確かめ終わったら、フォルダごと消し、その URL が 404 になることを確かめる
+
+```apache
+# Temporary diagnostics. Remove the folder after reading the headers.
+RewriteEngine On
+RewriteRule ^(.*)$ - [E=T_RS:%{ENV:REDIRECT_STATUS},E=T_URI:%{REQUEST_URI},E=T_AE:%{HTTP:Accept-Encoding},E=T_PATH:$1]
+# Show the path only below /www/, so the account name never reaches the response.
+RewriteCond %{REQUEST_FILENAME} /www/(.*)$
+RewriteRule ^ - [E=T_FN:%1]
+Header always set X-T-RS "[%{T_RS}e]"
+Header always set X-T-URI "%{T_URI}e"
+Header always set X-T-AE "[%{T_AE}e]"
+Header always set X-T-Path "%{T_PATH}e"
+Header always set X-T-FN "%{T_FN}e"
+```
+
+- 応答のヘッダは誰でも読める。絶対パス（`%{REQUEST_FILENAME}`・`%{DOCUMENT_ROOT}`）は、アカウント名を含むので、そのまま出さない
+- 条件が合うかを確かめたいときは、`RewriteCond …` の後に `RewriteRule ^ - [E=T_X:1]` を置き、`X-T-X` が `1` か `(null)` かを見る
 
 ## 検査
 
