@@ -65,6 +65,10 @@
   - どの要素が LCP になるかの結論は、手元の速い回線ではなく Lighthouse で確かめてから書く
   - 予算はブラウザで測る。初回は最初の画面に写る分だけ（先読みは除く）、全体は絞り込みに触れずに最後までスクロールした分
 
+- **[cloud-environment.md](./ops/cloud-environment.md)**: Claude Code のクラウドセッション用の環境（`setagayafes-archive`）の、許可ホスト・セットアップスクリプト・シークレットと変数
+  - コンテナの Node v22 を、`.nvmrc` の版へ差し替える。apache2 と Playwright のブラウザも入れる
+  - `check:production` は `NODE_USE_ENV_PROXY=1` を付けて動かす。http→https の転送はクラウドでは確かめられない
+
 ## 関連
 
 - [AGENTS.md](../AGENTS.md): 作業者（人とエージェント）向けの参照順と作業の流れ
