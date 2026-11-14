@@ -16,6 +16,9 @@ archive.setagayafes.org のトップ（過去の世田谷祭の一覧）を作�
 - ブランチは `git fetch` の後、`origin/main` から切る（`git switch -c feature/… origin/main`）
   - 理由: 別の worktree でマージされた変更は、手元の `main` に入らない。#34 の初版は、#33（デザインの刷新）より前の `main` から切ったため、刷新前のヒーローに書いて作り直した
 - PR を出す前に `pnpm verify` を通す（CI でも同じものが走る）
+- コミットメッセージと PR の本文は、ファイルに書いて渡す（`git commit -F <ファイル>`、`gh pr create --body-file <ファイル>`）。1つのコマンドに heredoc を2つ入れない
+  - 理由: #60 で、`git commit -F - <<'EOF' && … --body-file - <<'EOF2'` と繋げたところ、heredoc の対応がずれた。コミットメッセージに PR の本文が混ざり、PR の本文は空になった。マージ済みのコミットのメッセージは直せず、PR の本文だけを後から直した
+  - 出した後に `git log -1 --format=%B` と `gh pr view <番号> --json body` で、メッセージと本文を読んで確かめる
 - 外部ライブラリを足すときは、目的・代替案・影響（サイズ）を示して、オーナーの承認を取る
 - さくらのサーバーには、オーナーの明示の指示があるときだけ書き込む
 - 新しく分かったことは `docs/` に書き、`docs/INDEX.md` を直す
