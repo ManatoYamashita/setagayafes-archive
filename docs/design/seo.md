@@ -26,6 +26,7 @@
 - OGP の画像は、オーナーが作った固定のデザイン（2026-11-14 に差し替え。それまでは最新の回の写真から作っていた）。年次の追加では変えない
   - 原画像は 16:9 で、上下を均等に切って 1.91:1 にする。ロゴ・題字・URL は切れない。差し替えるときも、上下の端に要る文字を置かない
   - 原画像は、メタデータ（EXIF・XMP）を抜いてからコミットする。Canva などの書き出しには、作者名や作成元の ID が XMP で入る。出力の JPEG はビルドで作り直すので残らないが、原画像はリポジトリに公開される
+  - 抜くときは `scripts/lib/jpeg.mjs` の `stripJpegMetadata` を使う（画素はそのまま。`node -e` で1回呼べば足りる）。`pnpm test` が、`src/assets/og/` の JPEG にメタデータが残っていないことを検査する
 
 ## 配置で注意すること
 
@@ -38,7 +39,7 @@
 
 | 検査                                  | 見るもの                                                                                                                                                                        |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `scripts/seo.test.mjs`（`pnpm test`） | URL・alternate・sitemap の中身・robots.txt の規則                                                                                                                               |
+| `scripts/seo.test.mjs`（`pnpm test`） | URL・alternate・sitemap の中身・robots.txt の規則・OGP の原画像にメタデータが無いこと                                                                                           |
 | `e2e/seo.e2e.mjs`（`pnpm test:e2e`）  | `dist/` の `<head>`（canonical・OGP・`twitter:card`）、OGP の画像の寸法と Content-Type とメタデータ（JFIF 以外の APPn が無いこと）、sitemap が XML として読めること、robots.txt |
 
 - e2e のテスト用サーバー（`e2e/lib/server.mjs`）は、拡張子で Content-Type を決める。新しい拡張子を出すときは、`TYPES` にも足す

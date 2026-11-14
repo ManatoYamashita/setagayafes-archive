@@ -1,9 +1,13 @@
 // Tests for the search-engine metadata (src/lib/seo.ts): URLs, the sitemap
-// and robots.txt. Run with `pnpm test`.
+// and robots.txt, and the committed original of the Open Graph image.
+// Run with `pnpm test`.
 
 import assert from "node:assert/strict";
+import { readFile, readdir } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { describe, test } from "node:test";
-import { URL } from "node:url";
+import { URL, fileURLToPath } from "node:url";
+import { metadataSegments, stripJpegMetadata } from "./lib/jpeg.mjs";
 import {
   OG_LOCALES,
   ROBOTS_DISALLOW,
@@ -82,4 +86,28 @@ describe("robots.txt", () => {
   test("points to the sitemap with an absolute URL", () => {
     assert.ok(lines.includes("Sitemap: https://archive.setagayafes.org/sitemap.xml"));
   });
+});
+
+// The original is published with the repository. Design tools write the
+// author's name and their own ids into XMP (Canva did), so it must be committed
+// already stripped: `stripJpegMetadata` from scripts/lib/jpeg.mjs.
+describe("src/assets/og/", async () => {
+  const dir = join(dirname(fileURLToPath(import.meta.url)), "..", "src/assets/og");
+  const files = await readdir(dir);
+
+  test("holds only the original JPEG", () => {
+    assert.deepEqual(files, ["ogp.jpg"]);
+  });
+
+  for (const file of files) {
+    test(`${file} carries no metadata`, async () => {
+      const bytes = new Uint8Array(await readFile(join(dir, file)));
+      const ids = metadataSegments(bytes).map(({ marker, id }) => `${marker.toString(16)} ${id}`);
+      assert.ok(
+        ids.every((id) => /^e0 JFIF|^e2 ICC_PROFILE|^ee Adobe/.test(id)),
+        `metadata left in ${file}: ${ids.join(", ")}`,
+      );
+      assert.deepEqual(stripJpegMetadata(bytes), bytes);
+    });
+  }
 });
