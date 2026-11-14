@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import { readFile, readdir } from "node:fs/promises";
+import { crc32, deflateSync, inflateSync } from "node:zlib";
 import { dirname, join } from "node:path";
 import { describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -21,7 +22,7 @@ import {
   relatedTarget,
 } from "./lib/capture-targets.mjs";
 import { exifOrientation, metadataSegments, stripJpegMetadata } from "./lib/jpeg.mjs";
-import { letterboxLayout } from "./lib/letterbox.mjs";
+import { METADATA_CHUNKS, optimizePng, pngChunks, pngSize } from "./lib/png.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -92,40 +93,72 @@ describe("captureTarget", () => {
     assert.equal(target.file, "87th.jpg");
   });
 
-  test("the 97th uses its site's OGP image, saved as PNG", () => {
+  test("the 97th is the picture handed over by the owner, never captured", () => {
     assert.deepEqual(captureTarget(97), {
-      kind: "ogp",
+      kind: "supplied",
       number: 97,
       slug: "97th",
-      url: `${ARCHIVE_ORIGIN}/97th/ogp-v3.webp`,
+      url: null,
       dir: CAPTURE_DIR,
       file: "97th.png",
     });
   });
 });
 
-describe("letterboxLayout", () => {
-  test("puts rows above and below a wide picture", () => {
-    // The OGP size: 1200x630 becomes 1200x750, with 60 rows on each side.
-    assert.deepEqual(letterboxLayout(1200, 630), { width: 1200, height: 750, x: 0, y: 60 });
+// A 2x1 RGB PNG whose rows use filter 0, with the given extra chunks.
+/** @param {[string, string][]} extra */
+function tinyPng(extra = []) {
+  const chunk = (/** @type {string} */ type, /** @type {Buffer} */ data) => {
+    const head = Buffer.alloc(8);
+    head.writeUInt32BE(data.length, 0);
+    head.write(type, 4, "latin1");
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(Buffer.concat([head.subarray(4), data])), 0);
+    return Buffer.concat([head, data, crc]);
+  };
+  const header = Buffer.from([0, 0, 0, 2, 0, 0, 0, 1, 8, 2, 0, 0, 0]);
+  const scanlines = Buffer.from([0, 255, 0, 0, 0, 0, 255]);
+  return new Uint8Array(
+    Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      chunk("IHDR", header),
+      chunk("sRGB", Buffer.from([0])),
+      ...extra.map(([type, text]) => chunk(type, Buffer.from(text, "latin1"))),
+      chunk("IDAT", deflateSync(scanlines, { level: 0 })),
+      chunk("IEND", Buffer.alloc(0)),
+    ]),
+  );
+}
+
+describe("optimizePng", () => {
+  const withMetadata = tinyPng([
+    ["iTXt", "XML:com.adobe.xmp\0\0\0\0\0<x:xmpmeta/>"],
+    ["eXIf", "MM\0*"],
+    ["tEXt", "Author\0someone"],
+    ["pHYs", "123456789"],
+  ]);
+
+  test("removes the metadata chunks and keeps the color chunks", () => {
+    const types = pngChunks(optimizePng(withMetadata)).map(({ type }) => type);
+    assert.deepEqual(types, ["IHDR", "sRGB", "IDAT", "IEND"]);
   });
 
-  test("puts columns on both sides of a tall picture", () => {
-    assert.deepEqual(letterboxLayout(1200, 900), { width: 1440, height: 900, x: 120, y: 0 });
+  test("keeps the pixels", () => {
+    const pixels = (/** @type {Uint8Array} */ png) =>
+      inflateSync(
+        Buffer.concat(
+          pngChunks(png)
+            .filter(({ type }) => type === "IDAT")
+            .map(({ data }) => data),
+        ),
+      );
+    assert.deepEqual(pixels(optimizePng(withMetadata)), pixels(withMetadata));
+    assert.deepEqual(pngSize(optimizePng(withMetadata)), { width: 2, height: 1 });
   });
 
-  test("leaves a 16:10 picture as it is", () => {
-    assert.deepEqual(letterboxLayout(2560, 1600), { width: 2560, height: 1600, x: 0, y: 0 });
-  });
-
-  test("gives an odd remainder to the bottom", () => {
-    assert.deepEqual(letterboxLayout(1600, 999), { width: 1600, height: 1000, x: 0, y: 0 });
-    assert.deepEqual(letterboxLayout(1600, 997), { width: 1600, height: 1000, x: 0, y: 1 });
-  });
-
-  test("refuses a size that is not a picture", () => {
-    assert.throws(() => letterboxLayout(0, 630), /not a picture size/);
-    assert.throws(() => letterboxLayout(1200.5, 630), /not a picture size/);
+  test("refuses broken input", () => {
+    assert.throws(() => pngChunks(new Uint8Array([1, 2, 3])), /not a PNG/);
+    assert.throws(() => pngChunks(withMetadata.subarray(0, 40)), /broken PNG/);
   });
 });
 
@@ -256,6 +289,13 @@ describe(`${CAPTURE_DIR}/`, async () => {
       .sort();
     assert.deepEqual([...files].sort(), expected);
   });
+  for (const file of files.filter((name) => name.endsWith(".png"))) {
+    test(`${file} carries no metadata`, async () => {
+      const types = pngChunks(new Uint8Array(await readFile(join(dir, file)))).map((c) => c.type);
+      const left = types.filter((type) => METADATA_CHUNKS.includes(type));
+      assert.deepEqual(left, [], `metadata left in ${file}`);
+    });
+  }
   for (const file of files.filter((name) => name.endsWith(".jpg"))) {
     test(`${file} carries no metadata`, async () => {
       const bytes = new Uint8Array(await readFile(join(dir, file)));
