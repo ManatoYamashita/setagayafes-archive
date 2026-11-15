@@ -96,6 +96,10 @@ describe("robots.txt", () => {
     assert.ok(lines.includes("Disallow: /errorpage/"));
   });
 
+  test("leaves /errors/ open, so crawlers read the error pages' noindex", () => {
+    assert.ok(!lines.some((line) => line.startsWith("Disallow: /errors")));
+  });
+
   test("blocks nothing else, so crawlers can still read the festival sites' noindex", () => {
     const disallowed = lines.filter((line) => line.startsWith("Disallow:"));
     assert.deepEqual(

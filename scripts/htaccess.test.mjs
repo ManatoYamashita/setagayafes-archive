@@ -8,6 +8,8 @@ import {
   ARCHIVE_HOST,
   ERROR_CODES,
   buildHtaccess,
+  errorCsp,
+  isErrorPage,
   pageCsp,
   pathPatterns,
   styleHashesOf,
@@ -21,6 +23,7 @@ const FILES = [
   "favicon.svg",
   "robots.txt",
   "sitemap.xml",
+  ...ERROR_CODES.map((code) => `errors/${code}.html`),
 ];
 
 const sha256 = (/** @type {string} */ text) =>
@@ -55,6 +58,21 @@ describe("pageCsp", () => {
   test("never falls back to 'unsafe-inline'", () => {
     assert.doesNotMatch(pageCsp([]), /unsafe/);
     assert.match(pageCsp([]), /style-src 'none'/);
+  });
+});
+
+describe("errorCsp", () => {
+  test("allows only own images and the hashed styles: no frames, no requests", () => {
+    assert.equal(
+      errorCsp(["'sha256-e'"]),
+      "default-src 'none'; script-src 'none'; style-src 'sha256-e'; img-src 'self'; " +
+        "base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    );
+  });
+
+  test("never falls back to 'unsafe-inline'", () => {
+    assert.doesNotMatch(errorCsp([]), /unsafe/);
+    assert.match(errorCsp([]), /style-src 'none'/);
   });
 });
 
@@ -114,6 +132,29 @@ describe("pathPatterns", () => {
     }
   });
 
+  test("the error pages are /errors/NNN.html only", () => {
+    const errors = new RegExp(patterns.errors);
+    for (const code of ERROR_CODES) assert.ok(errors.test(`/errors/${code}.html`), `${code}`);
+    for (const path of [
+      "/errors/",
+      "/errors/404",
+      "/errors/404.html.bak",
+      "/errors/x/404.html",
+      "/errorpage/404.html",
+      "/78th/errors/404.html",
+    ]) {
+      assert.ok(!errors.test(path), path);
+    }
+    assert.ok(own.test("/errors/404.html"), "they get the common headers");
+    assert.ok(!pages.test("/errors/404.html"), "they are not top pages (stay noindex)");
+  });
+
+  test("isErrorPage() tells the error pages from the other files in dist/", () => {
+    assert.equal(isErrorPage("errors/404.html"), true);
+    assert.equal(isErrorPage("index.html"), false);
+    assert.equal(isErrorPage("en/index.html"), false);
+  });
+
   test("only /_astro/ files are cached as immutable", () => {
     assert.ok(immutable.test("/_astro/97th.abc_123.avif"));
     assert.ok(!immutable.test("/_astro/"));
@@ -122,13 +163,43 @@ describe("pathPatterns", () => {
 });
 
 describe("buildHtaccess", () => {
-  const htaccess = buildHtaccess({ files: FILES, styleHashes: ["'sha256-a'"] });
+  const htaccess = buildHtaccess({
+    files: FILES,
+    styleHashes: ["'sha256-a'"],
+    errorStyleHashes: ["'sha256-e'"],
+  });
 
-  test("serves the static error pages", () => {
+  test("serves this repository's error pages for all 33 codes", () => {
+    assert.equal(ERROR_CODES.length, 33);
     for (const code of ERROR_CODES) {
-      assert.ok(htaccess.includes(`ErrorDocument ${code} /errorpage/${code}.html\n`), `${code}`);
+      assert.ok(htaccess.includes(`ErrorDocument ${code} /errors/${code}.html\n`), `${code}`);
     }
+    assert.doesNotMatch(htaccess, /ErrorDocument \d+ \/errorpage\//);
     assert.doesNotMatch(htaccess, /\.php/);
+  });
+
+  test("refuses to point ErrorDocument at a page that was not built", () => {
+    assert.throws(
+      () =>
+        buildHtaccess({
+          files: FILES.filter((file) => file !== "errors/503.html"),
+          styleHashes: [],
+          errorStyleHashes: [],
+        }),
+      /503/,
+    );
+  });
+
+  test("sends the error pages their own CSP, matched by their own path", () => {
+    assert.ok(
+      htaccess.includes(
+        `<If "%{REQUEST_URI} =~ m#^/errors/[0-9]{3}\\.html$#">\n` +
+          `  Header always set Content-Security-Policy "${errorCsp(["'sha256-e'"])}"\n` +
+          '  Header always set Cache-Control "no-cache"\n</If>',
+      ),
+    );
+    // Each policy allows only its own pages' styles.
+    assert.ok(!errorCsp(["'sha256-e'"]).includes("'sha256-a'"));
   });
 
   test("never sets a security header outside an <If>", () => {

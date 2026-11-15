@@ -12,9 +12,15 @@ import { HOME_PATHS, LANG_NAMES, UI, otherLang } from "../i18n/ui.ts";
 
 interface Props {
   lang: Lang;
+  /**
+   * For the error pages: drops the links that only make sense on a top page.
+   * The footer has no in-page anchors, so that is the language switch: an
+   * error page carries both languages and has no other-language version.
+   */
+  minimal?: boolean;
 }
 
-const { lang } = Astro.props;
+const { lang, minimal = false } = Astro.props;
 const ui = UI[lang];
 const other = otherLang(lang);
 const social = SITE_LINKS.filter((link) => "icon" in link);
@@ -61,7 +67,7 @@ const [official, ...others] = SITE_LINKS.filter((link) => !("icon" in link));
 
       <p class="copyright">© {ORGANIZER[lang]}</p>
 
-      <nav class="links" aria-label={ui.footerMenuLabel}>
+      <nav class="links" aria-label={minimal ? ui.footerLinksLabel : ui.footerMenuLabel}>
         <ul role="list">
           {others.map((link) => (
             <li>
@@ -70,11 +76,13 @@ const [official, ...others] = SITE_LINKS.filter((link) => !("icon" in link));
               </a>
             </li>
           ))}
-          <li>
-            <a class="text-link" href={HOME_PATHS[other]} hreflang={other} lang={other}>
-              {LANG_NAMES[other]}
-            </a>
-          </li>
+          {!minimal && (
+            <li>
+              <a class="text-link" href={HOME_PATHS[other]} hreflang={other} lang={other}>
+                {LANG_NAMES[other]}
+              </a>
+            </li>
+          )}
           {official && (
             <li>
               <a class="outline-button" href={official.url}>

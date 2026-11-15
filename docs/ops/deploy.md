@@ -13,9 +13,13 @@
 | `index.html`・`robots.txt`・`.htaccess`              | 旧トップのものを上書き | 前回のものを上書き |
 | `en/`・`_astro/`                                     | 新しく作る             | 丸ごと入れ替える   |
 | `favicon.svg`・`apple-touch-icon.png`・`sitemap.xml` | 新しく作る             | 上書き             |
+| `errors/`（エラーページ33本）                        | 新しく作る             | 丸ごと入れ替える   |
 
 - `.htaccess` は `pnpm build` が作る（[htaccess.md](../design/htaccess.md)）。**HTML と `.htaccess` は必ず一緒に置く。** HTML だけを置き換えると、CSP のハッシュがずれてスタイルが当たらなくなる
 - `_astro/` は、ファイル名に中身のハッシュが入る。フォルダごと入れ替えるので、古いファイルは残らない
+- `errors/` は、`.htaccess` の `ErrorDocument` が指す。**`errors/` と `.htaccess` も必ず一緒に置く。** `.htaccess` だけが新しいと、存在しないページを指し、Apache の素の文言が出る。`errors/` だけが新しいと、CSP のハッシュがずれてスタイルが当たらない
+  - サーバーの `errorpage/`（前のエラーページ）は消さずに残す。新しいエラーページが壊れたときは、`.htaccess` を戻すだけで前の画面に戻る
+  - `errors/` が初めて入る配置の前に、サーバーに `~/www/archive/errors` が無いことを確かめる（`ssh setagayafes-archive 'ls -d www/archive/errors'` が `No such file or directory`）。あれば `remote-deploy.sh` が「前の配置が作っていないフォルダ」として止まる
 
 ## 道具
 
@@ -101,11 +105,12 @@ pnpm check:production
 pnpm check:production:browser
 ```
 
-- `check:production`: トップのページ（noindex が無い・CSP などが付く）、`/_astro/` のキャッシュ、OGP の画像の Content-Type、過去回（`/78th/`）に余計なヘッダが付かないこと、404 ページ、初期ドメイン経由、http→https の 302 を確かめる
+- `check:production`: トップのページ（noindex が無い・CSP などが付く）、`/_astro/` のキャッシュ、OGP の画像の Content-Type、過去回（`/78th/`）に余計なヘッダが付かないこと、エラーページ（存在しない URL が 404 のまま `/errors/404.html` の中身を返し、エラーページ用の CSP・noindex・`no-cache` が付くこと）、初期ドメイン経由、http→https の 302 を確かめる
 - `check:production:browser`: Playwright の Chromium で、1ページずつ順に開いて確かめる（ページを開くだけ）
   - `/`・`/en/`・`/78th/`・`/96th/` が 200 を返す
   - `/`・`/en/` で、最後までスクロールしても、コンソールのエラー・4xx/5xx の応答・失敗したリクエストが0件
   - `/` で MENU（`#site-menu`）が開き、閉じる。時代の絞り込みを切り替えると、表示されるカードの数が変わる
+  - `/no-such-page/` が 404 を返し、エラーページのスタイルが当たる（CSP のハッシュがずれると当たらない）。文書の 404 以外に、エラー・失敗したリクエストが0件
 - 2つとも `ok` なら、ブラウザで目で見る確認は要らない。見た目の崩れ（重なり・はみ出し）は検査していないので、気になる変更を配置したときは開いて見る
 - **1つでも落ちて、表示が壊れていたら、すぐ戻す**（下の「戻し方」）。原因はその後で調べる
 - クラウド環境から流したときは、「http:// redirect」の項目だけは必ず落ちる。暗号化しない `http://` の通信が外へ出られないため（[cloud-environment.md](./cloud-environment.md)）
@@ -212,6 +217,7 @@ pnpm check:production   # 戻した後は、旧トップに戻っているので
 
 ## 注意
 
+- **他のセッションの配置と重なると、`ErrorDocument` の変更が黙って消える。** `.htaccess` は zip ごとに丸ごと上書きされるため。配置の前に、配置する版に `ErrorDocument … /errors/NNN.html` が入っていること（`grep -c '^ErrorDocument .* /errors/' dist/.htaccess` が `33`）と、今のサーバーの `.htaccess` との差分を確かめる（`ssh setagayafes-archive 'cat www/archive/.htaccess' | diff - dist/.htaccess`）
 - サーバーは FreeBSD で、ログインシェルは csh。スクリプトは `ssh … 'sh -s' < スクリプト` で流す（`<( )` は使えない）
 - `ssh setagayafes-archive …`・`scp` を流すたびに、`then: then/endif not found.` の行が出る。ログインシェル（csh）の初期化ファイルの書き間違いから出ているとみられる（原因は確かめていない）。送信・展開・`pnpm check:production` には影響しない（2026-11-14 の配置で確かめた）ので、無視して進める
   - 成否は、各スクリプトの最後の `ok` の行（展開は `ok   extracted …`、戻しは `ok   rolled back …`）と終了コード（直後の `echo $?` が `0`）で判断する。`FAIL` の行が出るか、終了コードが `0` でなければ失敗

@@ -12,18 +12,12 @@
 // docs/design/htaccess.md.
 
 import { createHash } from "node:crypto";
+import { ERROR_CODES, ERROR_PAGE_DIR, errorPagePath } from "../../src/i18n/errors.ts";
+
+export { ERROR_CODES };
 
 /** The host name of the archive. HSTS is sent only for this host. */
 export const ARCHIVE_HOST = "archive.setagayafes.org";
-
-/**
- * Status codes that have a static error page in /errorpage/ on the server
- * (NNN.html, written when the WordPress sites were made static: Issue #2).
- */
-export const ERROR_CODES = Object.freeze([
-  400, 401, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 421, 422,
-  423, 424, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511,
-]);
 
 /** Sent with everything this repository publishes. */
 export const COMMON_HEADERS = Object.freeze({
@@ -83,6 +77,28 @@ export function pageCsp(styleHashes) {
   ].join("; ");
 }
 
+/**
+ * The Content-Security-Policy of the error pages (/errors/NNN.html). Narrower
+ * than the top pages': they have no preview iframe, and Lighthouse is not run
+ * on them, so frame-src and connect-src stay at 'none'.
+ *
+ * @param {readonly string[]} styleHashes From styleHashesOf() of the error pages.
+ * @returns {string}
+ */
+export function errorCsp(styleHashes) {
+  const styles = [...new Set(styleHashes)].toSorted();
+  return [
+    "default-src 'none'",
+    "script-src 'none'",
+    `style-src ${styles.length > 0 ? styles.join(" ") : "'none'"}`,
+    // The favicon and the credit logo in the footer.
+    "img-src 'self'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "frame-ancestors 'none'",
+  ].join("; ");
+}
+
 /** @param {string} text */
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -96,9 +112,10 @@ function escapeRegExp(text) {
  * - `own`: every published file, and every folder only this repository uses
  *   (the past festival folders never collide with them: guard-source.mjs)
  * - `immutable`: files whose names carry a content hash (/_astro/)
+ * - `errors`: the error pages (/errors/NNN.html)
  *
  * @param {readonly string[]} files Paths relative to dist/, with "/" separators.
- * @returns {{ pages: string, own: string, immutable: string }}
+ * @returns {{ pages: string, own: string, immutable: string, errors: string }}
  */
 export function pathPatterns(files) {
   const published = files.filter((file) => file !== ".htaccess");
@@ -119,18 +136,39 @@ export function pathPatterns(files) {
     // "/" itself is the top page; the empty alternative matches it.
     own: `^/(?:|${own.join("|")})$`,
     immutable: "^/_astro/[^/]+$",
+    errors: `^${escapeRegExp(ERROR_PAGE_DIR)}[0-9]{3}\\.html$`,
   };
+}
+
+/**
+ * Whether a file in dist/ is an error page, e.g. "errors/404.html".
+ *
+ * @param {string} file
+ */
+export function isErrorPage(file) {
+  return new RegExp(pathPatterns([]).errors).test(`/${file}`);
 }
 
 /**
  * The whole .htaccess.
  *
- * @param {{ files: readonly string[], styleHashes: readonly string[] }} input
- *   `files`: everything in dist/; `styleHashes`: from every HTML page.
+ * @param {{
+ *   files: readonly string[],
+ *   styleHashes: readonly string[],
+ *   errorStyleHashes: readonly string[],
+ * }} input
+ *   `files`: everything in dist/; `styleHashes`: from the top pages;
+ *   `errorStyleHashes`: from the error pages.
  * @returns {string}
  */
-export function buildHtaccess({ files, styleHashes }) {
-  const { pages, own, immutable } = pathPatterns(files);
+export function buildHtaccess({ files, styleHashes, errorStyleHashes }) {
+  const missing = ERROR_CODES.filter((code) => !files.includes(errorPagePath(code).slice(1)));
+  if (missing.length > 0) {
+    // ErrorDocument would point at a file that is not there, and the server
+    // would answer with its bare built-in message instead.
+    throw new Error(`no error page for ${missing.join(", ")} in dist/`);
+  }
+  const { pages, own, immutable, errors } = pathPatterns(files);
   const common = Object.entries(COMMON_HEADERS).map(
     ([name, value]) => `  Header always set ${name} "${value}"`,
   );
@@ -140,8 +178,10 @@ export function buildHtaccess({ files, styleHashes }) {
     "# Do not edit it on the server: change the repository and deploy again.",
     "# Why each part is here: docs/design/htaccess.md",
     "",
-    "# Error pages: the static pages in /errorpage/ (the PHP versions are retired).",
-    ...ERROR_CODES.map((code) => `ErrorDocument ${code} /errorpage/${code}.html`),
+    "# Error pages, published from this repository. The response keeps the",
+    "# original status (a missing page is still a 404). The previous pages in",
+    "# /errorpage/ stay on the server: pointing these lines back restores them.",
+    ...ERROR_CODES.map((code) => `ErrorDocument ${code} ${errorPagePath(code)}`),
     "",
     "<IfModule mod_headers.c>",
     "",
@@ -163,6 +203,14 @@ export function buildHtaccess({ files, styleHashes }) {
     `<If "%{REQUEST_URI} =~ m#${pages}#">`,
     `  Header always set Content-Security-Policy "${pageCsp(styleHashes)}"`,
     '  Header set Cache-Control "no-cache"',
+    "</If>",
+    "# ErrorDocument hands the request over internally, and <If> then sees the",
+    "# error page's path in REQUEST_URI, not the URL that failed (measured on",
+    "# Apache 2.4: docs/design/htaccess.md). So the error pages are matched by",
+    "# their own path, whatever URL they are shown for.",
+    `<If "%{REQUEST_URI} =~ m#${errors}#">`,
+    `  Header always set Content-Security-Policy "${errorCsp(errorStyleHashes)}"`,
+    '  Header always set Cache-Control "no-cache"',
     "</If>",
     `<If "%{REQUEST_URI} =~ m#${immutable}#">`,
     `  Header set Cache-Control "public, max-age=${ONE_YEAR}, immutable"`,

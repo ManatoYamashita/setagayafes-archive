@@ -23,11 +23,17 @@ const TYPES = {
  * Starts the server on a free port.
  *
  * @param {string} root Directory to serve (usually dist/).
- * @param {{ headers?: (pathname: string) => Record<string, string> }} [options]
- *   Extra response headers for a path, e.g. the CSP that dist/.htaccess sets.
+ * @param {{
+ *   headers?: (pathname: string) => Record<string, string>,
+ *   notFoundPage?: string,
+ * }} [options]
+ *   `headers`: extra response headers for a path, e.g. the CSP that
+ *   dist/.htaccess sets. `notFoundPage`: a path under root (e.g.
+ *   "/errors/404.html") to answer missing paths with, keeping the 404 status,
+ *   as ErrorDocument does on the server.
  * @returns {Promise<{ url: string, close: () => Promise<void> }>}
  */
-export async function serve(root, { headers = () => ({}) } = {}) {
+export async function serve(root, { headers = () => ({}), notFoundPage } = {}) {
   const base = resolve(root);
 
   const server = createServer(async (request, response) => {
@@ -44,6 +50,12 @@ export async function serve(root, { headers = () => ({}) } = {}) {
       });
       response.end(body);
     } catch {
+      if (notFoundPage) {
+        const body = await readFile(join(base, notFoundPage));
+        response.writeHead(404, { ...headers(notFoundPage), "content-type": TYPES[".html"] });
+        response.end(body);
+        return;
+      }
       response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
       response.end("Not found");
     }

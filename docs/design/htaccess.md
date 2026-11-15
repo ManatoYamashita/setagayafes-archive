@@ -16,7 +16,7 @@ archive ホストの公開フォルダ（さくらの `~/www/archive`）の直�
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `~/www/.htaccess`（上位）  | `ErrorDocument`（`.php`）と、ホスト名が archive・about・blog・form・link のときの `X-Robots-Tag: noindex, noimageindex` |
 | `~/www/archive/.htaccess`  | `ErrorDocument`（`.php`）と、無条件の `X-Robots-Tag: noindex, noimageindex`。これを `dist/.htaccess` で置き換える       |
-| `~/www/archive/errorpage/` | エラーページ。`NNN.php` と、静的化した `NNN.html` が両方ある                                                            |
+| `~/www/archive/errorpage/` | 前のエラーページ（#24 で静的化した `NNN.html`）。今は使わないが、戻すときのために残す                                   |
 
 - 前段が nginx、`.htaccess` を読むのはその後ろの Apache 2.4
 - http→https の転送は、今は前段の nginx が **302** で返している（コントロールパネルの HTTPS 転送）。Apache まで届かない
@@ -43,13 +43,14 @@ archive ホストの公開フォルダ（さくらの `~/www/archive`）の直�
 
 | 部分               | 対象                                                           | 中身                                                                                                                                                                                                                                                           |
 | ------------------ | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ErrorDocument`    | すべて                                                         | `/errorpage/NNN.html`（静的なページ）。PHP の版は使わない                                                                                                                                                                                                      |
+| `ErrorDocument`    | すべて                                                         | `/errors/NNN.html`（このリポジトリが出力する33本）。応答のステータスは元のまま（404 なら 404）。`/errorpage/` へ戻せば前の画面になる                                                                                                                           |
 | noindex            | トップのページ（`/`・`/index.html`・`/en/`・`/en/index.html`） | `X-Robots-Tag` を `unset` する。上位の `.htaccess` が付けたぶんも消える                                                                                                                                                                                        |
 |                    | それ以外のすべて（過去回・エラーページ・画像など）             | `X-Robots-Tag: noindex, noimageindex`（これまでと同じ）                                                                                                                                                                                                        |
 | セキュリティヘッダ | このリポジトリが出力したパス                                   | `X-Content-Type-Options`・`Referrer-Policy`・`Permissions-Policy`・`Cross-Origin-Opener-Policy`                                                                                                                                                                |
 | CSP                | トップのページ                                                 | `default-src 'none'; script-src 'none'`、`style-src` はインラインの `<style>` の sha256、`img-src 'self'`・`connect-src 'self'`・`frame-src 'self'`（プレビューの iframe。[screen.md](./screen.md)）、`base-uri`・`form-action`・`frame-ancestors` は `'none'` |
+| CSP（エラー）      | `/errors/NNN.html`                                             | トップと別の方針。`default-src 'none'; script-src 'none'`、`style-src` はエラーページの `<style>` の sha256、`img-src 'self'`、`base-uri`・`form-action`・`frame-ancestors` は `'none'`。iframe も通信も無いので `frame-src`・`connect-src` は足さない         |
 | キャッシュ         | `/_astro/`                                                     | `public, max-age=31536000, immutable`（ファイル名に中身のハッシュが入るため）                                                                                                                                                                                  |
-|                    | トップのページ                                                 | `no-cache`（毎回確かめる。中身が変われば取り直す）                                                                                                                                                                                                             |
+|                    | トップのページ・エラーページ                                   | `no-cache`（毎回確かめる。中身が変われば取り直す）                                                                                                                                                                                                             |
 | HSTS               | Host が `archive.setagayafes.org` のとき                       | `max-age=31536000`。`includeSubDomains` は付けない                                                                                                                                                                                                             |
 | 圧縮               | このリポジトリが出力したパス                                   | `mod_deflate` があるときだけ。さくらでは効かないことを実測済みなので、無くても困らない                                                                                                                                                                         |
 
@@ -60,6 +61,22 @@ archive ホストの公開フォルダ（さくらの `~/www/archive`）の直�
   - 上位の `~/www/.htaccess` は、このリポジトリの外にあり、他のホストにも効く。書き換えない
 - `<FilesMatch>` では限れない。`index.html` は過去回のフォルダにもある
 - `/` を開いたとき、Apache は `DirectoryIndex` で `/index.html` へ内部で振り替える。正規表現は `/` と `/index.html` の両方に合わせてある
+
+### エラーページの範囲は、転送先のパスで限る（2026-11-15 に実測）
+
+`ErrorDocument` は、失敗した要求を、エラーページへ**内部で転送**して返す。そのとき `<If>` が見る `%{REQUEST_URI}` が、元の URL か転送先かを、手元の Apache 2.4.58 で測った（Issue #70）。
+
+| 要求                       | 応答 | `%{REQUEST_URI}`   | `%{THE_REQUEST}`                | `<If "%{REQUEST_URI} =~ m#^/errors/#">` | 元の URL に合わせた `<If>` |
+| -------------------------- | ---- | ------------------ | ------------------------------- | --------------------------------------- | -------------------------- |
+| `/no-such-page/`（無い）   | 404  | `/errors/404.html` | `GET /no-such-page/ HTTP/1.1`   | 効く                                    | 効かない                   |
+| `/errors/404.html`（直接） | 200  | `/errors/404.html` | `GET /errors/404.html HTTP/1.1` | 効く                                    | —                          |
+| `/78th/`（過去回）         | 200  | `/78th/index.html` | `GET /78th/ HTTP/1.1`           | 効かない                                | —                          |
+
+- `REQUEST_URI` は**転送先**になる。そのため、エラーページの CSP は `<If "%{REQUEST_URI} =~ m#^/errors/[0-9]{3}\.html$#">` と、エラーページ自身のパスで限る。どの URL に出ても、同じヘッダが付く
+- 元の要求の `<If>` で付けたヘッダは、転送後の応答に残らなかった。元の URL がトップのページ（`/en/` など）に合っても、トップの CSP や noindex の解除は、エラーページに付かない
+- `Header set`（`always` 無し）でも 404 の応答に付いた。エラーの応答に付けるものは、念のため `Header always set` で書く
+- 共通のヘッダ（`X-Content-Type-Options` など）は、`own` の範囲（`errors/.*` を含む）で付く。noindex は `<Else>` の側で付く
+- さくらで同じに動くかは、配置後の `pnpm check:production`（存在しない URL で、エラーページの CSP と 404 を確かめる）で確かめる。上の表の `REQUEST_URI` の形は、さくらでも手元と同じだった（「Apache から見える要求」）
 
 ### `connect-src 'self'` を入れる理由
 
@@ -105,7 +122,8 @@ archive ホストの公開フォルダ（さくらの `~/www/archive`）の直�
 - zip に `.htaccess`（ドットファイル）を含める
 - 置き換える前に、今の `~/www/archive/.htaccess` の控えを `~/archive-docs/`（公開フォルダの外）に取る
 - 置いたらすぐ、`curl -sI` で `/`・`/en/`・`/78th/`・存在しないパスのヘッダを確かめる。崩れていたら控えに戻す
-- `ErrorDocument` を `.html` に切り替えた後で、`errorpage/` の PHP を撤去する（#2）
+- `ErrorDocument` は `/errors/` を指す。`errors/` と `.htaccess` は必ず一緒に置く（[deploy.md](../ops/deploy.md)）
+- 他のセッションの配置と重なると、`ErrorDocument` の変更が黙って消える（#24 で起きた）。配置する版の `.htaccess` に `/errors/` の行が33本あることを確かめる
 - `/img/` の退避（Issue #1 の ToDo）より前に、`scripts/lib/capture-targets.mjs` の第87回の写真（`/img/87th.JPG`）の取り先を決める。退避すると `pnpm capture 87` が取れなくなる
 - `mod_rewrite` に頼る規則を足すときは、本番のトップに置く前に、試しのフォルダで、規則が使う変数の値を確かめる（下の「試しのフォルダで確かめる」）。手元の Apache で通っても、さくらでは動かないことがある（上の「Apache から見える要求」）
 
@@ -136,11 +154,12 @@ Header always set X-T-FN "%{T_FN}e"
 
 ## 検査
 
-| 検査                                       | 見るもの                                                                                                             |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| `scripts/htaccess.test.mjs`（`pnpm test`） | 範囲の正規表現（過去回・`/errorpage/`・`/img/` に掛からないこと）、CSP、HSTS、すべてのヘッダが `<If>` の中にあること |
-| `pnpm check:htaccess`                      | 手元の Apache 2.4 で、上位と archive 直下の2段の `.htaccess` を再現し、実際に返るヘッダを確かめる                    |
-| `e2e/headers.e2e.mjs`（`pnpm test:e2e`）   | CSP を掛けたページが、掛けないときと同じに表示され、違反が出ないこと                                                 |
+| 検査                                       | 見るもの                                                                                                                                                                                                                                                     |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `scripts/htaccess.test.mjs`（`pnpm test`） | 範囲の正規表現（過去回・`/errorpage/`・`/img/` に掛からないこと）、CSP、HSTS、すべてのヘッダが `<If>` の中にあること、`ErrorDocument` が33本とも `/errors/` を指し、出力に無いページを指さないこと                                                           |
+| `pnpm check:htaccess`                      | 手元の Apache 2.4 で、上位と archive 直下の2段の `.htaccess` を再現し、実際に返るヘッダを確かめる。存在しない URL（深い階層・過去回の中を含む）で 404 のエラーページ、拒否するフォルダで 403 のエラーページが、元のステータスとエラーページの CSP で返ること |
+| `e2e/headers.e2e.mjs`（`pnpm test:e2e`）   | CSP を掛けたページが、掛けないときと同じに表示され、違反が出ないこと                                                                                                                                                                                         |
+| `e2e/errors.e2e.mjs`（`pnpm test:e2e`）    | エラーページ33本が、エラーページの CSP で違反を出さないこと                                                                                                                                                                                                  |
 
 - `pnpm check:htaccess` は `pnpm verify` と CI で流す。macOS は `/usr/sbin/httpd`、Ubuntu は `apache2` を使う
 - わざと壊して確かめた: noindex の `unset` を消す・CSP のハッシュを変える・範囲の `<If>` を外す → どれも落ちる

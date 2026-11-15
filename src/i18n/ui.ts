@@ -41,6 +41,8 @@ interface Words {
   readonly menu: string;
   readonly menuLabel: string;
   readonly footerMenuLabel: string;
+  /** The footer's links on the error pages, which have no language switch. */
+  readonly footerLinksLabel: string;
   readonly socialLabel: string;
   readonly close: string;
   /** Links to the page's sections in the header. */
@@ -113,6 +115,7 @@ export const UI = {
     menu: "MENU",
     menuLabel: "世田谷祭の公式サイト・SNSと言語の切り替え",
     footerMenuLabel: "世田谷祭の公式サイトと言語の切り替え",
+    footerLinksLabel: "世田谷祭の公式サイト",
     socialLabel: "世田谷祭のSNS",
     close: "閉じる",
     sectionsLabel: "ページ内の移動",
@@ -160,6 +163,7 @@ export const UI = {
     menu: "MENU",
     menuLabel: "Setagaya Festival official site, social media and language",
     footerMenuLabel: "Setagaya Festival official sites and language",
+    footerLinksLabel: "Setagaya Festival official sites",
     socialLabel: "Setagaya Festival on social media",
     close: "Close",
     sectionsLabel: "On this page",

@@ -1,6 +1,7 @@
 // Checks the production host in a real browser after a deployment
 // (docs/ops/deploy.md, step 5): the pages open, the top pages load with no
-// error, and the MENU and the era filter work. Read-only: it only opens pages.
+// error, the MENU and the era filter work, and a missing URL shows the 404
+// error page (/errors/404.html) with its styles. Read-only: it only opens pages.
 // Kept apart from check-production.mjs so that one runs without a browser.
 //
 // Usage: node scripts/check-production-browser.mjs
@@ -91,6 +92,42 @@ try {
     } finally {
       await context.close();
     }
+  }
+
+  // The 404 page at a missing URL: status 404, the inlined styles applied (a
+  // CSP hash that does not match would leave it unstyled), nothing else failing.
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 900 },
+    userAgent: "setagayafes-archive deploy check",
+  });
+  context.setDefaultTimeout(TIMEOUT);
+  const page = await context.newPage();
+  const problems = watchProblems(page);
+  const missing = "/no-such-page/";
+  try {
+    await check(`${missing} shows the 404 error page, styled, with status 404`, async () => {
+      const response = await page.goto(`${ORIGIN}${missing}`, { waitUntil: "load" });
+      assert.equal(response?.status(), 404);
+      assert.equal(await page.locator(".code").textContent(), "404");
+      // Runs in the page; reached through the element, as this file has no browser globals.
+      const family = await page
+        .locator(".code")
+        .evaluate(
+          (element) => element.ownerDocument.defaultView?.getComputedStyle(element).fontFamily,
+        );
+      assert.match(family, /^Futura/, "the inlined CSS is applied");
+      await page.locator("footer").scrollIntoViewIfNeeded();
+      await page.waitForLoadState("networkidle");
+      // The document's own 404 is expected; anything else is not.
+      const others = problems.filter(
+        (problem) =>
+          problem !== `404 ${ORIGIN}${missing}` &&
+          !/the server responded with a status of 404/.test(problem),
+      );
+      assert.deepEqual(others, []);
+    });
+  } finally {
+    await context.close();
   }
 } finally {
   await browser.close();

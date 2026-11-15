@@ -87,6 +87,7 @@ const NEW_TOP = {
   "robots.txt": "new robots",
   "sitemap.xml": "<urlset/>",
   "en/index.html": "english",
+  "errors/404.html": "new 404",
   "_astro/a.avif": "a",
 };
 
@@ -143,6 +144,21 @@ describe("remote-deploy.sh and remote-rollback.sh", () => {
     const result = run(DEPLOY, "bad.zip");
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /does not own: 78th/);
+    assert.deepEqual(await snapshot(publicDir), before);
+  });
+
+  test("adds errors/ next to the server's errorpage/, and never writes errorpage/", async () => {
+    await inbox("top.zip", NEW_TOP);
+    assert.equal(run(DEPLOY, "top.zip").status, 0);
+    const after = await snapshot(publicDir);
+    assert.equal(after["errors/404.html"], "new 404");
+    assert.equal(after["errorpage/404.html"], BEFORE["errorpage/404.html"]);
+
+    const before = await snapshot(publicDir);
+    await inbox("bad.zip", { ...NEW_TOP, "errorpage/404.html": "overwritten" });
+    const result = run(DEPLOY, "bad.zip", "20261107-000001");
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /does not own: errorpage/);
     assert.deepEqual(await snapshot(publicDir), before);
   });
 

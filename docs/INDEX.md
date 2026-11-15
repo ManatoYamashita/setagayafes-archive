@@ -34,14 +34,16 @@
   - プレビューと「本文へ移動」は、WebKit 27.2・Firefox 157 で確かめた。Safari 26.2 より前ではプレビューが反応しない。Safari は既定で Tab がリンクに止まらない（Option+Tab）
   - 一覧は全回を均等な3列に並べ、時代の絞り込みは radio＋`:has()`
   - `/en/` は同じ部品に `lang` を渡す。文言は `src/i18n/ui.ts`。テーマは原文を題名に残し、英訳を添える
+  - エラーページは `/errors/NNN.html` の33本を1つのテンプレートから出す。日英を併記し、URL はすべて絶対パス（#70）
 - **[htaccess.md](./design/htaccess.md)**: archive 直下の `.htaccess`（ビルドで生成）。ヘッダを新トップの範囲にだけ付ける書き方、noindex の除外、CSP、HSTS
   - http→https はコントロールパネルの 302 のまま、HSTS で補う（パネルは 302 しか返せない。`.htaccess` の 301 はループの危険があり、見送った）
   - さくらの Apache には `Accept-Encoding` が届かず、`REDIRECT_STATUS` は最初から `200`。そのため、前もって圧縮したページは返せない（#49・#51）
   - `mod_rewrite` に頼る規則は、試しのフォルダで変数の値を確かめてから本番に置く
+  - `ErrorDocument` の内部転送では、`<If>` の `%{REQUEST_URI}` は転送先（`/errors/404.html`）になる。エラーページの CSP は、エラーページ自身のパスで限る（#70）
 - **[seo.md](./design/seo.md)**: canonical・hreflang・OGP・sitemap・robots.txt。インデックスさせるのは `/` と `/en/` だけ
   - Search Console はドメインプロパティ（公式サイトと共用）。プレフィックスの削除リクエストはトップまで隠すので、archive には足さない（#67）
   - 「過去の世田谷祭」を、語順を崩さずに `<title>` の先頭・description・ヒーローの説明文に入れる（#67）
-  - 各回のフォルダを robots.txt で Disallow しない（noindex のヘッダを読ませるため）。今のホストの `Disallow: /errorpage/` は引き継ぐ
+  - 各回のフォルダを robots.txt で Disallow しない（noindex のヘッダを読ませるため）。今のホストの `Disallow: /errorpage/` は引き継ぐ。新しい `/errors/` も Disallow しない
   - OGP の画像は固定のデザイン。原画像はメタデータを抜いてからコミットする
 
 ### 運用（ops/）
@@ -51,6 +53,7 @@
   - zip から無くなった直下のファイルは、次の配置でも残る。控えへ移して 404 を確かめる
   - クラウドから流して「http:// redirect」だけ落ちたときは、戻さずに手元の端末で確かめ直し、#1 に補足として書く
   - 初回だけ、エラーページの PHP と旧トップの部品（`css/`・`js/`・`img/`）を公開フォルダの外へ移す
+  - `errors/` と `.htaccess` は必ず一緒に置く。配置の前に、`.htaccess` の `ErrorDocument` が `/errors/` を指していることと、サーバーとの差分を確かめる
   - 数分かかる処理は、SSH の接続を保つか、サーバー上で `nohup` で流す（途中で切れることがある）
   - SSH・scp のたびに出る `then: then/endif not found.` は csh の初期化から出る行で、無視してよい。成否は `ok` の行と終了コードで判断する
 - **[annual-update.md](./ops/annual-update.md)**: 年次の追加。データに1件足し、`pnpm capture <回>` を1回流し、配置する

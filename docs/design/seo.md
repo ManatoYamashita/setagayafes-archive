@@ -58,6 +58,8 @@
 
 - **`robots.txt` は、archive ホストに今ある robots.txt を置き換える。** 今の中身は `Disallow: /errorpage/` の1行だけ（2026-11-07 に確認）で、この規則は引き継いだ
   - エラーページの静的化（#2）で `/errorpage/` の扱いが変わったら、`src/lib/seo.ts` の `ROBOTS_DISALLOW` を直す
+- **新しいエラーページの `/errors/` は Disallow しない。** `X-Robots-Tag` と meta robots の noindex を、クローラーに読ませるため（各回のフォルダと同じ理由）
+  - robots.txt が縛るのは URL だけ。存在しない URL に出るエラーページの中身には、Disallow は効かない。効くのは `/errors/404.html` を直接開いたとき（200 が返る）だけで、そこは noindex で除く
 - `sitemap.xml` は今のホストに無い（404）。新しく置くだけになる
 - OGP の画像は `/_astro/` に出る。拡張子は `.jpeg`。サーバーが `image/jpeg` で返すことを、配置の検証で確かめる
 
