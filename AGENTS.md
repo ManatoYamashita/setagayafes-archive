@@ -19,8 +19,12 @@ archive.setagayafes.org のトップ（過去の世田谷祭の一覧）を作�
 - コミットメッセージと PR の本文は、ファイルに書いて渡す（`git commit -F <ファイル>`、`gh pr create --body-file <ファイル>`）。1つのコマンドに heredoc を2つ入れない
   - 理由: #60 で、`git commit -F - <<'EOF' && … --body-file - <<'EOF2'` と繋げたところ、heredoc の対応がずれた。コミットメッセージに PR の本文が混ざり、PR の本文は空になった。マージ済みのコミットのメッセージは直せず、PR の本文だけを後から直した
   - 出した後に `git log -1 --format=%B` と `gh pr view <番号> --json body` で、メッセージと本文を読んで確かめる
+  - Claude Code のクラウドセッションでは、`gh pr create`・`gh pr view` が GraphQL の制限で使えない。REST で同じことをする（出す: `gh api repos/<OWNER>/<REPO>/pulls -X POST -f title=… -f head=… -f base=main -F body=@<ファイル>`、読む: `gh api repos/<OWNER>/<REPO>/pulls/<番号> --jq .body`）
+    - 理由: #71 で `gh pr list` が `HTTP 403: GitHub GraphQL is not available from Claude Code sessions` で止まった。`-F body=@<ファイル>` なら、本文をファイルで渡す決まりも守れる
 - 外部ライブラリを足すときは、目的・代替案・影響（サイズ）を示して、オーナーの承認を取る
 - さくらのサーバーには、オーナーの明示の指示があるときだけ書き込む
+- 配置では、`errors/`（エラーページ）と `.htaccess` を必ず一緒に置く。配置の前に、`.htaccess` の `ErrorDocument` が33本とも `/errors/` を指すこと（`grep -c '^ErrorDocument .* /errors/' dist/.htaccess` が `33`）を確かめる
+  - 理由: `.htaccess` だけが新しいと、存在しないページを指して Apache の素の文言が出る。`errors/` だけが新しいと、CSP のハッシュがずれてスタイルが当たらない。他のセッションの古い版の配置と重なると、`ErrorDocument` の変更が黙って消える（#24 で起きた）。手順は [docs/ops/deploy.md](./docs/ops/deploy.md)
 - 新しく分かったことは `docs/` に書き、`docs/INDEX.md` を直す
 - 複数の作業を並行するときは、`git worktree` で作業ディレクトリを分ける。1つのディレクトリで branch を切り替え合わない
   - worktree を作ったら、最初に `pnpm install --frozen-lockfile` を流す
