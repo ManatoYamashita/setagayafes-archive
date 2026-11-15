@@ -83,7 +83,7 @@
 
 - **[cloud-environment.md](./ops/cloud-environment.md)**: Claude Code のクラウドセッション用の環境（`setagayafes-archive`）の、許可ホスト・セットアップスクリプト・シークレットと変数
   - コンテナの Node v22 を、`.nvmrc` の版へ差し替える。apache2 と Playwright のブラウザも入れる
-  - `check:production` は `NODE_USE_ENV_PROXY=1` を付けて動かす。http→https の転送はクラウドでは確かめられない
+  - 許可ホストには、プロキシを通さない直接の通信（`http://` を含む）も届く。`check:production` は変数なしで、http→https の転送まで確かめられる（2026-11-15）。名前解決で落ちたら `NODE_USE_ENV_PROXY=1` を付ける
 
 ## 関連
 
