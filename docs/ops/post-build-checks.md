@@ -116,6 +116,12 @@ npx -y lighthouse@13.5.0 https://archive.setagayafes.org/ \
   --chrome-flags="--headless=new" --output=json --output-path=ja.json
 ```
 
+- **エラーページは、`/errors/404.html` のように、200 で返る URL を直接測る。** Lighthouse は、ステータスが 404 のページ（`/no-such-page/`）を測らず、`Status code: 404` で止まる
+  - SEO は 50 になるのが正常（2026-11-15、#70。Performance・Accessibility・Best Practices は 100）。減点は次の3つで、意図した設計か測定上の副作用
+    - `is-crawlable`: noindex を付けているため
+    - `meta-description`: エラーページには description を持たせていないため
+    - `robots-txt`: エラーページの CSP に `connect-src` が無く、Lighthouse が `robots.txt` を取れない（`CSP violation`）。`robots.txt` 自体は 200 で正常
+  - `document-latency-insight` が 0.5 になるのは、さくらが圧縮しないため（[deploy.md](./deploy.md)・#49）
 - PageSpeed Insights の API は、鍵なしの共有の枠を使い切られていることがある（2026-11-08 は 429）
 - **どの要素が LCP になるかの結論は、Lighthouse（遅い回線を模した測定）で確かめてから書く。** 手元の速い回線での測定（Playwright の `PerformanceObserver` など）だけで決めない
   - 理由: 画像が届く時刻で、LCP になる要素が変わる。不透明度 0 で描かれた要素は、LCP の候補にならない。#34 の入場アニメーションでは、手元の速い回線だと、写真がアニメーションの最初のコマ（不透明度 0）で描かれ、候補から外れた。本番の Lighthouse では、写真はアニメーションが始まった後に届き、そのまま LCP になった。手元の結果から「Lighthouse は写真を測らなくなる」と書いて、PR #36 で直した
