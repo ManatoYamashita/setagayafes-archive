@@ -17,7 +17,7 @@ import { HOME_PATHS, UI } from "../i18n/ui.ts";
 </header>
 
 <style>
-  /* A grid item with auto side margins (.page) would shrink to its content. */
+  /* Without this, the auto side margins of .page make the header only as wide as its text. */
   header {
     inline-size: 100%;
   }
