@@ -4,7 +4,8 @@
 //   <tmp>/www/.htaccess          the parent file on the server (noindex by host name)
 //   <tmp>/www/archive/           the archive host's DocumentRoot: dist/ with its .htaccess
 //   <tmp>/www/archive/78th/      a stand-in for a past festival site (inline script)
-//   <tmp>/www/archive/errorpage/ a stand-in for the static error pages
+//   <tmp>/www/archive/errorpage/ a stand-in for the previous error pages (kept on the server)
+//   <tmp>/www/archive/private/   a folder the server refuses (403), for the 403 page
 //
 // Needs Apache httpd 2.4 (macOS ships one at /usr/sbin/httpd; on Debian and
 // Ubuntu, the apache2 package). Run after `pnpm build`.
@@ -115,6 +116,9 @@ const port = await freePort();
 
 await mkdir(join(archive, "78th"), { recursive: true });
 await mkdir(join(archive, "errorpage"), { recursive: true });
+await mkdir(join(archive, "private"), { recursive: true });
+await writeFile(join(archive, "private", ".htaccess"), "Require all denied\n");
+await writeFile(join(archive, "private", "index.html"), "<!doctype html><title>private</title>");
 await writeFile(join(www, ".htaccess"), PARENT_HTACCESS);
 await cp(dist, archive, { recursive: true });
 await writeFile(
@@ -184,7 +188,7 @@ try {
     assets: { avif: `/_astro/${avif}`, jpeg: `/_astro/${jpeg}` },
     pastSite: "/78th/",
     initialDomain: { host: INITIAL_DOMAIN, path: "/archive/" },
-    notFoundBody: /<title>404<\/title>/,
+    forbiddenPath: "/private/",
   });
 } finally {
   httpd.kill("SIGTERM");

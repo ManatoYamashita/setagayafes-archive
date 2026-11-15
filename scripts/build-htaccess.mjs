@@ -6,7 +6,7 @@
 
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { buildHtaccess, styleHashesOf } from "./lib/htaccess.mjs";
+import { buildHtaccess, isErrorPage, styleHashesOf } from "./lib/htaccess.mjs";
 import { listFiles, readText } from "./lib/rules.mjs";
 
 const dist = process.argv[2] ?? join(process.cwd(), "dist");
@@ -17,11 +17,19 @@ if (files.length === 0) {
   process.exit(1);
 }
 
+// The top pages and the error pages get separate policies, each allowing only
+// its own pages' styles.
 /** @type {string[]} */
 const styleHashes = [];
+/** @type {string[]} */
+const errorStyleHashes = [];
 for (const file of files.filter((name) => name.endsWith(".html"))) {
-  styleHashes.push(...styleHashesOf(await readText(join(dist, file))));
+  const hashes = styleHashesOf(await readText(join(dist, file)));
+  (isErrorPage(file) ? errorStyleHashes : styleHashes).push(...hashes);
 }
 
-await writeFile(join(dist, ".htaccess"), buildHtaccess({ files, styleHashes }));
-console.log(`ok   dist/.htaccess (${new Set(styleHashes).size} inline style hashes)`);
+await writeFile(join(dist, ".htaccess"), buildHtaccess({ files, styleHashes, errorStyleHashes }));
+console.log(
+  `ok   dist/.htaccess (${new Set(styleHashes).size} inline style hashes for the top pages,` +
+    ` ${new Set(errorStyleHashes).size} for the error pages)`,
+);

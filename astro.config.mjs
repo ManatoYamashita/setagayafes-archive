@@ -10,7 +10,10 @@ export default defineConfig({
   output: "static",
   trailingSlash: "always",
   build: {
-    format: "directory",
+    // "preserve" keeps each page's file name: src/pages/errors/[code].astro
+    // becomes /errors/404.html, which ErrorDocument names. The top pages are
+    // index.astro files, so they still become /index.html and /en/index.html.
+    format: "preserve",
     // Keep page CSS in the HTML: one request less on a host without compression.
     inlineStylesheets: "always",
   },

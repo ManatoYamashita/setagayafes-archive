@@ -1,0 +1,32 @@
+---
+// The document around an error page. Base.astro is not used: its canonical URL,
+// alternates, Open Graph tags and JSON-LD describe the top pages, and an error
+// page is served in place of any URL on the host.
+//
+// Because of that, every URL here is absolute ("/favicon.svg", not
+// "favicon.svg"): a relative one would resolve against the failed URL.
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="text-scale" content="scale" />
+    {/* The server also sends X-Robots-Tag; the tag keeps a saved copy noindex too. */}
+    <meta name="robots" content="noindex, noimageindex" />
+    <title>{title}</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  </head>
+  <body class="min-h-dvh bg-paper text-ink antialiased">
+    <slot />
+  </body>
+</html>

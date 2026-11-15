@@ -29,15 +29,16 @@ const OWN_ONLY_HEADERS = [
  *   assets: { avif: string, jpeg: string },
  *   pastSite: string,
  *   initialDomain: { host: string, path: string },
- *   notFoundBody?: RegExp,
+ *   forbiddenPath?: string,
  * }} options
  *   `assets`: paths of one card picture and the Open Graph image (/_astro/…);
  *   `pastSite`: a past festival folder, e.g. "/78th/";
  *   `initialDomain`: the archive's top page through the server's initial domain;
- *   `notFoundBody`: what the static 404 page contains.
+ *   `forbiddenPath`: a path the server refuses with 403, where there is one
+ *   (only the local Apache has it).
  * @returns {Promise<number>} The number of failed checks.
  */
-export async function runHeaderChecks({ get, assets, pastSite, initialDomain, notFoundBody }) {
+export async function runHeaderChecks({ get, assets, pastSite, initialDomain, forbiddenPath }) {
   let failed = 0;
   /**
    * @param {string} name
@@ -122,20 +123,56 @@ export async function runHeaderChecks({ get, assets, pastSite, initialDomain, no
     }
   });
 
-  await check("a missing page: the static 404 page, noindex", async () => {
-    const { status, headers, body } = await get("/no-such-page/");
-    assert.equal(status, 404);
-    if (notFoundBody) assert.match(body, notFoundBody);
+  /**
+   * An error page as the server shows it in place of a failed URL: the
+   * original status, the page from /errors/, its own CSP and noindex.
+   *
+   * @param {Response} response
+   * @param {number} code
+   */
+  function assertErrorPage({ status, headers, body }, code) {
+    assert.equal(status, code, "keeps the original status (no soft error)");
+    assert.match(body, new RegExp(`<title>${code} `), `the /errors/${code}.html page`);
     assert.doesNotMatch(body, /<\?php/, "no PHP source");
     assert.equal(headers["x-robots-tag"], "noindex, noimageindex");
+    const csp = String(headers["content-security-policy"]);
+    assert.match(csp, /script-src 'none'/);
+    assert.doesNotMatch(csp, /frame-src 'self'/, "the error pages' own policy");
+    const hashes = styleHashesOf(body);
+    assert.ok(hashes.length > 0, "the page has inline styles");
+    for (const hash of hashes) assert.ok(csp.includes(hash), `CSP allows ${hash}`);
+    assert.equal(headers["x-content-type-options"], "nosniff");
+    assert.equal(headers["cache-control"], "no-cache");
+  }
+
+  for (const path of ["/no-such-page/", "/no/such/deep/page.html", "/78th/no-such-page.html"]) {
+    await check(`${path} (missing): the 404 error page, with status 404 and its CSP`, async () => {
+      assertErrorPage(await get(path), 404);
+    });
+  }
+
+  if (forbiddenPath) {
+    await check(`${forbiddenPath} (refused): the 403 error page, with status 403`, async () => {
+      assertErrorPage(await get(forbiddenPath), 403);
+    });
+  }
+
+  await check("/errors/404.html (opened directly): the same policy, noindex", async () => {
+    const { status, headers, body } = await get("/errors/404.html");
+    assert.equal(status, 200);
+    assert.equal(headers["x-robots-tag"], "noindex, noimageindex");
+    for (const hash of styleHashesOf(body)) {
+      assert.ok(String(headers["content-security-policy"]).includes(hash), hash);
+    }
   });
 
+  // Neither exists, so the server answers with the 404 page: it carries the
+  // error pages' headers, never the top pages' policy or indexing.
   await check("/enx/ and /index.html.bak do not count as the top pages", async () => {
     for (const path of ["/enx/", "/index.html.bak"]) {
-      const { headers } = await get(path);
-      for (const name of OWN_ONLY_HEADERS)
-        assert.equal(headers[name], undefined, `${path} ${name}`);
-      assert.equal(headers["x-robots-tag"], "noindex, noimageindex", path);
+      const response = await get(path);
+      assertErrorPage(response, 404);
+      assert.doesNotMatch(String(response.headers["content-security-policy"]), /connect-src/);
     }
   });
 

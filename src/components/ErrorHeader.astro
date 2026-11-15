@@ -1,0 +1,51 @@
+---
+// The error pages' header: only the site name, back to the top page. The top
+// page's header is not reused: its section links point into that page, and
+// its language switch has no counterpart on a page that carries both languages.
+import { HOME_PATHS, UI } from "../i18n/ui.ts";
+---
+
+<header class="page">
+  <div class="bar">
+    <a class="site" href={HOME_PATHS.ja}>
+      {UI.ja.siteName}
+      <span class="en" lang="en">
+        {UI.en.siteName}
+      </span>
+    </a>
+  </div>
+</header>
+
+<style>
+  /* A grid item with auto side margins (.page) would shrink to its content. */
+  header {
+    inline-size: 100%;
+  }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    min-block-size: 4.5rem;
+  }
+
+  .site {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.75rem;
+    min-block-size: 2.75rem;
+    padding-block: 0.5rem;
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+  }
+
+  .en {
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--color-muted);
+  }
+</style>
