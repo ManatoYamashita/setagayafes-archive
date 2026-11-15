@@ -76,6 +76,7 @@
 
 - **[post-build-checks.md](./ops/post-build-checks.md)**: ビルド後の検査（JS 0・公開禁止ファイル・リンク・転送量の予算）と `pnpm check:links`、Lighthouse の手動測定
   - どの要素が LCP になるかの結論は、手元の速い回線ではなく Lighthouse で確かめてから書く
+  - エラーページは、200 で返る `/errors/404.html` を測る（404 のページは測れない）。SEO が 50 になるのは正常（#70）
   - 予算はブラウザで測る。初回は最初の画面に写る分だけ（先読みは除く）、全体は絞り込みに触れずに最後までスクロールした分
   - 本番のブラウザ確認（`pnpm check:production:browser`）の項目。部品の探し方は e2e と共通の `scripts/lib/page-parts.mjs`
   - Chromium 以外（Playwright の WebKit・Firefox）で確かめるときの注意。WebKit は Tab でリンクに止まらず、スクリーンショットで CSP の違反が出る
