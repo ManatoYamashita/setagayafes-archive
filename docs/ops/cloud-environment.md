@@ -20,7 +20,10 @@ claude.ai/code のクラウドセッションで、このリポジトリの `pnp
 | `setagayafes.sakura.ne.jp` | `pnpm check:production` の「サーバーの初期ドメイン経由」の確認 |
 
 - `pnpm check:links` が見に行く他のホスト（`setagayafes.org`・`web.archive.org` など）は許可していない。使うときは、拒否されたホストを足す
-- 暗号化しない `http://` の通信は、ホストを許可しても外へ出られない
+- 許可ホストには、プロキシ（`HTTPS_PROXY`）を通さない直接の通信も届く。暗号化しない `http://`（80番）と `https://`（443番）のどちらも通る（2026-11-15 に確かめた）
+  - コンテナの名前解決は、許可ホストの名前だけを返す。許可していないホストは、直接つなぐと名前解決で落ち（`Could not resolve host`）、プロキシを通すと 403 で断られる（`CONNECT tunnel failed, response 403`）
+  - `HTTP_PROXY` は設定されていない。`http://` の要求は、プロキシの変数を付けても直接出る
+  - 届くかどうかは、`curl -sS -o /dev/null -w '%{http_code} %{remote_ip}:%{remote_port}\n' --noproxy '*' http://archive.setagayafes.org/` で確かめる。`302` と `:80` が出れば届いている
 
 ## セットアップスクリプト
 
@@ -56,15 +59,20 @@ fi
 
 ## `pnpm check:production` を動かすとき
 
-`scripts/check-production.mjs` は Node の `http`・`https` で直接つなぐため、そのままではコンテナのプロキシを通らず、名前解決で落ちる。
-次のように変数を付けて動かす。
+`scripts/check-production.mjs` は Node の `http`・`https` で直接つなぐ。許可ホストへの直接の通信が届くので、変数を付けずに動く（2026-11-15、「http:// redirect」を含む全項目が ok）。
+
+```bash
+pnpm check:production
+```
+
+- 名前解決で落ちる（`ENOTFOUND`・`EAI_AGAIN`）ときは、直接の通信が止められている。プロキシを通すように、次のように変数を付けて流し直す
 
 ```bash
 NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt pnpm check:production
 ```
 
 - `NODE_USE_ENV_PROXY` はプロキシに関わる予約された変数で、セッションからは環境に保存できない。保存するなら、claude.ai の環境設定で手で足す
-- 「http:// redirect」の確認は、`http://` の通信が外へ出られないため、クラウドでは必ず落ちる。手元の Mac で確かめる
+- 変数を付けても、`http://` の要求はプロキシを通らない（`HTTP_PROXY` が無いため）。「http:// redirect」が落ちるのは、直接の `http://` の通信が届かないときで、そのときは手元の Mac で確かめ直す
   - 確かめ直し方と記録の仕方は、[deploy.md](./deploy.md) の手順5と手順8
 
 ## `pnpm check:production:browser` を動かすとき

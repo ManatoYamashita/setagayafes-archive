@@ -113,7 +113,7 @@ pnpm check:production:browser
   - `/no-such-page/` が 404 を返し、エラーページのスタイルが当たる（CSP のハッシュがずれると当たらない）。文書の 404 以外に、エラー・失敗したリクエストが0件
 - 2つとも `ok` なら、ブラウザで目で見る確認は要らない。見た目の崩れ（重なり・はみ出し）は検査していないので、気になる変更を配置したときは開いて見る
 - **1つでも落ちて、表示が壊れていたら、すぐ戻す**（下の「戻し方」）。原因はその後で調べる
-- クラウド環境から流したときは、「http:// redirect」の項目だけは必ず落ちる。暗号化しない `http://` の通信が外へ出られないため（[cloud-environment.md](./cloud-environment.md)）
+- クラウド環境から流したときは、「http:// redirect」の項目だけが落ちることがある。直接の `http://` の通信が環境のネットワークで止められていると、確かめられないため。2026-11-15 の時点では届き、全項目 ok だった（[cloud-environment.md](./cloud-environment.md)）
   - この項目が落ちたことだけを理由に戻さない。他の項目がすべて ok なら、手元の端末で確かめ直す
   - 手元では `pnpm check:production` を流し直す。補助に `curl -sSI http://archive.setagayafes.org/` で、302 と `Location: https://archive.setagayafes.org/` を見る
   - 手元でも落ちたら、先にプロキシと VPN を外して流し直す。それでも落ちるなら、コントロールパネルの常時 SSL 化の設定を疑う
