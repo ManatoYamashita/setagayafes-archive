@@ -4,6 +4,38 @@
 
 **さくらのサーバーには、オーナーの明示の指示があるときだけ書き込む**（AGENTS.md）。この手順の 3 以降は、指示を受けてから行う。
 
+## GitHub の Actions から反映する（ふだんはこちら）
+
+2026-11-18 から、下の「手順」の 1・3・4・5・8 を、Actions のワークフローで流せる（#76）。来年度から年次の更新を行う Web 担当（非エンジニアの見込み）が、ターミナルを使わずに反映できるようにするため。
+
+| ワークフロー   | ファイル                         | すること                                                                                                    |
+| -------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| 本番に反映     | `.github/workflows/deploy.yml`   | main を検査し、zip を作って送り、控えを取って展開し、本番を確かめる。展開か本番の確認が落ちたら、自動で戻す |
+| 本番を元に戻す | `.github/workflows/rollback.yml` | 控えの日時を入れると、その反映より前に戻す。空なら、いちばん新しい控え（直前の反映）を使う                  |
+
+- 流し方: GitHub の Actions タブでワークフローを選び、「Run workflow」を押す。main からだけ動く
+  - 「試しに流す」に印を付けると、検査と zip の作成だけをして、本番は変えない
+- 結果は、実行の要約（Summary）と、Issue #1 のコメントに出る。zip の名前・sha256・控えの日時・各検査の結果
+- **オーナー（来年度からは Web 担当）がボタンを押すことが、「明示の指示」にあたる。** エージェントがこのワークフローを動かすのは、オーナーの指示があるときだけ
+- 2つのワークフローは `concurrency: production` で、同時に1本しか流れない。手元からの配置とは排他にならないので、手元から配置するときは、Actions で流れていないことを確かめる
+
+### 仕組み
+
+- Environment `production` に、反映専用の鍵と接続先を Secrets で置く。branch policy で main からだけ使える。承認者は置かない（押す人と承認する人が、来年度から同じになるため。#76）
+
+| Secret                       | 中身                                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `SAKURA_SSH_KEY`             | 反映専用の秘密鍵（ed25519、コメント `setagayafes-archive-github-actions`）。持っているのは GitHub だけ |
+| `SAKURA_HOST`・`SAKURA_USER` | 接続先。リポジトリには書かない（規約8節）                                                              |
+| `SAKURA_KNOWN_HOSTS`         | サーバーのホスト鍵。その場の `ssh-keyscan` は使わない                                                  |
+
+- サーバーの `~/.ssh/authorized_keys` には、この鍵を `restrict`（ポート転送・エージェント転送・pty の禁止）付きで登録した（2026-11-18。登録の前の控えは `~/.ssh/authorized_keys.bak-20261118`）
+- SSH は `scripts/ops/deploy/actions-ssh.sh` の `remote`・`send` で行う。サーバーの出力は `mask` を通し、csh の行を消し、`/home/<アカウント名>/` を `~/` に直す。**公開リポジトリの Actions のログは、だれでも読める**
+- 控えの日時はワークフローが決め、`env STAMP=<日時> sh -s -- <zip>` で `remote-deploy.sh` に渡す。展開が途中で落ちても、どの控えで戻すかがわかる
+  - `remote-deploy.sh` が何も変える前に止まったとき（チェックサム・zip の中身の検査）は、`remote-rollback.sh` が `not a deployment backup` で断る。このときは本番は変わっていないので、戻さずに終える（テストは `scripts/deploy.test.mjs`）
+- 鍵を替えるとき: 新しい鍵を作って `authorized_keys` に足し、`SAKURA_SSH_KEY` を替え、試しに流してから、古い鍵の行を消す
+- 鍵が漏れたとき: サーバーの `authorized_keys` から `setagayafes-archive-github-actions` の行を消す。それで、この鍵ではもう入れない
+
 ## 置くもの
 
 `dist/` の中身を、公開フォルダの直下へ展開する。過去回のフォルダ（`/75th/`〜`/97th/`）・`errorpage/`・`todoroki/`・`tfa/` には触らない。
@@ -50,6 +82,8 @@ Host setagayafes-archive
 - サーバーのログインシェルは csh。`ssh setagayafes-archive 'echo $(…)'` のような書き方は `Illegal variable name.` で落ちる。サーバーで動かすものは `'sh -s' <` で流すか、`sh -c` で包む
 
 ## 手順
+
+手元から配置するときの手順。Actions が使えないときや、Actions のワークフロー自体を直すときに使う。
 
 ### 1. 手元で作る
 
@@ -206,6 +240,8 @@ Issue #1 に次を書く。
 - Lighthouse（モバイル。性能・アクセシビリティ・おすすめの方法・SEO）を、手元（`pnpm preview`）と本番の両方で、Chrome の DevTools で測った値（[post-build-checks.md](./post-build-checks.md)）
 
 ## 戻し方
+
+Actions の「本番を元に戻す」を流す（控えの日時を入れる。空なら直前の反映を取り消す）。手元からは次のとおり。
 
 ```sh
 ssh setagayafes-archive 'sh -s -- <日時>' < scripts/ops/deploy/remote-rollback.sh

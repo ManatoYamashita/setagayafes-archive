@@ -1,0 +1,137 @@
+name: 本番を元に戻す
+
+# Puts production back as it was before a deployment, from the backup that
+# remote-deploy.sh kept (~/archive-docs/deploy/<stamp>/; Issue #76).
+# With no stamp, the latest backup is used, which undoes the latest deployment.
+# Running it twice with the same backup gives the same result.
+
+on:
+  workflow_dispatch:
+    inputs:
+      stamp:
+        description: "控えの日時（例: 20261118-214224）。空なら、直前の反映を取り消す"
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check the input
+        env:
+          RAW_STAMP: ${{ inputs.stamp }}
+        run: |
+          stamp=$(printf '%s' "$RAW_STAMP" | tr -d '[:space:]')
+          if [ -n "$stamp" ] && ! printf '%s' "$stamp" | grep -Eq '^[0-9]{8}-[0-9]{6}$'; then
+            echo "::error::控えの日時は「20261118-214224」の形で入れてください（入っていた値: $stamp）"
+            exit 1
+          fi
+          echo "STAMP=$stamp" >> "$GITHUB_ENV"
+
+      - name: Prepare the SSH connection
+        env:
+          SAKURA_SSH_KEY: ${{ secrets.SAKURA_SSH_KEY }}
+          SAKURA_KNOWN_HOSTS: ${{ secrets.SAKURA_KNOWN_HOSTS }}
+        run: |
+          d="$RUNNER_TEMP/ssh"
+          install -d -m 700 "$d"
+          printf '%s\n' "$SAKURA_SSH_KEY" > "$d/key"
+          chmod 600 "$d/key"
+          printf '%s\n' "$SAKURA_KNOWN_HOSTS" > "$d/known_hosts"
+
+      - name: Find the backup
+        id: find
+        env:
+          SAKURA_HOST: ${{ secrets.SAKURA_HOST }}
+          SAKURA_USER: ${{ secrets.SAKURA_USER }}
+        run: |
+          . scripts/ops/deploy/actions-ssh.sh
+          # Backups that remote-rollback.sh accepts: a stamp folder that has both
+          # entries.txt and existing.txt. Read-only.
+          list=$(remote 'sh -s' <<'EOF'
+          cd ~/archive-docs/deploy || exit 1
+          for d in */; do
+            d=${d%/}
+            echo "$d" | grep -Eq '^[0-9]{8}-[0-9]{6}$' || continue
+            [ -f "$d/entries.txt" ] && [ -f "$d/existing.txt" ] || continue
+            echo "$d $(cat "$d/zip.txt" 2>/dev/null)"
+          done | sort
+          EOF
+          )
+          echo "Backups on the server (oldest first):"
+          printf '%s\n' "$list"
+          if [ -z "$STAMP" ]; then
+            STAMP=$(printf '%s\n' "$list" | tail -1 | cut -d' ' -f1)
+          fi
+          line=$(printf '%s\n' "$list" | grep -E "^$STAMP( |\$)" || true)
+          if [ -z "$STAMP" ] || [ -z "$line" ]; then
+            echo "::error::控え ${STAMP:-（なし）} がサーバーにありません。上の一覧から選んで、もう一度流してください"
+            exit 1
+          fi
+          echo "stamp=$STAMP" >> "$GITHUB_OUTPUT"
+          echo "zip=$(printf '%s' "$line" | cut -s -d' ' -f2)" >> "$GITHUB_OUTPUT"
+          echo "ok   rolling back $line"
+
+      - name: Roll back
+        id: rollback
+        env:
+          SAKURA_HOST: ${{ secrets.SAKURA_HOST }}
+          SAKURA_USER: ${{ secrets.SAKURA_USER }}
+          STAMP: ${{ steps.find.outputs.stamp }}
+        run: |
+          . scripts/ops/deploy/actions-ssh.sh
+          remote "sh -s -- $STAMP" < scripts/ops/deploy/remote-rollback.sh
+          curl -sS -o /dev/null -w 'top after rollback: %{http_code}\n' https://archive.setagayafes.org/
+
+      - name: Write the result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          FOUND: ${{ steps.find.outputs.stamp }}
+          ZIP: ${{ steps.find.outputs.zip }}
+          ROLLBACK: ${{ steps.rollback.outcome }}
+        run: |
+          if [ "$ROLLBACK" = success ]; then
+            title="本番を、${ZIP:-反映} より前の状態に戻しました"
+          elif [ -z "$FOUND" ]; then
+            title="控えが見つからず、何も変えていません"
+          else
+            title="戻す途中で失敗しました。本番が壊れていないか確かめてください"
+          fi
+          {
+            echo "## $title"
+            echo
+            echo "| 項目 | 値 |"
+            echo "| --- | --- |"
+            echo "| 使った控え | ${FOUND:+\`~/archive-docs/deploy/$FOUND\`} |"
+            echo "| 取り消した zip | ${ZIP:+\`$ZIP\`} |"
+            echo "| 結果 | ${ROLLBACK:-} |"
+            echo
+            echo "実行の記録: $RUN_URL"
+          } > "$RUNNER_TEMP/result.md"
+          cat "$RUNNER_TEMP/result.md" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$FOUND" ]; then
+            gh issue comment 1 --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/result.md" \
+              || echo "::warning::Issue #1 に記録できませんでした"
+          fi
+
+      - name: Remove the key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/ssh"
