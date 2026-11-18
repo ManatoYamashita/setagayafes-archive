@@ -210,3 +210,70 @@ describe("remote-deploy.sh and remote-rollback.sh", () => {
     assert.deepEqual(await snapshot(publicDir), before);
   });
 });
+
+// .github/workflows/deploy.yml and rollback.yml rely on these (Issue #76).
+describe("what the deploy and rollback workflows rely on", () => {
+  test("a deployment that stops before changing anything leaves no backup to roll back", async () => {
+    const before = await snapshot(publicDir);
+    // Refused entries: the backup folder exists, but without existing.txt.
+    await inbox("bad.zip", { ...NEW_TOP, "78th/index.html": "overwritten" });
+    assert.notEqual(run(DEPLOY, "bad.zip", "20261107-000010").status, 0);
+    let result = run(ROLLBACK, "20261107-000010");
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /FAIL not a deployment backup/);
+
+    // Checksum mismatch: stops before the backup folder is made.
+    const zip = await inbox("top.zip", NEW_TOP);
+    await writeFile(`${zip}.sha256`, `${"0".repeat(64)}  top.zip\n`);
+    assert.notEqual(run(DEPLOY, "top.zip", "20261107-000011").status, 0);
+    result = run(ROLLBACK, "20261107-000011");
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /FAIL not a deployment backup/);
+
+    assert.deepEqual(await snapshot(publicDir), before);
+  });
+
+  test("rolling back the same backup twice gives the same result", async () => {
+    const before = await snapshot(publicDir);
+    await inbox("top.zip", NEW_TOP);
+    assert.equal(run(DEPLOY, "top.zip").status, 0);
+    assert.equal(run(ROLLBACK, "20261107-000000").status, 0);
+    const result = run(ROLLBACK, "20261107-000000");
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(await snapshot(publicDir), before);
+  });
+});
+
+describe("actions-ssh.sh", () => {
+  const HELPERS = join(import.meta.dirname, "ops", "deploy", "actions-ssh.sh");
+
+  /** @param {string} input */
+  function mask(input) {
+    return spawnSync("bash", ["-c", `. "$1" && mask`, "bash", HELPERS], {
+      input,
+      env: { ...process.env, RUNNER_TEMP: home },
+      encoding: "utf8",
+    });
+  }
+
+  test("hides the account name in server paths and drops the csh start-up line", () => {
+    const result = mask(
+      [
+        "then: then/endif not found.",
+        "ok   extracted top.zip into /home/someone/www/archive",
+        "     backup: /home/someone/archive-docs/deploy/20261107-000000 (roll back …)",
+        "",
+      ].join("\n"),
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      result.stdout,
+      [
+        "ok   extracted top.zip into ~/www/archive",
+        "     backup: ~/archive-docs/deploy/20261107-000000 (roll back …)",
+        "",
+      ].join("\n"),
+    );
+    assert.doesNotMatch(result.stdout, /someone|\/home\//);
+  });
+});

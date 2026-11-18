@@ -1,0 +1,224 @@
+name: 本番に反映
+
+# Deploys the top of archive.setagayafes.org (main) to the Sakura server
+# (Issue #76). It runs the same steps as docs/ops/deploy.md:
+#   checks -> zip -> send -> extract (with a backup) -> production checks
+# If extracting or the production checks fail, it rolls back automatically.
+#
+# Started by hand from the Actions tab, on main only. The "production"
+# environment holds the deploy-only SSH key and the server's name; it can be
+# used from main only. Logs of this public repository can be read by anyone,
+# so server output is rewritten from /home/<account>/... to ~/... before it is
+# shown.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "試しに流す（検査と zip の作成だけをして、本番は変えない）"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+# One deployment or rollback at a time; a second one waits instead of
+# cancelling the one that is writing to the server.
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 40
+    env:
+      TZ: Asia/Tokyo
+      DRY_RUN: ${{ inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - run: corepack enable
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Apache and the browser for the checks
+        run: |
+          if [ ! -x /usr/sbin/apache2 ]; then
+            sudo apt-get update && sudo apt-get install -y --no-install-recommends apache2
+          fi
+          pnpm exec playwright install --with-deps --only-shell chromium
+
+      - name: Check the site (pnpm verify)
+        run: pnpm verify
+
+      - name: Check the past festival sites and external links
+        run: pnpm check:links
+
+      - name: Make the zip
+        id: zip
+        run: |
+          pnpm package
+          shopt -s nullglob
+          zips=(release/archive-top-*.zip)
+          if [ "${#zips[@]}" -ne 1 ]; then
+            echo "::error::release/ に zip が1つだけあるはずが、${#zips[@]} 個あります"
+            exit 1
+          fi
+          name=$(basename "${zips[0]}")
+          case $name in
+            *-dirty.zip) echo "::error::未コミットの変更から作られた zip です: $name"; exit 1 ;;
+          esac
+          # Every error page the .htaccess points to must be in the zip (AGENTS.md).
+          pages=$(find dist/errors -maxdepth 1 -name '[0-9][0-9][0-9].html' | wc -l)
+          lines=$(grep -c '^ErrorDocument .* /errors/' dist/.htaccess)
+          if [ "$pages" -eq 0 ] || [ "$pages" -ne "$lines" ]; then
+            echo "::error::.htaccess の ErrorDocument（$lines 本）とエラーページ（$pages 本）が合いません"
+            exit 1
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(cut -d' ' -f1 "release/$name.sha256")" >> "$GITHUB_OUTPUT"
+          echo "ok   $name (ErrorDocument $lines)"
+
+      - name: Prepare the SSH connection
+        if: env.DRY_RUN != 'true'
+        env:
+          SAKURA_SSH_KEY: ${{ secrets.SAKURA_SSH_KEY }}
+          SAKURA_KNOWN_HOSTS: ${{ secrets.SAKURA_KNOWN_HOSTS }}
+        run: |
+          d="$RUNNER_TEMP/ssh"
+          install -d -m 700 "$d"
+          printf '%s\n' "$SAKURA_SSH_KEY" > "$d/key"
+          chmod 600 "$d/key"
+          printf '%s\n' "$SAKURA_KNOWN_HOSTS" > "$d/known_hosts"
+
+      - name: Send the zip to the server
+        if: env.DRY_RUN != 'true'
+        env:
+          SAKURA_HOST: ${{ secrets.SAKURA_HOST }}
+          SAKURA_USER: ${{ secrets.SAKURA_USER }}
+          ZIP: ${{ steps.zip.outputs.name }}
+        run: |
+          . scripts/ops/deploy/actions-ssh.sh
+          remote 'mkdir -p archive-docs/deploy/inbox && chmod 700 archive-docs/deploy' < /dev/null
+          send "release/$ZIP" "release/$ZIP.sha256" archive-docs/deploy/inbox/
+          echo "ok   sent $ZIP"
+
+      - name: Extract on the server (keeps a backup first)
+        id: deploy
+        if: env.DRY_RUN != 'true'
+        env:
+          SAKURA_HOST: ${{ secrets.SAKURA_HOST }}
+          SAKURA_USER: ${{ secrets.SAKURA_USER }}
+          ZIP: ${{ steps.zip.outputs.name }}
+        run: |
+          . scripts/ops/deploy/actions-ssh.sh
+          # The backup name is decided here, so that a rollback knows it even
+          # if the script stops halfway.
+          stamp=$(date +%Y%m%d-%H%M%S)
+          echo "stamp=$stamp" >> "$GITHUB_OUTPUT"
+          remote "env STAMP=$stamp sh -s -- $ZIP" < scripts/ops/deploy/remote-deploy.sh
+
+      - name: Check production (headers)
+        id: check
+        if: env.DRY_RUN != 'true'
+        run: pnpm check:production
+
+      - name: Check production (browser)
+        id: browser
+        if: env.DRY_RUN != 'true'
+        run: pnpm check:production:browser
+
+      - name: Roll back
+        id: rollback
+        # Only when this run may have changed production.
+        if: failure() && steps.deploy.outputs.stamp != ''
+        env:
+          SAKURA_HOST: ${{ secrets.SAKURA_HOST }}
+          SAKURA_USER: ${{ secrets.SAKURA_USER }}
+          STAMP: ${{ steps.deploy.outputs.stamp }}
+        run: |
+          . scripts/ops/deploy/actions-ssh.sh
+          if out=$(remote "sh -s -- $STAMP" < scripts/ops/deploy/remote-rollback.sh); then
+            echo "$out"
+          elif printf '%s\n' "$out" | grep -q 'FAIL not a deployment backup'; then
+            # remote-deploy.sh stopped before it changed anything (checksum,
+            # entries), so there is nothing to put back.
+            echo "$out"
+            echo "untouched=true" >> "$GITHUB_OUTPUT"
+            echo "ok   production was not changed; nothing to roll back"
+            exit 0
+          else
+            echo "$out"
+            exit 1
+          fi
+          curl -sS -o /dev/null -w 'top after rollback: %{http_code}\n' https://archive.setagayafes.org/
+
+      - name: Write the result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT: ${{ github.sha }}
+          ZIP: ${{ steps.zip.outputs.name }}
+          SHA256: ${{ steps.zip.outputs.sha256 }}
+          STAMP: ${{ steps.deploy.outputs.stamp }}
+          DEPLOY: ${{ steps.deploy.outcome }}
+          CHECK: ${{ steps.check.outcome }}
+          BROWSER: ${{ steps.browser.outcome }}
+          ROLLBACK: ${{ steps.rollback.outcome }}
+          UNTOUCHED: ${{ steps.rollback.outputs.untouched }}
+          JOB: ${{ job.status }}
+        run: |
+          if [ "$DRY_RUN" = true ] && [ "$JOB" = success ]; then
+            title="試しに流しました。検査はすべて通りました（本番は変えていません）"
+          elif [ "$DRY_RUN" = true ]; then
+            title="試しに流しましたが、検査で止まりました（本番は変えていません）"
+          elif [ "$JOB" = success ]; then
+            title="本番に反映しました"
+          elif [ -z "$STAMP" ] || [ "$UNTOUCHED" = true ]; then
+            title="反映する前の検査で止まりました（本番は変えていません）"
+          elif [ "$ROLLBACK" = success ]; then
+            title="失敗したので、反映する前の状態に戻しました"
+          else
+            title="失敗しました。本番が壊れていないか確かめてください"
+          fi
+          {
+            echo "## $title"
+            echo
+            echo "| 項目 | 値 |"
+            echo "| --- | --- |"
+            echo "| コミット | \`${COMMIT:0:7}\` |"
+            echo "| zip | \`${ZIP:--}\` |"
+            echo "| sha256 | \`${SHA256:--}\` |"
+            echo "| 控え | ${STAMP:+\`~/archive-docs/deploy/$STAMP\`} |"
+            echo "| 展開 | ${DEPLOY:-} |"
+            echo "| 本番の検査（ヘッダ） | ${CHECK:-} |"
+            echo "| 本番の検査（ブラウザ） | ${BROWSER:-} |"
+            echo "| 自動で戻す | ${ROLLBACK:-} |"
+            echo
+            if [ -n "$STAMP" ] && [ "$ROLLBACK" != success ]; then
+              echo "戻すときは、Actions の「本番を元に戻す」に \`$STAMP\` を入れて流します。"
+              echo
+            fi
+            echo "実行の記録: $RUN_URL"
+          } > "$RUNNER_TEMP/result.md"
+          cat "$RUNNER_TEMP/result.md" >> "$GITHUB_STEP_SUMMARY"
+          # The deployment log lives in Issue #1 (docs/ops/deploy.md, 8).
+          if [ "$DRY_RUN" != true ]; then
+            gh issue comment 1 --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/result.md" \
+              || echo "::warning::Issue #1 に記録できませんでした"
+          fi
+
+      - name: Remove the key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/ssh"

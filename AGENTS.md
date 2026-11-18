@@ -23,6 +23,8 @@ archive.setagayafes.org のトップ（過去の世田谷祭の一覧）を作�
     - 理由: #71 で `gh pr list` が `HTTP 403: GitHub GraphQL is not available from Claude Code sessions` で止まった。`-F body=@<ファイル>` なら、本文をファイルで渡す決まりも守れる
 - 外部ライブラリを足すときは、目的・代替案・影響（サイズ）を示して、オーナーの承認を取る
 - さくらのサーバーには、オーナーの明示の指示があるときだけ書き込む
+  - ふだんの配置は、Actions の「本番に反映」（`deploy.yml`）と「本番を元に戻す」（`rollback.yml`）で行う（#76。[docs/ops/deploy.md](./docs/ops/deploy.md)）。エージェントがこれらを動かすのも、オーナーの指示があるときだけ
+  - 来年度からは、世田谷祭実行委員会の Web 担当（非エンジニアの見込み）が、オーナーとして年次の更新と配置を行う
 - 配置では、`errors/`（エラーページ）と `.htaccess` を必ず一緒に置く。配置の前に、`.htaccess` の `ErrorDocument` が33本とも `/errors/` を指すこと（`grep -c '^ErrorDocument .* /errors/' dist/.htaccess` が `33`）を確かめる
   - 理由: `.htaccess` だけが新しいと、存在しないページを指して Apache の素の文言が出る。`errors/` だけが新しいと、CSP のハッシュがずれてスタイルが当たらない。他のセッションの古い版の配置と重なると、`ErrorDocument` の変更が黙って消える（#24 で起きた）。手順は [docs/ops/deploy.md](./docs/ops/deploy.md)
 - 新しく分かったことは `docs/` に書き、`docs/INDEX.md` を直す
