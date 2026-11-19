@@ -4,6 +4,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Started by add-festival.yml for the pull request it opens: a pull request
+  # opened with GITHUB_TOKEN does not start this workflow by itself.
+  workflow_dispatch:
 
 permissions:
   contents: read

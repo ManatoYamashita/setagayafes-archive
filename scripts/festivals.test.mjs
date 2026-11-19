@@ -68,9 +68,12 @@ describe("FESTIVALS", () => {
         if (festival.theme === null) return;
         assert.ok(festival.theme.ja.length > 0 && festival.theme.en.length > 0);
         // Hiragana, katakana and kanji mean the theme needs an English rendering.
-        const isJapanese = /[぀-ヿ㐀-鿿]/.test(festival.theme.ja);
-        if (isJapanese) assert.notEqual(festival.theme.en, festival.theme.ja);
-        else assert.equal(festival.theme.en, festival.theme.ja);
+        // The form of Issue #77 may leave it out: then the English is the Japanese.
+        const japanese = /[぀-ヿ㐀-鿿]/;
+        const isJapanese = japanese.test(festival.theme.ja);
+        if (!isJapanese) assert.equal(festival.theme.en, festival.theme.ja);
+        else if (festival.theme.en !== festival.theme.ja)
+          assert.doesNotMatch(festival.theme.en, japanese);
       });
 
       test("a status reason is given only for a cancelled festival", () => {

@@ -25,6 +25,12 @@ permissions:
 
 # One deployment or rollback at a time; a second one waits instead of
 # cancelling the one that is writing to the server.
+# Unlike the default (bash -e), this adds -o pipefail: a failing command
+# piped into tee or sed must fail the step.
+defaults:
+  run:
+    shell: bash
+
 concurrency:
   group: production
   cancel-in-progress: false

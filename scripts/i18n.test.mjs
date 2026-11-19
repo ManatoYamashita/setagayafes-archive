@@ -113,6 +113,13 @@ describe("headingOf", () => {
     assert.deepEqual(headingOf(festival(90), "en"), { text: "COSMOS", lang: "en" });
   });
 
+  test("a Japanese theme without a translation is shown once, marked as Japanese", () => {
+    // The form of Issue #77 stores the Japanese as the English when it is left empty.
+    const untranslated = { ...festival(97), theme: { ja: "花火", en: "花火" } };
+    assert.deepEqual(headingOf(untranslated, "en"), { text: "花火", lang: "ja" });
+    assert.deepEqual(headingOf(untranslated, "ja"), { text: "花火", lang: "ja" });
+  });
+
   test("an unknown theme falls back to the festival's name", () => {
     assert.deepEqual(headingOf(festival(75), "en"), {
       text: festivalNameOf(75).en,
@@ -126,6 +133,9 @@ describe("headingOf", () => {
       const heading = headingOf(item, "en");
       if (heading.lang === "en") {
         assert.doesNotMatch(heading.text, JAPANESE, `round ${item.round}`);
+      } else if (item.theme?.ja === item.theme?.en) {
+        // Not translated yet (the form of Issue #77): shown once, as Japanese.
+        assert.equal(heading.translation, undefined, `round ${item.round}`);
       } else {
         assert.ok(heading.translation, `round ${item.round} has a translation`);
         assert.doesNotMatch(heading.translation, JAPANESE, `round ${item.round}`);
