@@ -17,7 +17,8 @@
 # the server has no post-quantum key exchange ("** WARNING: connection is not
 # using a post-quantum key exchange algorithm.", three lines). That is about
 # the server's OpenSSH 7.9, which this repository cannot change; the lines are
-# dropped so that they are not read as server output (Issue #77).
+# dropped so that they are not read as server output (Issue #77). OpenSSH ends
+# its own messages on stderr with \r\n, hence the [[:space:]]* before the end.
 
 # shellcheck shell=bash
 
@@ -37,9 +38,9 @@ ssh_opts=(
 mask() {
   sed -E \
     -e '/then: then\/endif not found\./d' \
-    -e '/^\*\* WARNING: connection is not using a post-quantum key exchange algorithm\.$/d' \
-    -e '/^\*\* This session may be vulnerable to "store now, decrypt later" attacks\.$/d' \
-    -e '/^\*\* The server may need to be upgraded\. See https:\/\/openssh\.com\/pq\.html$/d' \
+    -e '/^\*\* WARNING: connection is not using a post-quantum key exchange algorithm\.[[:space:]]*$/d' \
+    -e '/^\*\* This session may be vulnerable to "store now, decrypt later" attacks\.[[:space:]]*$/d' \
+    -e '/^\*\* The server may need to be upgraded\. See https:\/\/openssh\.com\/pq\.html[[:space:]]*$/d' \
     -e 's#/home/[^/[:space:]]+#~#g'
 }
 

@@ -280,4 +280,18 @@ describe("actions-ssh.sh", () => {
     );
     assert.doesNotMatch(result.stdout, /someone|\/home\//);
   });
+
+  test("drops OpenSSH's warning when it ends with \\r\\n, as OpenSSH writes it", () => {
+    const result = mask(
+      [
+        "** WARNING: connection is not using a post-quantum key exchange algorithm.\r",
+        '** This session may be vulnerable to "store now, decrypt later" attacks.\r',
+        "** The server may need to be upgraded. See https://openssh.com/pq.html\r",
+        "NO_FOLDER",
+        "",
+      ].join("\n"),
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, "NO_FOLDER\n");
+  });
 });
