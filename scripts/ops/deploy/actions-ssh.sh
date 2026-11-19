@@ -13,6 +13,11 @@
 # passed through `mask`: the csh start-up line that every login prints
 # ("then: then/endif not found.", docs/ops/deploy.md) is dropped, and
 # /home/<account>/ is rewritten to ~/ (docs/rules/conventions.md, 8).
+# The newer OpenSSH of the GitHub runners also warns on every connection that
+# the server has no post-quantum key exchange ("** WARNING: connection is not
+# using a post-quantum key exchange algorithm.", three lines). That is about
+# the server's OpenSSH 7.9, which this repository cannot change; the lines are
+# dropped so that they are not read as server output (Issue #77).
 
 # shellcheck shell=bash
 
@@ -30,7 +35,12 @@ ssh_opts=(
 )
 
 mask() {
-  sed -E -e '/then: then\/endif not found\./d' -e 's#/home/[^/[:space:]]+#~#g'
+  sed -E \
+    -e '/then: then\/endif not found\./d' \
+    -e '/^\*\* WARNING: connection is not using a post-quantum key exchange algorithm\.$/d' \
+    -e '/^\*\* This session may be vulnerable to "store now, decrypt later" attacks\.$/d' \
+    -e '/^\*\* The server may need to be upgraded\. See https:\/\/openssh\.com\/pq\.html$/d' \
+    -e 's#/home/[^/[:space:]]+#~#g'
 }
 
 # remote <command>: runs <command> on the server (its login shell is csh, so

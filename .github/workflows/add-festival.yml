@@ -126,13 +126,15 @@ jobs:
             -o -iname '*.sql*' -o -iname '*.log' -o -iname '*.zip' -o -iname '*.php' -o -iname '*.php.*' -o -iname '.env*' \) -print
           EOF
           )
-          if [ "$found" = NO_FOLDER ]; then
+          printf '%s\n' "$found"
+          if printf '%s\n' "$found" | grep -qx NO_FOLDER; then
             echo "::error::サーバーに $FOLDER のフォルダがありません。先に、第${FOLDER%??}回のサイトをサーバーに置いてください（Issue #78）"
             exit 1
           fi
-          if [ -n "$found" ]; then
-            printf '%s\n' "$found"
-            echo "::error::$FOLDER の中に、公開してはいけないファイルが $(printf '%s\n' "$found" | wc -l | tr -d ' ') 個あります（上の一覧）。エンジニアに相談してください"
+          # find prints every hit as ./<path>; any other line is not a file.
+          hits=$(printf '%s\n' "$found" | grep '^\./' || true)
+          if [ -n "$hits" ]; then
+            echo "::error::$FOLDER の中に、公開してはいけないファイルが $(printf '%s\n' "$hits" | wc -l | tr -d ' ') 個あります（上の一覧）。エンジニアに相談してください"
             exit 1
           fi
           echo "ok   ~/www/archive/$FOLDER has no files that must not be public"
