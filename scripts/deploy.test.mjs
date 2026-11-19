@@ -256,10 +256,14 @@ describe("actions-ssh.sh", () => {
     });
   }
 
-  test("hides the account name in server paths and drops the csh start-up line", () => {
+  test("hides the account name in server paths and drops the lines that are not server output", () => {
     const result = mask(
       [
         "then: then/endif not found.",
+        // The GitHub runners' OpenSSH warns about the server's key exchange on every connection.
+        "** WARNING: connection is not using a post-quantum key exchange algorithm.",
+        '** This session may be vulnerable to "store now, decrypt later" attacks.',
+        "** The server may need to be upgraded. See https://openssh.com/pq.html",
         "ok   extracted top.zip into /home/someone/www/archive",
         "     backup: /home/someone/archive-docs/deploy/20261107-000000 (roll back …)",
         "",
