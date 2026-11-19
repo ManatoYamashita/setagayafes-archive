@@ -202,6 +202,9 @@ export const UI = {
   },
 } as const satisfies Record<Lang, Words>;
 
+/** Hiragana, katakana and kanji: text that only a Japanese reader can read. */
+const JAPANESE_SCRIPT = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
+
 /** A festival's round as written in each language: "第97回" / "97th". */
 export function roundLabel(round: number, lang: Lang): string {
   return lang === "ja" ? `第${round}回` : ordinalOf(round);
@@ -212,12 +215,16 @@ export function roundLabel(round: number, lang: Lang): string {
  * title on "/en/" too, followed by the English rendering (Issue #1). Themes
  * written in Latin script are the same in both languages and get no
  * translation; an unknown theme falls back to the festival's name.
+ * A Japanese theme that has no translation yet (the form of Issue #77 lets
+ * the English be left empty) is shown once, marked as Japanese.
  */
 export function headingOf(
   festival: Festival,
   lang: Lang,
 ): { readonly text: string; readonly lang: Lang; readonly translation?: string } {
   const { theme } = festival;
+  if (theme && lang === "en" && theme.ja === theme.en && JAPANESE_SCRIPT.test(theme.ja))
+    return { text: theme.ja, lang: "ja" };
   if (!theme || lang === "ja" || theme.ja === theme.en)
     return { text: titleOf(festival, lang), lang };
   return { text: theme.ja, lang: "ja", translation: theme.en };

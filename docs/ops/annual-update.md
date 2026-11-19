@@ -4,6 +4,29 @@
 
 例は第98回（2027年）。
 
+## フォームで足す（ふだんはこちら）
+
+2026-11-19 から、下の「手順」の 2〜5 を、Actions のワークフロー「新しい回を追加」（`.github/workflows/add-festival.yml`）で行える（#77）。来年度から年次の更新を行う Web 担当（非エンジニアの見込み）が、ターミナルを使わずに足せるようにするため。
+
+1. 下の「前提」を満たす（新しい回のサイトがサーバーにあること。置き方は #78）
+2. Actions タブで「新しい回を追加」を選び、「Run workflow」でフォームに入力して流す
+3. できた PR で、サムネイルと表を確かめて、Merge を押す
+4. 「本番に反映」（`deploy.yml`）を流す（[deploy.md](./deploy.md)）
+
+ワークフローがすること:
+
+- `check-server`（Environment `production`。読むだけ）: 新しい回のフォルダがあり、公開してはいけないファイルが無いことを確かめる（下の「前提」と同じ `find`）
+- `add`（鍵は持たない）
+  - `scripts/add-festival.mjs` が入力を検証し、`src/data/festivals.ts` に1件、`scripts/festivals.test.mjs` の `LATEST_ROUND`・`SERVER_FOLDERS` を書き換える。待つ秒数が既定（3秒）より長ければ、`scripts/lib/capture-targets.mjs` の `OVERRIDES` にも足す。規則は `scripts/lib/add-festival.mjs`（テストは `scripts/add-festival.test.mjs`）
+  - 入力の誤り（次の回でない・日付の形・年が合わない・中止なのに理由が無い など）は、日本語の理由を出して止まる
+  - `pnpm capture <回>` で撮影する。日本語のフォント（`fonts-noto-cjk`）を入れてから撮る
+  - `pnpm verify`・`pnpm check:links` が通ったら、ブランチ `feature/add-<回>-<実行番号>` を push し、PR を作る。PR の本文に、表・サムネイル・転送量の予算の行を載せる
+  - `GITHUB_TOKEN` で作った PR では CI が自動で走らないので、`ci.yml` を `workflow_dispatch` で起動する
+- リポジトリの設定「Allow GitHub Actions to create and approve pull requests」を on にした（2026-11-19。main に必須の承認は無いので、承認の意味は変わらない）
+- 英訳は任意。空なら `theme.en` に日本語をそのまま入れ、英語版でも日本語のまま（`lang="ja"`）出す（[festivals.md](../data/festivals.md)）
+- サムネイルが読み込み中の画面で撮れたら、PR を閉じ、「撮影まで待つ秒数」を増やして送り直す
+- キービジュアルを渡された回（`supplied`）と、データの書き方を変える必要がある回（時代・祭の名称の変わり目。下の「年をまたいで変わりうるもの」）は、フォームでは扱わない。下の手順で行う
+
 ## 前提
 
 - 新しい回のサイトが、archive ホストのフォルダ（`~/www/archive/98th/`）に置かれていること
@@ -29,6 +52,8 @@
 **順番に注意:** サイトのフォルダが置かれる前に `pnpm capture 98` や `pnpm check:links` を流すと、その回が 404 で落ちる。
 
 ## 手順
+
+フォームを使わずに、手元で足すときの手順。
 
 ### 1. ブランチを切る
 

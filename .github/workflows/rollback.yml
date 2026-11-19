@@ -18,6 +18,12 @@ permissions:
   contents: read
   issues: write
 
+# Unlike the default (bash -e), this adds -o pipefail: a failing command
+# piped into tee or sed must fail the step.
+defaults:
+  run:
+    shell: bash
+
 concurrency:
   group: production
   cancel-in-progress: false

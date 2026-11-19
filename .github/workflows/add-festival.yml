@@ -1,0 +1,289 @@
+name: 新しい回を追加
+
+# Adds the next festival to the archive top from a form (Issue #77), for the
+# yearly update by a person who is not an engineer (docs/ops/annual-update.md).
+#
+#   1. check-server (read-only, with the deploy key): the festival's folder is
+#      on the server and holds no files that must not be public.
+#   2. add: writes the data (scripts/add-festival.mjs), captures the
+#      thumbnail, runs the same checks as CI, and opens a pull request.
+#
+# The person then looks at the thumbnail in the pull request, merges it, and
+# runs "本番に反映" (deploy.yml). Nothing here writes to the server.
+#
+# The answers are passed to scripts in environment variables, never pasted
+# into shell commands.
+
+on:
+  workflow_dispatch:
+    inputs:
+      round:
+        description: "回（例: 98）"
+        type: string
+        required: true
+      start_date:
+        description: "開催日の初日（例: 2027-11-13）"
+        type: string
+        required: true
+      end_date:
+        description: "開催日の最終日（例: 2027-11-14）"
+        type: string
+        required: true
+      theme_ja:
+        description: "キャンパステーマ（サイトに書かれたとおり）"
+        type: string
+        required: true
+      theme_en:
+        description: "キャンパステーマの英訳（空でもよい。空なら英語版でも日本語のまま出る）"
+        type: string
+        required: false
+      common_theme:
+        description: "共通テーマ（あれば）"
+        type: string
+        required: false
+      status:
+        description: "開催の形"
+        type: choice
+        options: [通常, オンラインのみ, 対面＋オンライン, 中止]
+        default: 通常
+      reason_ja:
+        description: "中止の理由（中止のときだけ）"
+        type: string
+        required: false
+      reason_en:
+        description: "中止の理由の英訳（中止のときだけ。空でもよい）"
+        type: string
+        required: false
+      settle_seconds:
+        description: "撮影まで待つ秒数（ふつうは 3。サムネイルが読み込み中の画面で撮れたら増やす）"
+        type: string
+        default: "3"
+
+permissions:
+  contents: read
+
+# Unlike the default (bash -e), this adds -o pipefail: a failing command
+# piped into tee or sed must fail the step.
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: add-festival
+  cancel-in-progress: false
+
+jobs:
+  check-server:
+    name: サーバーのフォルダを確かめる（読むだけ）
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Work out the folder name
+        id: folder
+        env:
+          ROUND: ${{ inputs.round }}
+        run: |
+          n=$(printf '%s' "$ROUND" | tr -d '[:space:]第回')
+          if ! printf '%s' "$n" | grep -Eq '^[0-9]{1,3}$'; then
+            echo "::error::「回」は数字で入れてください（入っていた値: $ROUND）"
+            exit 1
+          fi
+          case $((n % 100)) in
+            11 | 12 | 13) suffix=th ;;
+            *) case $((n % 10)) in 1) suffix=st ;; 2) suffix=nd ;; 3) suffix=rd ;; *) suffix=th ;; esac ;;
+          esac
+          echo "name=$n$suffix" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare the SSH connection
+        env:
+          SAKURA_SSH_KEY: ${{ secrets.SAKURA_SSH_KEY }}
+          SAKURA_KNOWN_HOSTS: ${{ secrets.SAKURA_KNOWN_HOSTS }}
+        run: |
+          d="$RUNNER_TEMP/ssh"
+          install -d -m 700 "$d"
+          printf '%s\n' "$SAKURA_SSH_KEY" > "$d/key"
+          chmod 600 "$d/key"
+          printf '%s\n' "$SAKURA_KNOWN_HOSTS" > "$d/known_hosts"
+
+      # The same check as docs/ops/annual-update.md ("前提"). Read-only.
+      - name: Look for files that must not be public
+        env:
+          SAKURA_HOST: ${{ secrets.SAKURA_HOST }}
+          SAKURA_USER: ${{ secrets.SAKURA_USER }}
+          FOLDER: ${{ steps.folder.outputs.name }}
+        run: |
+          . scripts/ops/deploy/actions-ssh.sh
+          found=$(remote "sh -s -- $FOLDER" <<'EOF'
+          cd ~/www/archive/"$1" 2>/dev/null || { echo "NO_FOLDER"; exit 0; }
+          find . \( -type d \( -name '_vti_*' -o -name .git \) -prune -print \) -o -type f \( \
+            -iname '*.bak' -o -iname 'Thumbs.db' -o -iname '.DS_Store' -o -iname 'desktop.ini' \
+            -o -iname '*.sql*' -o -iname '*.log' -o -iname '*.zip' -o -iname '*.php' -o -iname '*.php.*' -o -iname '.env*' \) -print
+          EOF
+          )
+          if [ "$found" = NO_FOLDER ]; then
+            echo "::error::サーバーに $FOLDER のフォルダがありません。先に、第${FOLDER%??}回のサイトをサーバーに置いてください（Issue #78）"
+            exit 1
+          fi
+          if [ -n "$found" ]; then
+            printf '%s\n' "$found"
+            echo "::error::$FOLDER の中に、公開してはいけないファイルが $(printf '%s\n' "$found" | wc -l | tr -d ' ') 個あります（上の一覧）。エンジニアに相談してください"
+            exit 1
+          fi
+          echo "ok   ~/www/archive/$FOLDER has no files that must not be public"
+
+      - name: Remove the key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/ssh"
+
+  add:
+    name: 一覧に足して、PR を作る
+    needs: check-server
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    env:
+      TZ: Asia/Tokyo
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - run: corepack enable
+
+      - run: pnpm install --frozen-lockfile
+
+      # Japanese fonts, so that a site without web fonts is not captured as boxes.
+      - name: Install fonts, Apache and the browser
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          if [ ! -x /usr/sbin/apache2 ]; then
+            sudo apt-get install -y --no-install-recommends apache2
+          fi
+          pnpm exec playwright install --with-deps --only-shell chromium
+
+      - name: Add the festival to the data
+        id: add
+        env:
+          FORM_ROUND: ${{ inputs.round }}
+          FORM_START_DATE: ${{ inputs.start_date }}
+          FORM_END_DATE: ${{ inputs.end_date }}
+          FORM_THEME_JA: ${{ inputs.theme_ja }}
+          FORM_THEME_EN: ${{ inputs.theme_en }}
+          FORM_COMMON_THEME: ${{ inputs.common_theme }}
+          FORM_STATUS: ${{ inputs.status }}
+          FORM_REASON_JA: ${{ inputs.reason_ja }}
+          FORM_REASON_EN: ${{ inputs.reason_en }}
+          FORM_SETTLE_SECONDS: ${{ inputs.settle_seconds }}
+          FORM_SUMMARY_FILE: ${{ runner.temp }}/festival.md
+        run: node scripts/add-festival.mjs
+
+      - name: Capture the thumbnail
+        env:
+          ROUND: ${{ steps.add.outputs.round }}
+          FOLDER: ${{ steps.add.outputs.folder }}
+        run: |
+          pnpm capture "$ROUND"
+          test -s "src/assets/captures/$FOLDER.png" \
+            || { echo "::error::サムネイルが撮れませんでした。エンジニアに相談してください"; exit 1; }
+
+      - name: Check the site (pnpm verify)
+        run: pnpm verify 2>&1 | tee "$RUNNER_TEMP/verify.log"
+
+      - name: Check the past festival sites and external links
+        run: pnpm check:links
+
+      - name: Open the pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ROUND: ${{ steps.add.outputs.round }}
+          FOLDER: ${{ steps.add.outputs.folder }}
+          TRANSLATED: ${{ steps.add.outputs.translated }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          branch="feature/add-$FOLDER-$GITHUB_RUN_NUMBER"
+          year=$((ROUND + 1929))
+          image="src/assets/captures/$FOLDER.png"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add src/data/festivals.ts scripts/festivals.test.mjs scripts/lib/capture-targets.mjs "$image"
+          printf 'FEAT: 第%s回（%s年）を一覧に足す\n\nフォーム「新しい回を追加」から作った（Issue #77）。\n%s\n' \
+            "$ROUND" "$year" "$RUN_URL" > "$RUNNER_TEMP/commit.txt"
+          git commit -q -F "$RUNNER_TEMP/commit.txt"
+          git push -q origin "$branch"
+          {
+            echo "フォーム「新しい回を追加」から作った PR です（Issue #77）。"
+            echo
+            echo "## 足した回"
+            echo
+            cat "$RUNNER_TEMP/festival.md"
+            echo
+            echo "## サムネイル"
+            echo
+            echo "![第${ROUND}回のサムネイル](https://github.com/$GITHUB_REPOSITORY/blob/$branch/$image?raw=true)"
+            echo
+            echo "## 確かめること"
+            echo
+            echo "- [ ] サムネイルが、サイトのトップの見た目どおりに撮れている（読み込み中の画面・真っ白・文字化けではない）"
+            echo "- [ ] 上の表の開催日とテーマが、サイトに書かれたとおり"
+            if [ "$TRANSLATED" != true ]; then
+              echo "- [ ] テーマの英訳は未入力です。英語版（/en/）でも日本語のまま出ます。入れたいときは、この PR を閉じて、フォームに英訳を入れて送り直します"
+            fi
+            echo
+            echo "サムネイルが読み込み中の画面で撮れていたら、この PR を閉じて、「撮影まで待つ秒数」を増やして送り直してください。"
+            echo
+            echo "## この後"
+            echo
+            echo "1. 問題なければ、下の「Merge pull request」を押す"
+            echo "2. Actions の「本番に反映」を流す（マージしただけでは、本番は変わりません）"
+            echo
+            echo "## 検査"
+            echo
+            echo "このワークフローの中で \`pnpm verify\` と \`pnpm check:links\` が通っています（[実行の記録]($RUN_URL)）。"
+            echo
+            echo '```'
+            grep -E 'ℹ (initial|tests|pass|fail)' "$RUNNER_TEMP/verify.log" || true
+            echo '```'
+          } > "$RUNNER_TEMP/pr.md"
+          url=$(gh pr create --base main --head "$branch" \
+            --title "FEAT: 第${ROUND}回（${year}年）を一覧に足す" \
+            --body-file "$RUNNER_TEMP/pr.md" --label feature)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          # A pull request opened with GITHUB_TOKEN does not start CI by itself.
+          gh workflow run ci.yml --ref "$branch" || echo "::warning::CI を起動できませんでした"
+          echo "ok   $url"
+
+      - name: Write the result
+        if: always()
+        env:
+          PR_URL: ${{ steps.pr.outputs.url }}
+          JOB: ${{ job.status }}
+        run: |
+          if [ "$JOB" = success ] && [ -n "$PR_URL" ]; then
+            {
+              echo "## PR を作りました"
+              echo
+              echo "$PR_URL"
+              echo
+              echo "PR を開いてサムネイルを確かめ、問題なければ Merge を押してから、「本番に反映」を流してください。"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "## 途中で止まりました（PR は作っていません。本番も変わっていません）"
+              echo
+              echo "赤い × の付いた手順を開くと、理由が書いてあります。フォームの入力の誤りなら、直して送り直してください。わからなければ、この画面のリンクをエンジニアに送って相談してください。"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
