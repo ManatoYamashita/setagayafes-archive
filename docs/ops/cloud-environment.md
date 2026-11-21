@@ -31,7 +31,7 @@ claude.ai/code のクラウドセッションで、このリポジトリの `pnp
 
 ```bash
 set -e
-NODE_VER=v24.13.0
+NODE_VER=v26.13.1
 NODE_DIR=/opt/node-$NODE_VER
 if [ "$("$NODE_DIR/bin/node" -v 2>/dev/null)" != "$NODE_VER" ]; then
   curl -fsSL https://nodejs.org/dist/$NODE_VER/node-$NODE_VER-linux-x64.tar.xz -o /tmp/node.tar.xz
@@ -45,7 +45,7 @@ if [ -d setagayafes-archive ]; then
 fi
 ```
 
-- コンテナには `/opt/node22/bin` が PATH の先頭にあり、Node を別の場所に入れても v22 が使われる。そのため、版名入りのディレクトリ（`/opt/node-v24.13.0`）に入れ、`/opt/node22/bin` にリンクを張って差し替える
+- コンテナには `/opt/node22/bin` が PATH の先頭にあり、Node を別の場所に入れても v22 が使われる。そのため、版名入りのディレクトリ（`/opt/node-v26.13.1`）に入れ、`/opt/node22/bin` にリンクを張って差し替える
 - コンテナに最初から入っている `/opt/node24` は使わない。中身の版が `.nvmrc` と一致するとは限らない
 - 取得するかどうかは、ディレクトリの有無ではなく `node -v` の一致で決める
 - Node の版は `.nvmrc` に合わせる。`.nvmrc` を上げたら、スクリプトの `NODE_VER` も上げる

@@ -10,7 +10,7 @@
 
 ## 必要なもの
 
-- Node.js 24（`.nvmrc`）
+- Node.js 26（`.nvmrc`）
 - pnpm 10（`package.json` の `packageManager`。`corepack enable` で入る）
 - e2e 用のブラウザ: `pnpm exec playwright install --only-shell chromium`
 
