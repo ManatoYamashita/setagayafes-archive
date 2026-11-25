@@ -3,6 +3,7 @@
 過去回のサイト（`~/www/archive/<回>/`）のうち、当時は表示できていたのに今は壊れているものを直す手順と道具。直した記録と、直せなかったものの一覧は Issue #3。
 
 - 直すのは「壊れ」だけ。当時の誤記や当時の内容は、資料としてそのまま残す
+  - 例外として、画像の `srcset`・`sizes` だけは、表示の大きさに合わせて直す（#88。下の「画像の大きさを表示に合わせる」）。見た目と内容は変えない
 - サーバーへの書き込みは、オーナーの明示の指示があるときだけ（AGENTS.md）。ほかのセッションが同じフォルダに触っていないかを先に確かめ、書き込む範囲を伝える
 - archive 直下の `.htaccess` には触らない（`pnpm build` が作る。[htaccess.md](../design/htaccess.md)）
 
@@ -40,6 +41,35 @@ node scripts/ops/absolutize-css-vars.mjs 95th mirror/95th out-css/95th
   - 出力の JSON に、向け直した先の内訳（`file`・`page`・`folder`・`hashed`・`missing`）が出る。`missing` は、WordPress の動的な入口（`wp-admin`・`wp-json`）や `<meta>` の画像が大半で、表示に関わらないことを確かめる
 - `restore-cdn-refs.mjs`: サイトのフォルダより上へ出る相対パスだけを変える。サイト自身の `css/` などは指さない
 - `absolutize-css-vars.mjs`: サイトのフォルダの中を指すものだけを変える
+
+## 画像の大きさを表示に合わせる（`fit-image-sizes.mjs`。#88）
+
+Lighthouse の `uses-responsive-images` で、表示の大きさより大きな画像を読み込んでいるページがある。WordPress が付けた `sizes="(max-width: 2270px) 100vw, 2270px"` が実際の枠（3列の正方形など）と合っていない、または `srcset` が無く原寸を読む、のどちらか。
+
+- `scripts/ops/fit-image-sizes.mjs` が、`scripts/ops/image-sizes-rules.mjs` に書いた `<img>` の `srcset`・`sizes` だけを書き換える
+  - 候補に使うのは、**サーバーに既にある** WordPress の縮小版（`-300x300.jpg` など）だけ。画像は作らない・変えない。どの縮小版を選ぶかが変わるだけで、見た目は当時のまま
+  - 候補がサーバーに無い規則・タグが1つに決まらない規則は、飛ばして JSON に `skipped` と出す（タグはそのまま）
+- `sizes` の幅は、Chromium で実測した枠の幅より 1px ほど広くする。`width` 属性の無い `<img>` は、選んだ候補と `sizes` から幅が決まり、`max-width: 100%` で枠に収まる。`sizes` が枠より狭いと、画像が縮む
+- 規則を足すときは、本番を Playwright で幅を変えて開き、`getBoundingClientRect()` で枠の幅を測る（Bootstrap のテーマは 576・768・992・1200px で幅が変わる）
+
+```sh
+# 写す: ページ（上の「道具」と同じ）と、候補に使うファイルの一覧（archive のフォルダからの相対パス）
+rsync -a setagayafes-archive:www/archive/96th/index.html mirror/96th/
+ssh setagayafes-archive 'sh -s' <<'EOF2' > image-files.txt
+cd ~/www/archive && find 95th/wp-content/uploads/2024/10 96th/wp-content/uploads/2025 -type f
+EOF2
+
+node scripts/ops/fit-image-sizes.mjs mirror image-files.txt out-img
+```
+
+- 送る前に、手元で前後を比べる。変えたページを手元のサーバーで返し、ほかのパスは本番へ転送して開く
+  - Lighthouse の `uses-responsive-images`（モバイルとデスクトップ）の前後
+  - 各 `<img>` の位置と大きさが前後で同じこと、画素の差が縮小の差の程度であること
+- 直せないもの（2026-11-23 時点）
+  - `/96th/` のキャンパスマップ: 縮小版が 205px と 699px しか無く、枠（118〜359px）に合う幅が無い。直すには新しい縮小版を足す必要があり、オーナーの判断を待つ
+  - `/96th/` の `8397201b…png`: 300px の縮小版（35KB）が原寸（426px・32KB）より大きいので、そのままにする
+  - `/96th/` のスクリーン投影用・`KB_KVver2`: `sizes` を直しても、選ばれる候補が変わらない
+  - `/97th/`: Next.js の書き出し。属性がハイドレーションのデータにもあるため、元のリポジトリ（`tcu-setagayafes97-web`）で直して書き出し直す
 
 ## サーバーへ送る段取り
 

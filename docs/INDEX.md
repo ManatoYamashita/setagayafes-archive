@@ -71,6 +71,7 @@
 
 - **[repair-past-sites.md](./ops/repair-past-sites.md)**: 過去回のサイトの壊れ（旧ドメインへの参照・サイトの外へ出る相対パス・CSS 変数・欠けたファイル・文字コード）を直す手順と道具（Issue #3）
   - 道具は手元で動かし、変えたファイルだけを、控えを取ってから送る。送る前後に sha256 で確かめる
+  - 画像の `srcset`・`sizes` を表示の大きさに合わせる道具（`fit-image-sizes.mjs`）。サーバーに既にある縮小版だけを使い、見た目は変えない（#88）
 
 - **[wp-to-static.md](./ops/wp-to-static.md)**: 動き続けている旧 WordPress・自作 PHP のサイトを静的 HTML に置き換え、PHP と DB を撤去する手順
   - 道具は `scripts/ops/wp2static/`（サーバーで動かす）と `scripts/ops/compare-pages.mjs`（置き換えの前後の撮影と比較）
